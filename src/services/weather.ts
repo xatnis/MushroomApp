@@ -202,17 +202,18 @@ const buildHistoricalSummary = (days: DailyWeatherPoint[]): HistoricalWeatherSum
   const rain14 = valuesInLastDays(days, 14, (day) => day.precipitationMm);
   const rain26 = valuesInLastDays(days, 26, (day) => day.precipitationMm);
   const rain30 = valuesInLastDays(days, 30, (day) => day.precipitationMm);
+  const rain60 = valuesInLastDays(days, 60, (day) => day.precipitationMm);
   const temp7 = valuesInLastDays(days, 7, (day) => day.temperatureMeanC);
   const temp14 = valuesInLastDays(days, 14, (day) => day.temperatureMeanC);
   const temp20 = valuesInLastDays(days, 20, (day) => day.temperatureMeanC);
   const evapotranspiration7 = valuesInLastDays(days, 7, (day) => day.evapotranspirationMm);
   return {
     days,
-    rain3dMm: completeSum(rain3, 3), rain7dMm: completeSum(rain7, 7), rain14dMm: completeSum(rain14, 14), rain26dMm: completeSum(rain26, 26), rain30dMm: completeSum(rain30, 30),
+    rain3dMm: completeSum(rain3, 3), rain7dMm: completeSum(rain7, 7), rain14dMm: completeSum(rain14, 14), rain26dMm: completeSum(rain26, 26), rain30dMm: completeSum(rain30, 30), rain60dMm: completeSum(rain60, 60),
     avgTemp7dC: completeAverage(temp7, 7), avgTemp14dC: completeAverage(temp14, 14), avgTemp20dC: completeAverage(temp20, 20),
     evapotranspiration7dMm: completeSum(evapotranspiration7, 7),
     coverage: {
-      rain3dDays: rain3.length, rain7dDays: rain7.length, rain14dDays: rain14.length, rain26dDays: rain26.length, rain30dDays: rain30.length,
+      rain3dDays: rain3.length, rain7dDays: rain7.length, rain14dDays: rain14.length, rain26dDays: rain26.length, rain30dDays: rain30.length, rain60dDays: rain60.length,
       temp7dDays: temp7.length, temp14dDays: temp14.length, temp20dDays: temp20.length,
       evapotranspiration7dDays: evapotranspiration7.length,
     },
@@ -247,7 +248,7 @@ const currentWeatherFrom = (data: MushroomWeatherResponse): MushroomWeatherSumma
 
 export async function getMushroomWeatherSummary(db: SQLiteDatabase, latitude: number, longitude: number): Promise<MushroomWeatherSummary> {
   const today = dateAtOffset(0);
-  const archiveStart = dateAtOffset(-30);
+  const archiveStart = dateAtOffset(-60);
   const archiveEnd = dateAtOffset(-8);
   const coordinateKey = `${roundCoordinate(latitude)}:${roundCoordinate(longitude)}`;
   const archiveParams = new URLSearchParams({
@@ -264,7 +265,7 @@ export async function getMushroomWeatherSummary(db: SQLiteDatabase, latitude: nu
   });
 
   const [archiveResult, forecastResult] = await Promise.allSettled([
-    cachedFetch<MushroomWeatherResponse>(db, `mushroom-archive-v1:${coordinateKey}:${archiveStart}:${archiveEnd}`, `${ARCHIVE_URL}?${archiveParams}`),
+    cachedFetch<MushroomWeatherResponse>(db, `mushroom-archive-v2:${coordinateKey}:${archiveStart}:${archiveEnd}`, `${ARCHIVE_URL}?${archiveParams}`),
     cachedFetch<MushroomWeatherResponse>(db, `mushroom-forecast-v1:${coordinateKey}:${today}`, `${FORECAST_URL}?${forecastParams}`),
   ]);
   const archive = archiveResult.status === 'fulfilled' ? archiveResult.value : undefined;
@@ -279,7 +280,7 @@ export async function getMushroomWeatherSummary(db: SQLiteDatabase, latitude: nu
   for (const day of forecast ? mapDailyWeather(forecast.data, 'historical') : []) {
     if (day.date >= archiveStart && day.date < today) historicalByDate.set(day.date, day);
   }
-  const historicalDays = [...historicalByDate.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-30);
+  const historicalDays = [...historicalByDate.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-60);
   const forecastDays = (forecast ? mapDailyWeather(forecast.data, 'forecast') : [])
     .filter((day) => day.date >= today).slice(0, 7);
   const fetchedTimes = [archive?.fetchedAt, forecast?.fetchedAt].filter((value): value is string => Boolean(value));

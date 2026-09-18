@@ -9,7 +9,7 @@ import type { ConditionsData, ExploreLocation, Hotspot, MushroomConditionsScore,
 import { useApp } from '../state/AppContext';
 import { getConditions, getMushroomWeatherSummary, searchLocations, type PlaceSearchResult } from '../services/weather';
 import { calculateMushroomScore } from '../domain/scoring';
-import { BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
+import { BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
 import { haversineKm, slDateTime, slNumber } from '../domain/format';
 import { speciesCatalogue } from '../domain/species';
 import { colors, radii, spacing } from '../theme';
@@ -218,6 +218,7 @@ export function ConditionsScreen() {
         <Chip label="Splošno" selected={weatherProfileId === 'generic'} onPress={() => setWeatherProfileId('generic')} />
         <Chip label="Jesenski goban" selected={weatherProfileId === 'boletusEdulis'} onPress={() => setWeatherProfileId('boletusEdulis')} />
         <Chip label="Navadna lisička" selected={weatherProfileId === 'cantharellusCibarius'} onPress={() => setWeatherProfileId('cantharellusCibarius')} />
+        <Chip label="Užitna sirovka" selected={weatherProfileId === 'lactariusDeliciosus'} onPress={() => setWeatherProfileId('lactariusDeliciosus')} />
       </View><Text style={commonStyles.muted}>Vrsta spremeni samo način izračuna iz istih vremenskih podatkov.</Text></Card>
 
       <Card><SectionTitle>{weatherProfile.scoreTitle}</SectionTitle>
@@ -240,6 +241,7 @@ const debugNumber = (value: number | undefined, unit: string, digits = 1) => val
 function WeatherProfileScoreDetails({ profileId, summary, score }: { profileId: MushroomWeatherProfileId; summary: MushroomWeatherSummary; score: MushroomConditionsScore }) {
   if (profileId === 'boletusEdulis') return <BoletusScoreDetails summary={summary} score={score} />;
   if (profileId === 'cantharellusCibarius') return <ChanterelleScoreDetails summary={summary} score={score} />;
+  if (profileId === 'lactariusDeliciosus') return <LactariusScoreDetails summary={summary} score={score} />;
   return <GenericScoreDetails summary={summary} score={score} />;
 }
 
@@ -311,6 +313,38 @@ function ChanterelleScoreDetails({ summary, score }: { summary: MushroomWeatherS
     <Text style={styles.detailHeading}>SKUPAJ</Text>
     <DetailLine label="Vremenske razmere" value={score.score == null ? 'ni podatka' : `${score.score} / 100`} />
     <Text style={commonStyles.muted}>{MUSHROOM_WEATHER_PROFILES.cantharellusCibarius.tuningNote} Če signal manjka, se njegove uteži izločijo in preostale transparentno preračunajo na 100 %.</Text>
+  </Card>;
+}
+
+function LactariusScoreDetails({ summary, score }: { summary: MushroomWeatherSummary; score: MushroomConditionsScore }) {
+  const contribution = (key: 'rain60' | 'rain14' | 'soilMoisture' | 'temperature' | 'drying', maximum: number) => {
+    const component = score.components.find((item) => item.key === key);
+    return component ? `${slNumber(component.weightedPoints, 1)} / ${maximum}` : `ni podatka / ${maximum}`;
+  };
+  const config = LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG;
+  return <Card><SectionTitle>Kako je izračunana ocena?</SectionTitle>
+    <Text style={commonStyles.heading}>Užitna sirovka</Text><Text style={commonStyles.muted}>Lactarius deliciosus</Text>
+    <Text style={styles.detailHeading}>DOLGOROČNA NAVLAŽENOST</Text>
+    <DetailLine label="Padavine 60 dni" value={debugNumber(summary.historical?.rain60dMm, 'mm')} />
+    <DetailLine label="Prispevek" value={contribution('rain60', config.componentWeights.rain60)} />
+    <Text style={styles.detailHeading}>NEDAVNE PADAVINE</Text>
+    <DetailLine label="Padavine 14 dni" value={debugNumber(summary.historical?.rain14dMm, 'mm')} />
+    <DetailLine label="Prispevek" value={contribution('rain14', config.componentWeights.rain14)} />
+    <Text style={styles.detailHeading}>VLAGA TAL</Text>
+    <DetailLine label="0–7 cm" value={debugNumber(summary.current?.soilMoisture0To7Cm, 'm³/m³', 3)} />
+    <DetailLine label="7–28 cm" value={debugNumber(summary.current?.soilMoisture7To28Cm, 'm³/m³', 3)} />
+    <DetailLine label="Prispevek" value={contribution('soilMoisture', config.componentWeights.soilMoisture)} />
+    <Text style={styles.detailHeading}>TEMPERATURA</Text>
+    <DetailLine label="Povprečje 20 dni" value={debugNumber(summary.historical?.avgTemp20dC, '°C')} />
+    <DetailLine label="Prispevek" value={contribution('temperature', config.componentWeights.temperature)} />
+    <Text style={commonStyles.muted}>Model uporablja široko jesensko temperaturno območje in postopno zmanjšuje signal ob dolgotrajno visokih temperaturah. Pragovi niso biološki optimum.</Text>
+    <Text style={styles.detailHeading}>IZSUŠEVANJE</Text>
+    <DetailLine label="ET₀ zadnjih 7 dni" value={debugNumber(summary.historical?.evapotranspiration7dMm, 'mm')} />
+    <DetailLine label="Padavine 7 dni" value={debugNumber(summary.historical?.rain7dMm, 'mm')} />
+    <DetailLine label="Prispevek" value={contribution('drying', config.componentWeights.drying)} />
+    <Text style={styles.detailHeading}>SKUPAJ</Text>
+    <DetailLine label="Vremenske razmere" value={score.score == null ? 'ni podatka' : `${score.score} / 100`} />
+    <Text style={commonStyles.muted}>{MUSHROOM_WEATHER_PROFILES.lactariusDeliciosus.tuningNote} Če opcijski signal manjka, se njegova utež izloči in preostale se transparentno preračunajo na 100 %.</Text>
   </Card>;
 }
 

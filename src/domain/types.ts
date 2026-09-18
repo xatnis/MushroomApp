@@ -4,7 +4,7 @@ export type Outcome = 'found' | 'nothing' | 'unspecified';
 export type QuantityUnit = 'pieces' | 'g' | 'kg';
 export type SyncState = 'local' | 'pending' | 'synced' | 'attention';
 export type WeatherStatus = 'pending' | 'complete' | 'missing' | 'error';
-export type MushroomWeatherProfileId = 'generic' | 'boletusEdulis' | 'cantharellusCibarius';
+export type MushroomWeatherProfileId = 'generic' | 'boletusEdulis' | 'cantharellusCibarius' | 'lactariusDeliciosus';
 
 export interface ExploreLocation {
   name: string;
@@ -183,6 +183,7 @@ export interface HistoricalWeatherSummary {
   rain14dMm?: number;
   rain26dMm?: number;
   rain30dMm?: number;
+  rain60dMm?: number;
   avgTemp7dC?: number;
   avgTemp14dC?: number;
   avgTemp20dC?: number;
@@ -193,6 +194,7 @@ export interface HistoricalWeatherSummary {
     rain14dDays: number;
     rain26dDays: number;
     rain30dDays: number;
+    rain60dDays: number;
     temp7dDays: number;
     temp14dDays: number;
     temp20dDays: number;
@@ -228,7 +230,7 @@ export interface MushroomWeatherSummary {
 }
 
 export interface MushroomScoreComponent {
-  key: 'rain' | 'rain7' | 'rain26' | 'rain30' | 'temperature' | 'soilMoisture' | 'drying';
+  key: 'rain' | 'rain7' | 'rain14' | 'rain26' | 'rain30' | 'rain60' | 'temperature' | 'soilMoisture' | 'drying';
   label: string;
   value: number;
   weight: number;
