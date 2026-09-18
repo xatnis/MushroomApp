@@ -2,6 +2,10 @@
 
 # dependencies
 node_modules/
+.env
+.env.*
+!.env.example
+dist/
 
 # Expo
 .expo/
@@ -39,3 +43,11 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+# environment
+.env
+.env.*
+!.env.example
+
+# local Android builds
+output/
+*.apk

@@ -1,20 +1,18 @@
+import 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SQLiteProvider } from 'expo-sqlite';
+import { AppProvider } from './src/state/AppContext';
+import { AppNavigator } from './src/navigation/AppNavigator';
+import { migrateDatabase } from './src/storage/database';
+import { colors } from './src/theme';
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
+      <SQLiteProvider databaseName="mushroomapp-v1.db" onInit={migrateDatabase}>
+        <AppProvider><StatusBar style="dark" /><AppNavigator /></AppProvider>
+      </SQLiteProvider>
+    </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
