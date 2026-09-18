@@ -4,7 +4,7 @@ export type Outcome = 'found' | 'nothing' | 'unspecified';
 export type QuantityUnit = 'pieces' | 'g' | 'kg';
 export type SyncState = 'local' | 'pending' | 'synced' | 'attention';
 export type WeatherStatus = 'pending' | 'complete' | 'missing' | 'error';
-export type MushroomWeatherProfileId = 'generic' | 'boletusEdulis';
+export type MushroomWeatherProfileId = 'generic' | 'boletusEdulis' | 'cantharellusCibarius';
 
 export interface ExploreLocation {
   name: string;
@@ -228,7 +228,7 @@ export interface MushroomWeatherSummary {
 }
 
 export interface MushroomScoreComponent {
-  key: 'rain' | 'rain26' | 'temperature' | 'soilMoisture' | 'drying';
+  key: 'rain' | 'rain7' | 'rain26' | 'rain30' | 'temperature' | 'soilMoisture' | 'drying';
   label: string;
   value: number;
   weight: number;

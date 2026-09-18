@@ -41,11 +41,34 @@ export const BOLETUS_EDULIS_SCORE_V1_CONFIG = {
   thresholds: { average: 30, good: 50, veryGood: 70, excellent: 85 },
 } as const;
 
+// Research motivates the selected rainfall and temperature windows for Cantharellus cibarius.
+// Exact weights, full-signal references, Gaussian center/sigma and scaling remain V1 tuning constants.
+export const CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG = {
+  profile: 'cantharellusCibarius',
+  speciesId: 'cantharellus-cibarius',
+  label: 'Navadna lisička',
+  scientificName: 'Cantharellus cibarius',
+  componentWeights: { rain30: 40, rain7: 10, temperature: 25, soilMoisture: 20, drying: 5 },
+  rain: { days30FullSignalMm: 100, days7FullSignalMm: 25 },
+  temperature: { referenceC: 17.5, standardDeviationC: 6.0, researchContextMinC: 15, researchContextMaxC: 20 },
+  soilMoisture: {
+    baselineM3M3: MUSHROOM_SCORE_V1_CONFIG.soilMoisture.baselineM3M3,
+    rangeM3M3: MUSHROOM_SCORE_V1_CONFIG.soilMoisture.rangeM3M3,
+    layerWeights: MUSHROOM_SCORE_V1_CONFIG.soilMoisture.layerWeights,
+  },
+  drying: { fullDeficitMm: MUSHROOM_SCORE_V1_CONFIG.drying.fullDeficitMm },
+  thresholds: { average: 30, good: 50, veryGood: 70, excellent: 85 },
+} as const;
+
 export interface MushroomWeatherProfileDefinition {
   id: MushroomWeatherProfileId;
   label: string;
   scientificName?: string;
   speciesId?: string;
+  scoreTitle: string;
+  scoreCaption: string;
+  forecastNote: string;
+  seasonNote?: string;
   evidenceNote: string;
   tuningNote: string;
   calculate: (summary?: MushroomWeatherSummary) => MushroomConditionsScore;
@@ -64,6 +87,15 @@ const genericScoreLabel = (score: number) => {
 
 const boletusScoreLabel = (score: number) => {
   const { average, good, veryGood, excellent } = BOLETUS_EDULIS_SCORE_V1_CONFIG.thresholds;
+  if (score >= excellent) return 'Odlične razmere';
+  if (score >= veryGood) return 'Zelo dobre razmere';
+  if (score >= good) return 'Dobre razmere';
+  if (score >= average) return 'Povprečne razmere';
+  return 'Slabe razmere';
+};
+
+const chanterelleScoreLabel = (score: number) => {
+  const { average, good, veryGood, excellent } = CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG.thresholds;
   if (score >= excellent) return 'Odlične razmere';
   if (score >= veryGood) return 'Zelo dobre razmere';
   if (score >= good) return 'Dobre razmere';
@@ -246,10 +278,105 @@ function calculateBoletusEdulisWeatherScore(summary?: MushroomWeatherSummary): M
   };
 }
 
+function calculateCantharellusCibariusWeatherScore(summary?: MushroomWeatherSummary): MushroomConditionsScore {
+  const historical = summary?.historical;
+  const components: MushroomScoreComponent[] = [];
+  const rain30d = historical?.rain30dMm;
+  const rain7d = historical?.rain7dMm;
+  const avgTemp14d = historical?.avgTemp14dC;
+  const soil0To7 = summary?.current?.soilMoisture0To7Cm;
+  const soil7To28 = summary?.current?.soilMoisture7To28Cm;
+  const evapotranspiration7d = historical?.evapotranspiration7dMm;
+  const config = CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG;
+
+  if (rain30d != null) {
+    const value = clamp(rain30d / config.rain.days30FullSignalMm);
+    addComponent(components, { key: 'rain30', label: 'Padavine (30 dni)', value, weight: config.componentWeights.rain30 });
+  }
+
+  if (rain7d != null) {
+    const value = clamp(rain7d / config.rain.days7FullSignalMm);
+    addComponent(components, { key: 'rain7', label: 'Nedavne padavine (7 dni)', value, weight: config.componentWeights.rain7 });
+  }
+
+  if (avgTemp14d != null) {
+    const { referenceC, standardDeviationC } = config.temperature;
+    const value = Math.exp(-((avgTemp14d - referenceC) ** 2) / (2 * standardDeviationC ** 2));
+    addComponent(components, { key: 'temperature', label: 'Temperatura (14 dni)', value, weight: config.componentWeights.temperature });
+  }
+
+  const soilLayers: Array<{ value: number | undefined; weight: number }> = [
+    { value: soil0To7, weight: config.soilMoisture.layerWeights.top0To7Cm },
+    { value: soil7To28, weight: config.soilMoisture.layerWeights.lower7To28Cm },
+  ];
+  const availableSoilLayers = soilLayers.filter((layer): layer is { value: number; weight: number } => layer.value != null);
+  if (availableSoilLayers.length) {
+    const availableWeight = availableSoilLayers.reduce((sum, layer) => sum + layer.weight, 0);
+    const value = availableSoilLayers.reduce((sum, layer) => {
+      const normalized = clamp((layer.value - config.soilMoisture.baselineM3M3) / config.soilMoisture.rangeM3M3);
+      return sum + normalized * layer.weight;
+    }, 0) / availableWeight;
+    addComponent(components, { key: 'soilMoisture', label: 'Vlaga tal 0–28 cm', value, weight: config.componentWeights.soilMoisture });
+  }
+
+  let dryingDeficit: number | undefined;
+  if (evapotranspiration7d != null && rain7d != null) {
+    dryingDeficit = Math.max(evapotranspiration7d - rain7d, 0);
+    const value = 1 - clamp(dryingDeficit / config.drying.fullDeficitMm);
+    addComponent(components, { key: 'drying', label: 'Bilanca izsuševanja', value, weight: config.componentWeights.drying });
+  }
+
+  if (!components.length) {
+    return {
+      profile: 'cantharellusCibarius', score: undefined, label: 'Premalo podatkov', trend: 'Ni dovolj podatkov', components,
+      reasons: ['Za eksperimentalno oceno navadne lisičke trenutno ni dovolj vremenskih podatkov.'],
+      coverage: 'Manjkajo padavine, temperatura, vlaga tal in bilanca izsuševanja.',
+    };
+  }
+
+  const totalWeight = components.reduce((sum, component) => sum + component.weight, 0);
+  const score = Math.round(components.reduce((sum, component) => sum + component.weightedPoints, 0) / totalWeight * 100);
+  const dryingSignal = components.find((component) => component.key === 'drying')?.value;
+  const trend = calculateTrend(summary, rain7d, dryingSignal);
+  const reasons: string[] = [];
+
+  if (rain30d != null) {
+    const context = rain30d >= 75
+      ? 'kar kaže na dobro daljšo navlaženost'
+      : rain30d >= 40 ? 'kar kaže na zmerno daljšo navlaženost' : 'zato je signal daljše navlaženosti šibek';
+    reasons.push(`V zadnjih 30 dneh je padlo ${rain30d.toFixed(1)} mm padavin, ${context}.`);
+  }
+  if (rain7d != null) reasons.push(`V zadnjih 7 dneh je padlo ${rain7d.toFixed(1)} mm padavin.`);
+  if (avgTemp14d != null) {
+    const { researchContextMinC, researchContextMaxC } = config.temperature;
+    reasons.push(avgTemp14d >= researchContextMinC && avgTemp14d <= researchContextMaxC
+      ? `14-dnevna povprečna temperatura je ${avgTemp14d.toFixed(1)} °C, znotraj 15–20 °C območja, povezanega z ugodnimi razmerami v eni evropski raziskavi.`
+      : `14-dnevna povprečna temperatura je ${avgTemp14d.toFixed(1)} °C; temperaturni signal se gladko zmanjšuje z odmikom od 17,5 °C reference.`);
+  }
+  const soilSignal = components.find((component) => component.key === 'soilMoisture')?.value;
+  if (soilSignal != null) {
+    const layers = [soil0To7 == null ? undefined : `0–7 cm: ${soil0To7.toFixed(3)} m³/m³`, soil7To28 == null ? undefined : `7–28 cm: ${soil7To28.toFixed(3)} m³/m³`].filter(Boolean).join(', ');
+    reasons.push(`${soilSignal >= 0.65 ? 'Tla ostajajo dobro navlažena tudi v globlji razpoložljivi plasti' : 'Modelirana vlaga tal je zmerna ali nizka'} (${layers}).`);
+  }
+  if (dryingDeficit != null) reasons.push(`Sedemdnevni primanjkljaj padavin glede na ET₀ je ${dryingDeficit.toFixed(1)} mm.`);
+  if (trend === 'Izboljšanje') reasons.push('Prihodnje padavine lahko pomagajo ohranjati vlažne razmere, vendar same ne pomenijo takojšnjega pojava lisičk.');
+  if (trend === 'Slabšanje') reasons.push('Suha napoved in trenutna bilanca izsuševanja kažeta možnost slabšanja pogojev.');
+
+  return {
+    profile: 'cantharellusCibarius', score, label: chanterelleScoreLabel(score), trend, components, reasons: reasons.slice(0, 5),
+    coverage: components.length === 5
+      ? '30- in 7-dnevne padavine, 14-dnevna temperatura, vlaga tal in bilanca izsuševanja'
+      : 'Manjkajoča komponenta je izločena, razpoložljive uteži pa so preračunane na 100 %.',
+  };
+}
+
 export const MUSHROOM_WEATHER_PROFILES: Record<MushroomWeatherProfileId, MushroomWeatherProfileDefinition> = {
   generic: {
     id: 'generic',
     label: 'Splošno',
+    scoreTitle: 'Gobarski signal',
+    scoreCaption: 'Eksperimentalna ocena',
+    forecastNote: 'Napovedane padavine kažejo potencial za poznejšo spremembo pogojev, ne takojšnjega pojava gob. Ne vplivajo na današnji score, ampak samo na trend.',
     evidenceNote: 'Splošen profil združuje več časovnih oken padavin, temperaturo, vlago tal in izsuševanje.',
     tuningNote: 'Vsi pragovi in uteži so eksperimentalne tuning konstante.',
     calculate: calculateGenericMushroomWeatherScore,
@@ -259,9 +386,25 @@ export const MUSHROOM_WEATHER_PROFILES: Record<MushroomWeatherProfileId, Mushroo
     label: BOLETUS_EDULIS_SCORE_V1_CONFIG.label,
     scientificName: BOLETUS_EDULIS_SCORE_V1_CONFIG.scientificName,
     speciesId: BOLETUS_EDULIS_SCORE_V1_CONFIG.speciesId,
+    scoreTitle: 'Razmere za jesenskega gobana',
+    scoreCaption: 'Eksperimentalna ocena',
+    forecastNote: 'Prihodnje padavine lahko izboljšajo pogoje za razvoj, vendar ne pomenijo takojšnjega pojava trosnjakov. Na današnji score ne vplivajo.',
     evidenceNote: 'Profil uporablja raziskovalno podprti 20-dnevni temperaturni in približno 26-dnevni padavinski kontekst.',
     tuningNote: 'Uteži, 100 mm padavinska referenca in temperaturna sigma 4,5 °C so eksperimentalne tuning konstante.',
     calculate: calculateBoletusEdulisWeatherScore,
+  },
+  cantharellusCibarius: {
+    id: 'cantharellusCibarius',
+    label: CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG.label,
+    scientificName: CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG.scientificName,
+    speciesId: CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG.speciesId,
+    scoreTitle: 'Razmere za navadno lisičko',
+    scoreCaption: 'Vremenske razmere · od 100',
+    forecastNote: 'Prihodnje padavine lahko pomagajo ohranjati vlažne razmere, vendar same ne pomenijo takojšnjega pojava lisičk. Na današnji score ne vplivajo.',
+    seasonNote: 'Navadna lisička v Sloveniji običajno raste od začetka poletja do pozne jeseni. Sezona ni del izračuna.',
+    evidenceNote: 'Profil uporablja daljšo in nedavno akumulacijo padavin, 14-dnevno temperaturo ter vlago tal kot raziskovalno motivirane signale.',
+    tuningNote: 'Uteži, 100/25 mm padavinski referenci, center 17,5 °C, sigma 6,0 °C in scaling izsuševanja so eksperimentalne tuning konstante.',
+    calculate: calculateCantharellusCibariusWeatherScore,
   },
 };
 
