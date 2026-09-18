@@ -5,11 +5,11 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppButton, Card, Chip, Field, Notice, Screen, SectionTitle, commonStyles } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
-import type { ConditionsData, ExploreLocation, Hotspot, MushroomWeatherSummary, ScoreResult } from '../domain/types';
+import type { ConditionsData, ExploreLocation, Hotspot, MushroomConditionsScore, MushroomWeatherProfileId, MushroomWeatherSummary, ScoreResult } from '../domain/types';
 import { useApp } from '../state/AppContext';
 import { getConditions, getMushroomWeatherSummary, searchLocations, type PlaceSearchResult } from '../services/weather';
 import { calculateMushroomScore } from '../domain/scoring';
-import { calculateMushroomWeatherScore } from '../domain/mushroomWeather';
+import { BOLETUS_EDULIS_SCORE_V1_CONFIG, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
 import { haversineKm, slDateTime, slNumber } from '../domain/format';
 import { speciesCatalogue } from '../domain/species';
 import { colors, radii, spacing } from '../theme';
@@ -47,6 +47,7 @@ export function ConditionsScreen() {
   const [placeQuery, setPlaceQuery] = useState('');
   const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
   const [weatherSummary, setWeatherSummary] = useState<MushroomWeatherSummary>();
+  const [weatherProfileId, setWeatherProfileId] = useState<MushroomWeatherProfileId>('generic');
   const [ranked, setRanked] = useState<Ranked[]>([]);
   const [speciesId, setSpeciesId] = useState<string>();
   const [gpsLoading, setGpsLoading] = useState(false);
@@ -136,7 +137,8 @@ export function ConditionsScreen() {
     return () => { active = false; };
   }, [finds, hotspots, repository, speciesId, coords?.latitude, coords?.longitude]);
 
-  const score = useMemo(() => calculateMushroomWeatherScore(weatherSummary), [weatherSummary]);
+  const score = useMemo(() => calculateMushroomWeatherScore(weatherSummary, weatherProfileId), [weatherProfileId, weatherSummary]);
+  const weatherProfile = MUSHROOM_WEATHER_PROFILES[weatherProfileId];
   const forecastMaxRain = Math.max(1, ...(weatherSummary?.forecast?.days.map((day) => day.precipitationMm ?? 0) ?? []));
 
   return <Screen>
@@ -209,20 +211,23 @@ export function ConditionsScreen() {
           <View style={styles.rainTrack}><View style={[styles.rainBar, { width: `${Math.max(3, 100 * (day.precipitationMm ?? 0) / forecastMaxRain)}%` }]} /></View>
           <Text style={styles.forecastRain}>{day.precipitationMm == null ? '—' : `${slNumber(day.precipitationMm)} mm`}</Text>
         </View>)}</View>
-        <Text style={commonStyles.muted}>Napovedane padavine kažejo potencial za poznejšo spremembo pogojev, ne takojšnjega pojava gob. Ne vplivajo na današnji score, ampak samo na trend.</Text>
+        <Text style={commonStyles.muted}>{weatherProfileId === 'boletusEdulis' ? 'Prihodnje padavine lahko izboljšajo pogoje za razvoj, vendar ne pomenijo takojšnjega pojava trosnjakov. Na današnji score ne vplivajo.' : 'Napovedane padavine kažejo potencial za poznejšo spremembo pogojev, ne takojšnjega pojava gob. Ne vplivajo na današnji score, ampak samo na trend.'}</Text>
       </Card> : null}
 
-      <Card><SectionTitle>Gobarski signal</SectionTitle><View style={styles.scoreRow}><View><Text style={commonStyles.muted}>Eksperimentalna ocena</Text><Text style={styles.score}>{score.score != null ? `${score.score}` : '—'}</Text></View><View style={styles.scoreCopy}><Text style={commonStyles.heading}>{score.label}</Text><Text style={commonStyles.body}>Trend: {score.trend}</Text><Text style={commonStyles.muted}>{score.coverage}</Text></View></View>{score.reasons.map((reason) => <Text key={reason} style={commonStyles.body}>• {reason}</Text>)}<Text style={commonStyles.muted}>Ocena temelji na vremenskih pogojih in ne zagotavlja pojava gob. Ni verjetnost uspeha ali znanstveno potrjen napovedni model.</Text></Card>
+      <Card><Text style={commonStyles.body}>Vremenski profil</Text><View style={commonStyles.wrap}>
+        <Chip label="Splošno" selected={weatherProfileId === 'generic'} onPress={() => setWeatherProfileId('generic')} />
+        <Chip label="Jesenski goban" selected={weatherProfileId === 'boletusEdulis'} onPress={() => setWeatherProfileId('boletusEdulis')} />
+      </View><Text style={commonStyles.muted}>Vrsta spremeni samo način izračuna iz istih vremenskih podatkov.</Text></Card>
+
+      <Card><SectionTitle>{weatherProfileId === 'boletusEdulis' ? 'Razmere za jesenskega gobana' : 'Gobarski signal'}</SectionTitle>
+        {weatherProfile.scientificName ? <Text style={commonStyles.muted}>{weatherProfile.scientificName}</Text> : null}
+        <View style={styles.scoreRow}><View><Text style={commonStyles.muted}>Eksperimentalna ocena</Text><Text style={styles.score}>{score.score != null ? `${score.score}` : '—'}</Text></View><View style={styles.scoreCopy}><Text style={commonStyles.heading}>{score.label}</Text><Text style={commonStyles.body}>Trend: {score.trend}</Text><Text style={commonStyles.muted}>{score.coverage}</Text></View></View>{score.reasons.map((reason) => <Text key={reason} style={commonStyles.body}>• {reason}</Text>)}<Text style={commonStyles.muted}>Ocena temelji na vremenskih pogojih in ne zagotavlja pojava gob. Ni verjetnost uspeha ali znanstveno potrjen napovedni model.</Text></Card>
 
       <AppButton title={showWeatherDetails ? 'Skrij podrobnosti' : 'Podrobnosti'} variant="ghost" onPress={() => setShowWeatherDetails((visible) => !visible)} />
-      {showWeatherDetails ? <Card><SectionTitle>Vhodni podatki in score</SectionTitle>
-        <Text style={commonStyles.body}>rain3d: {debugNumber(weatherSummary.historical?.rain3dMm, 'mm')}</Text><Text style={commonStyles.body}>rain7d: {debugNumber(weatherSummary.historical?.rain7dMm, 'mm')}</Text><Text style={commonStyles.body}>rain14d: {debugNumber(weatherSummary.historical?.rain14dMm, 'mm')}</Text><Text style={commonStyles.body}>rain30d: {debugNumber(weatherSummary.historical?.rain30dMm, 'mm')}</Text>
-        <Text style={commonStyles.body}>avgTemp7d: {debugNumber(weatherSummary.historical?.avgTemp7dC, '°C')}</Text><Text style={commonStyles.body}>avgTemp14d: {debugNumber(weatherSummary.historical?.avgTemp14dC, '°C')}</Text><Text style={commonStyles.body}>avgTemp20d: {debugNumber(weatherSummary.historical?.avgTemp20dC, '°C')}</Text>
-        <Text style={commonStyles.body}>soilMoisture 0–7 cm: {debugNumber(weatherSummary.current?.soilMoisture0To7Cm, 'm³/m³', 3)}</Text><Text style={commonStyles.body}>soilMoisture 7–28 cm: {debugNumber(weatherSummary.current?.soilMoisture7To28Cm, 'm³/m³', 3)}</Text>
-        <Text style={commonStyles.body}>futureRain3d: {debugNumber(weatherSummary.forecast?.rain3dMm, 'mm')}</Text><Text style={commonStyles.body}>futureRain7d: {debugNumber(weatherSummary.forecast?.rain7dMm, 'mm')}</Text>
-        {score.components.map((component) => <Text key={component.key} style={commonStyles.body}>{component.label}: {slNumber(component.value * 100, 0)} % × utež {component.weight} = {slNumber(component.weightedPoints, 1)}</Text>)}
-        <Text style={commonStyles.muted}>Pokritost zgodovine: dež {weatherSummary.historical?.coverage.rain30dDays ?? 0}/30 dni, temperatura {weatherSummary.historical?.coverage.temp20dDays ?? 0}/20 dni.</Text>
-      </Card> : null}
+      {showWeatherDetails ? weatherProfileId === 'boletusEdulis'
+        ? <BoletusScoreDetails summary={weatherSummary} score={score} />
+        : <GenericScoreDetails summary={weatherSummary} score={score} />
+        : null}
       <Text style={commonStyles.muted}>Open‑Meteo · posodobljeno {slDateTime(weatherSummary.updatedAt)}{weatherSummary.stale ? ' · predpomnjeni podatki' : ''}</Text>
     </> : null}
     {hotspots.length ? <><SectionTitle>Kam po gobe?</SectionTitle>
@@ -233,6 +238,50 @@ export function ConditionsScreen() {
 }
 
 const debugNumber = (value: number | undefined, unit: string, digits = 1) => value == null ? 'ni podatka' : `${slNumber(value, digits)} ${unit}`;
+
+function GenericScoreDetails({ summary, score }: { summary: MushroomWeatherSummary; score: MushroomConditionsScore }) {
+  return <Card><SectionTitle>Vhodni podatki in score</SectionTitle>
+    <Text style={commonStyles.body}>rain3d: {debugNumber(summary.historical?.rain3dMm, 'mm')}</Text><Text style={commonStyles.body}>rain7d: {debugNumber(summary.historical?.rain7dMm, 'mm')}</Text><Text style={commonStyles.body}>rain14d: {debugNumber(summary.historical?.rain14dMm, 'mm')}</Text><Text style={commonStyles.body}>rain30d: {debugNumber(summary.historical?.rain30dMm, 'mm')}</Text>
+    <Text style={commonStyles.body}>avgTemp7d: {debugNumber(summary.historical?.avgTemp7dC, '°C')}</Text><Text style={commonStyles.body}>avgTemp14d: {debugNumber(summary.historical?.avgTemp14dC, '°C')}</Text><Text style={commonStyles.body}>avgTemp20d: {debugNumber(summary.historical?.avgTemp20dC, '°C')}</Text>
+    <Text style={commonStyles.body}>soilMoisture 0–7 cm: {debugNumber(summary.current?.soilMoisture0To7Cm, 'm³/m³', 3)}</Text><Text style={commonStyles.body}>soilMoisture 7–28 cm: {debugNumber(summary.current?.soilMoisture7To28Cm, 'm³/m³', 3)}</Text>
+    <Text style={commonStyles.body}>futureRain3d: {debugNumber(summary.forecast?.rain3dMm, 'mm')}</Text><Text style={commonStyles.body}>futureRain7d: {debugNumber(summary.forecast?.rain7dMm, 'mm')}</Text>
+    {score.components.map((component) => <Text key={component.key} style={commonStyles.body}>{component.label}: {slNumber(component.value * 100, 0)} % × utež {component.weight} = {slNumber(component.weightedPoints, 1)}</Text>)}
+    <Text style={commonStyles.muted}>Pokritost zgodovine: dež {summary.historical?.coverage.rain30dDays ?? 0}/30 dni, temperatura {summary.historical?.coverage.temp20dDays ?? 0}/20 dni.</Text>
+  </Card>;
+}
+
+function BoletusScoreDetails({ summary, score }: { summary: MushroomWeatherSummary; score: MushroomConditionsScore }) {
+  const contribution = (key: 'rain26' | 'temperature' | 'soilMoisture' | 'drying', maximum: number) => {
+    const component = score.components.find((item) => item.key === key);
+    return component ? `${slNumber(component.weightedPoints, 1)} / ${maximum}` : `ni podatka / ${maximum}`;
+  };
+  return <Card><SectionTitle>Kako je izračunana ocena?</SectionTitle>
+    <Text style={commonStyles.heading}>Jesenski goban</Text><Text style={commonStyles.muted}>Boletus edulis</Text>
+    <Text style={styles.detailHeading}>PADAVINE</Text>
+    <DetailLine label="Zadnjih 26 dni" value={debugNumber(summary.historical?.rain26dMm, 'mm')} />
+    <DetailLine label="Prispevek" value={contribution('rain26', BOLETUS_EDULIS_SCORE_V1_CONFIG.componentWeights.rain26)} />
+    <Text style={styles.detailHeading}>TEMPERATURA</Text>
+    <DetailLine label="Povprečje 20 dni" value={debugNumber(summary.historical?.avgTemp20dC, '°C')} />
+    <DetailLine label="Optimalna referenca" value={`~${BOLETUS_EDULIS_SCORE_V1_CONFIG.temperature.optimumC} °C`} />
+    <DetailLine label="Prispevek" value={contribution('temperature', BOLETUS_EDULIS_SCORE_V1_CONFIG.componentWeights.temperature)} />
+    <Text style={styles.detailHeading}>VLAGA TAL</Text>
+    <DetailLine label="0–7 cm" value={debugNumber(summary.current?.soilMoisture0To7Cm, 'm³/m³', 3)} />
+    <DetailLine label="7–28 cm" value={debugNumber(summary.current?.soilMoisture7To28Cm, 'm³/m³', 3)} />
+    <DetailLine label="Prispevek" value={contribution('soilMoisture', BOLETUS_EDULIS_SCORE_V1_CONFIG.componentWeights.soilMoisture)} />
+    <Text style={styles.detailHeading}>IZSUŠEVANJE</Text>
+    <DetailLine label="ET₀ zadnjih 7 dni" value={debugNumber(summary.historical?.evapotranspiration7dMm, 'mm')} />
+    <DetailLine label="Padavine 7 dni" value={debugNumber(summary.historical?.rain7dMm, 'mm')} />
+    <DetailLine label="Prispevek" value={contribution('drying', BOLETUS_EDULIS_SCORE_V1_CONFIG.componentWeights.drying)} />
+    <Text style={styles.detailHeading}>SKUPAJ</Text>
+    <DetailLine label="Eksperimentalna ocena" value={score.score == null ? 'ni podatka' : `${score.score} / 100`} />
+    <Text style={commonStyles.muted}>{MUSHROOM_WEATHER_PROFILES.boletusEdulis.tuningNote} Če signal manjka, se njegove uteži izločijo in preostale transparentno preračunajo na 100 %.</Text>
+  </Card>;
+}
+
+function DetailLine({ label, value }: { label: string; value: string }) {
+  return <View style={styles.detailLine}><Text style={commonStyles.body}>{label}</Text><Text style={styles.detailValue}>{value}</Text></View>;
+}
+
 function Metric({ label, value }: { label: string; value: string }) { return <View style={styles.metric}><Text style={commonStyles.muted}>{label}</Text><Text style={commonStyles.heading}>{value}</Text></View>; }
 const styles = StyleSheet.create({
   locationSummary: { gap: spacing.xs, padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.surfaceSoft },
@@ -243,5 +292,6 @@ const styles = StyleSheet.create({
   scoreRow: { flexDirection: 'row', gap: spacing.lg, alignItems: 'center' }, score: { fontSize: 54, lineHeight: 60, color: colors.primary, fontWeight: '900' }, scoreCopy: { flex: 1, gap: spacing.xs },
   metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }, metric: { flexGrow: 1, flexBasis: '45%', padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.surfaceSoft },
   forecastList: { gap: spacing.sm }, forecastDay: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, forecastLabel: { width: 82 }, rainTrack: { flex: 1, height: 10, overflow: 'hidden', borderRadius: radii.round, backgroundColor: colors.surfaceSoft }, rainBar: { height: '100%', borderRadius: radii.round, backgroundColor: colors.info }, forecastRain: { width: 62, color: colors.text, fontSize: 13, fontWeight: '700', textAlign: 'right' },
+  detailHeading: { marginTop: spacing.sm, color: colors.primary, fontSize: 13, fontWeight: '800', letterSpacing: 0.8 }, detailLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.md }, detailValue: { flexShrink: 1, color: colors.text, fontSize: 15, fontWeight: '700', textAlign: 'right' },
   rankRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' }, rank: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.primary, color: colors.white, textAlign: 'center', textAlignVertical: 'center', fontSize: 20, fontWeight: '800' }, rankCopy: { flex: 1 },
 });

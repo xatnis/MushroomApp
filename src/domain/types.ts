@@ -4,6 +4,7 @@ export type Outcome = 'found' | 'nothing' | 'unspecified';
 export type QuantityUnit = 'pieces' | 'g' | 'kg';
 export type SyncState = 'local' | 'pending' | 'synced' | 'attention';
 export type WeatherStatus = 'pending' | 'complete' | 'missing' | 'error';
+export type MushroomWeatherProfileId = 'generic' | 'boletusEdulis';
 
 export interface ExploreLocation {
   name: string;
@@ -180,6 +181,7 @@ export interface HistoricalWeatherSummary {
   rain3dMm?: number;
   rain7dMm?: number;
   rain14dMm?: number;
+  rain26dMm?: number;
   rain30dMm?: number;
   avgTemp7dC?: number;
   avgTemp14dC?: number;
@@ -189,6 +191,7 @@ export interface HistoricalWeatherSummary {
     rain3dDays: number;
     rain7dDays: number;
     rain14dDays: number;
+    rain26dDays: number;
     rain30dDays: number;
     temp7dDays: number;
     temp14dDays: number;
@@ -225,7 +228,7 @@ export interface MushroomWeatherSummary {
 }
 
 export interface MushroomScoreComponent {
-  key: 'rain' | 'temperature' | 'soilMoisture' | 'drying';
+  key: 'rain' | 'rain26' | 'temperature' | 'soilMoisture' | 'drying';
   label: string;
   value: number;
   weight: number;
@@ -233,7 +236,7 @@ export interface MushroomScoreComponent {
 }
 
 export interface MushroomConditionsScore {
-  profile: 'generic';
+  profile: MushroomWeatherProfileId;
   score?: number;
   label: string;
   trend: 'Izboljšanje' | 'Stabilno' | 'Slabšanje' | 'Ni dovolj podatkov';

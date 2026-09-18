@@ -1,7 +1,13 @@
-import type { MushroomConditionsScore, MushroomScoreComponent, MushroomWeatherSummary } from './types';
+import type {
+  MushroomConditionsScore,
+  MushroomScoreComponent,
+  MushroomWeatherProfileId,
+  MushroomWeatherSummary,
+} from './types';
 
-// Experimental V1 constants for the generic mushroom profile.
+// Experimental V2 constants for the generic mushroom profile.
 // They are transparent tuning inputs, not scientifically validated prediction thresholds.
+// Keep these values unchanged: existing "Splošno" results depend on them.
 export const MUSHROOM_SCORE_V1_CONFIG = {
   profile: 'generic',
   componentWeights: { rain: 45, temperature: 25, soilMoisture: 20, drying: 10 },
@@ -16,10 +22,48 @@ export const MUSHROOM_SCORE_V1_CONFIG = {
   thresholds: { average: 25, good: 50, veryGood: 70, excellent: 85 },
 } as const;
 
+// The 20-day temperature and 26-day rainfall windows are research-supported inputs for
+// Boletus edulis. Weights, sigma and normalization references remain experimental tuning constants.
+export const BOLETUS_EDULIS_SCORE_V1_CONFIG = {
+  profile: 'boletusEdulis',
+  speciesId: 'boletus-edulis',
+  label: 'Jesenski goban',
+  scientificName: 'Boletus edulis',
+  componentWeights: { rain26: 50, temperature: 30, soilMoisture: 15, drying: 5 },
+  rain: { fullSignalMm: 100 },
+  temperature: { optimumC: 13, standardDeviationC: 4.5 },
+  soilMoisture: {
+    baselineM3M3: MUSHROOM_SCORE_V1_CONFIG.soilMoisture.baselineM3M3,
+    rangeM3M3: MUSHROOM_SCORE_V1_CONFIG.soilMoisture.rangeM3M3,
+    layerWeights: MUSHROOM_SCORE_V1_CONFIG.soilMoisture.layerWeights,
+  },
+  drying: { fullDeficitMm: MUSHROOM_SCORE_V1_CONFIG.drying.fullDeficitMm },
+  thresholds: { average: 30, good: 50, veryGood: 70, excellent: 85 },
+} as const;
+
+export interface MushroomWeatherProfileDefinition {
+  id: MushroomWeatherProfileId;
+  label: string;
+  scientificName?: string;
+  speciesId?: string;
+  evidenceNote: string;
+  tuningNote: string;
+  calculate: (summary?: MushroomWeatherSummary) => MushroomConditionsScore;
+}
+
 const clamp = (value: number, min = 0, max = 1) => Math.max(min, Math.min(max, value));
 
-const scoreLabel = (score: number) => {
+const genericScoreLabel = (score: number) => {
   const { average, good, veryGood, excellent } = MUSHROOM_SCORE_V1_CONFIG.thresholds;
+  if (score >= excellent) return 'Odlične razmere';
+  if (score >= veryGood) return 'Zelo dobre razmere';
+  if (score >= good) return 'Dobre razmere';
+  if (score >= average) return 'Povprečne razmere';
+  return 'Slabe razmere';
+};
+
+const boletusScoreLabel = (score: number) => {
+  const { average, good, veryGood, excellent } = BOLETUS_EDULIS_SCORE_V1_CONFIG.thresholds;
   if (score >= excellent) return 'Odlične razmere';
   if (score >= veryGood) return 'Zelo dobre razmere';
   if (score >= good) return 'Dobre razmere';
@@ -31,7 +75,23 @@ const addComponent = (components: MushroomScoreComponent[], component: Omit<Mush
   components.push({ ...component, weightedPoints: component.value * component.weight });
 };
 
-export function calculateMushroomWeatherScore(summary?: MushroomWeatherSummary): MushroomConditionsScore {
+const calculateTrend = (
+  summary: MushroomWeatherSummary | undefined,
+  rain7d: number | undefined,
+  dryingSignal: number | undefined,
+): MushroomConditionsScore['trend'] => {
+  const futureRain7d = summary?.forecast?.rain7dMm;
+  return futureRain7d != null
+    && futureRain7d >= MUSHROOM_SCORE_V1_CONFIG.futureRain.improving7dMm
+    && (rain7d == null || futureRain7d > rain7d)
+    ? 'Izboljšanje'
+    : futureRain7d != null && futureRain7d <= MUSHROOM_SCORE_V1_CONFIG.futureRain.dry7dMm
+      && dryingSignal != null && dryingSignal < 0.5
+      ? 'Slabšanje'
+      : 'Stabilno';
+};
+
+function calculateGenericMushroomWeatherScore(summary?: MushroomWeatherSummary): MushroomConditionsScore {
   const historical = summary?.historical;
   const forecast = summary?.forecast;
   const components: MushroomScoreComponent[] = [];
@@ -89,14 +149,7 @@ export function calculateMushroomWeatherScore(summary?: MushroomWeatherSummary):
   const totalWeight = components.reduce((sum, component) => sum + component.weight, 0);
   const score = Math.round(components.reduce((sum, component) => sum + component.weightedPoints, 0) / totalWeight * 100);
   const dryingSignal = components.find((component) => component.key === 'drying')?.value;
-  const trend: MushroomConditionsScore['trend'] = futureRain7d != null
-    && futureRain7d >= MUSHROOM_SCORE_V1_CONFIG.futureRain.improving7dMm
-    && (rain7d == null || futureRain7d > rain7d)
-    ? 'Izboljšanje'
-    : futureRain7d != null && futureRain7d <= MUSHROOM_SCORE_V1_CONFIG.futureRain.dry7dMm
-      && dryingSignal != null && dryingSignal < 0.5
-      ? 'Slabšanje'
-      : 'Stabilno';
+  const trend = calculateTrend(summary, rain7d, dryingSignal);
 
   const reasons: string[] = [];
   if (rain14d != null) reasons.push(`V zadnjih 14 dneh je bilo ${rain14d.toFixed(1)} mm padavin.`);
@@ -107,7 +160,114 @@ export function calculateMushroomWeatherScore(summary?: MushroomWeatherSummary):
   if (trend === 'Slabšanje') reasons.push('Suha napoved in trenutna bilanca izsuševanja kažeta možnost slabšanja pogojev.');
 
   return {
-    profile: 'generic', score, label: scoreLabel(score), trend, components, reasons: reasons.slice(0, 5),
+    profile: 'generic', score, label: genericScoreLabel(score), trend, components, reasons: reasons.slice(0, 5),
     coverage: components.length === 4 ? 'Padavine, 20-dnevna temperatura, dve plasti vlage tal in bilanca izsuševanja' : 'Ocena uporablja razpoložljive današnje signale; manjkajoča komponenta ni kaznovana.',
   };
+}
+
+function calculateBoletusEdulisWeatherScore(summary?: MushroomWeatherSummary): MushroomConditionsScore {
+  const historical = summary?.historical;
+  const components: MushroomScoreComponent[] = [];
+  const rain26d = historical?.rain26dMm;
+  const rain7d = historical?.rain7dMm;
+  const avgTemp20d = historical?.avgTemp20dC;
+  const soil0To7 = summary?.current?.soilMoisture0To7Cm;
+  const soil7To28 = summary?.current?.soilMoisture7To28Cm;
+  const evapotranspiration7d = historical?.evapotranspiration7dMm;
+
+  if (rain26d != null) {
+    const value = clamp(rain26d / BOLETUS_EDULIS_SCORE_V1_CONFIG.rain.fullSignalMm);
+    addComponent(components, { key: 'rain26', label: 'Padavine (26 dni)', value, weight: BOLETUS_EDULIS_SCORE_V1_CONFIG.componentWeights.rain26 });
+  }
+
+  if (avgTemp20d != null) {
+    const { optimumC, standardDeviationC } = BOLETUS_EDULIS_SCORE_V1_CONFIG.temperature;
+    const value = Math.exp(-((avgTemp20d - optimumC) ** 2) / (2 * standardDeviationC ** 2));
+    addComponent(components, { key: 'temperature', label: 'Temperatura (20 dni)', value, weight: BOLETUS_EDULIS_SCORE_V1_CONFIG.componentWeights.temperature });
+  }
+
+  const soilConfig = BOLETUS_EDULIS_SCORE_V1_CONFIG.soilMoisture;
+  const soilLayers: Array<{ value: number | undefined; weight: number }> = [
+    { value: soil0To7, weight: soilConfig.layerWeights.top0To7Cm },
+    { value: soil7To28, weight: soilConfig.layerWeights.lower7To28Cm },
+  ];
+  const availableSoilLayers = soilLayers.filter((layer): layer is { value: number; weight: number } => layer.value != null);
+  if (availableSoilLayers.length) {
+    const layerWeight = availableSoilLayers.reduce((sum, layer) => sum + layer.weight, 0);
+    const value = availableSoilLayers.reduce((sum, layer) => {
+      const normalized = clamp((layer.value - soilConfig.baselineM3M3) / soilConfig.rangeM3M3);
+      return sum + normalized * layer.weight;
+    }, 0) / layerWeight;
+    addComponent(components, { key: 'soilMoisture', label: 'Vlaga tal 0–28 cm', value, weight: BOLETUS_EDULIS_SCORE_V1_CONFIG.componentWeights.soilMoisture });
+  }
+
+  let dryingDeficit: number | undefined;
+  if (evapotranspiration7d != null && rain7d != null) {
+    dryingDeficit = Math.max(evapotranspiration7d - rain7d, 0);
+    const value = 1 - clamp(dryingDeficit / BOLETUS_EDULIS_SCORE_V1_CONFIG.drying.fullDeficitMm);
+    addComponent(components, { key: 'drying', label: 'Bilanca izsuševanja', value, weight: BOLETUS_EDULIS_SCORE_V1_CONFIG.componentWeights.drying });
+  }
+
+  if (!components.length) {
+    return {
+      profile: 'boletusEdulis', score: undefined, label: 'Premalo podatkov', trend: 'Ni dovolj podatkov', components,
+      reasons: ['Za eksperimentalno oceno jesenskega gobana trenutno ni dovolj vremenskih podatkov.'],
+      coverage: 'Manjkajo padavine, temperatura, vlaga tal in bilanca izsuševanja.',
+    };
+  }
+
+  const totalWeight = components.reduce((sum, component) => sum + component.weight, 0);
+  const score = Math.round(components.reduce((sum, component) => sum + component.weightedPoints, 0) / totalWeight * 100);
+  const dryingSignal = components.find((component) => component.key === 'drying')?.value;
+  const trend = calculateTrend(summary, rain7d, dryingSignal);
+  const reasons: string[] = [];
+
+  if (rain26d != null) reasons.push(`V zadnjih 26 dneh je padlo ${rain26d.toFixed(1)} mm padavin.`);
+  if (avgTemp20d != null) {
+    const difference = Math.abs(avgTemp20d - BOLETUS_EDULIS_SCORE_V1_CONFIG.temperature.optimumC);
+    reasons.push(difference <= 3
+      ? `20-dnevna povprečna temperatura je ${avgTemp20d.toFixed(1)} °C, blizu 13 °C reference za jesenskega gobana.`
+      : `20-dnevna povprečna temperatura je ${avgTemp20d.toFixed(1)} °C, ${avgTemp20d > 13 ? 'nad' : 'pod'} 13 °C referenco.`);
+  }
+  const soilSignal = components.find((component) => component.key === 'soilMoisture')?.value;
+  if (soilSignal != null) {
+    const layers = [soil0To7 == null ? undefined : `0–7 cm: ${soil0To7.toFixed(3)} m³/m³`, soil7To28 == null ? undefined : `7–28 cm: ${soil7To28.toFixed(3)} m³/m³`].filter(Boolean).join(', ');
+    reasons.push(`${soilSignal >= 0.65 ? 'Tla so dobro navlažena' : 'Modelirana vlaga tal je zmerna ali nizka'} (${layers}).`);
+  }
+  if (dryingDeficit != null) reasons.push(`Sedemdnevni primanjkljaj padavin glede na ET₀ je ${dryingDeficit.toFixed(1)} mm.`);
+  if (trend === 'Izboljšanje') reasons.push('Prihodnje padavine lahko izboljšajo pogoje za razvoj, vendar ne pomenijo takojšnjega pojava trosnjakov.');
+  if (trend === 'Slabšanje') reasons.push('Suha napoved in trenutna bilanca izsuševanja kažeta možnost slabšanja pogojev.');
+
+  return {
+    profile: 'boletusEdulis', score, label: boletusScoreLabel(score), trend, components, reasons: reasons.slice(0, 5),
+    coverage: components.length === 4
+      ? '26-dnevne padavine, 20-dnevna temperatura, vlaga tal in bilanca izsuševanja'
+      : 'Manjkajoča komponenta je izločena, razpoložljive uteži pa so preračunane na 100 %.',
+  };
+}
+
+export const MUSHROOM_WEATHER_PROFILES: Record<MushroomWeatherProfileId, MushroomWeatherProfileDefinition> = {
+  generic: {
+    id: 'generic',
+    label: 'Splošno',
+    evidenceNote: 'Splošen profil združuje več časovnih oken padavin, temperaturo, vlago tal in izsuševanje.',
+    tuningNote: 'Vsi pragovi in uteži so eksperimentalne tuning konstante.',
+    calculate: calculateGenericMushroomWeatherScore,
+  },
+  boletusEdulis: {
+    id: 'boletusEdulis',
+    label: BOLETUS_EDULIS_SCORE_V1_CONFIG.label,
+    scientificName: BOLETUS_EDULIS_SCORE_V1_CONFIG.scientificName,
+    speciesId: BOLETUS_EDULIS_SCORE_V1_CONFIG.speciesId,
+    evidenceNote: 'Profil uporablja raziskovalno podprti 20-dnevni temperaturni in približno 26-dnevni padavinski kontekst.',
+    tuningNote: 'Uteži, 100 mm padavinska referenca in temperaturna sigma 4,5 °C so eksperimentalne tuning konstante.',
+    calculate: calculateBoletusEdulisWeatherScore,
+  },
+};
+
+export function calculateMushroomWeatherScore(
+  summary?: MushroomWeatherSummary,
+  profileId: MushroomWeatherProfileId = 'generic',
+): MushroomConditionsScore {
+  return MUSHROOM_WEATHER_PROFILES[profileId].calculate(summary);
 }

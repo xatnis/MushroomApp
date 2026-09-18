@@ -200,6 +200,7 @@ const buildHistoricalSummary = (days: DailyWeatherPoint[]): HistoricalWeatherSum
   const rain3 = valuesInLastDays(days, 3, (day) => day.precipitationMm);
   const rain7 = valuesInLastDays(days, 7, (day) => day.precipitationMm);
   const rain14 = valuesInLastDays(days, 14, (day) => day.precipitationMm);
+  const rain26 = valuesInLastDays(days, 26, (day) => day.precipitationMm);
   const rain30 = valuesInLastDays(days, 30, (day) => day.precipitationMm);
   const temp7 = valuesInLastDays(days, 7, (day) => day.temperatureMeanC);
   const temp14 = valuesInLastDays(days, 14, (day) => day.temperatureMeanC);
@@ -207,11 +208,11 @@ const buildHistoricalSummary = (days: DailyWeatherPoint[]): HistoricalWeatherSum
   const evapotranspiration7 = valuesInLastDays(days, 7, (day) => day.evapotranspirationMm);
   return {
     days,
-    rain3dMm: completeSum(rain3, 3), rain7dMm: completeSum(rain7, 7), rain14dMm: completeSum(rain14, 14), rain30dMm: completeSum(rain30, 30),
+    rain3dMm: completeSum(rain3, 3), rain7dMm: completeSum(rain7, 7), rain14dMm: completeSum(rain14, 14), rain26dMm: completeSum(rain26, 26), rain30dMm: completeSum(rain30, 30),
     avgTemp7dC: completeAverage(temp7, 7), avgTemp14dC: completeAverage(temp14, 14), avgTemp20dC: completeAverage(temp20, 20),
     evapotranspiration7dMm: completeSum(evapotranspiration7, 7),
     coverage: {
-      rain3dDays: rain3.length, rain7dDays: rain7.length, rain14dDays: rain14.length, rain30dDays: rain30.length,
+      rain3dDays: rain3.length, rain7dDays: rain7.length, rain14dDays: rain14.length, rain26dDays: rain26.length, rain30dDays: rain30.length,
       temp7dDays: temp7.length, temp14dDays: temp14.length, temp20dDays: temp20.length,
       evapotranspiration7dDays: evapotranspiration7.length,
     },
