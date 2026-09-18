@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import type { RootStackParamList } from '../navigation/types';
 import type { ConditionsData, ExploreLocation, Hotspot, MushroomConditionsScore, MushroomWeatherProfileId, MushroomWeatherSummary, ScoreResult } from '../domain/types';
 import { useApp } from '../state/AppContext';
 import { getConditions, getMushroomWeatherSummary, searchLocations, type PlaceSearchResult } from '../services/weather';
+import { acquireForegroundPosition } from '../services/location';
 import { calculateMushroomScore } from '../domain/scoring';
 import { BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
 import { haversineKm, slDateTime, slNumber } from '../domain/format';
@@ -18,10 +19,19 @@ interface Ranked { hotspot: Hotspot; conditions?: ConditionsData; score: ScoreRe
 
 const coordinateLabel = (latitude: number, longitude: number) => `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
 const cleanPlaceName = (value?: string | null) => value?.replace(/^(?:Upravna enota|Mestna občina|Občina)\s+/i, '').trim();
+const REVERSE_GEOCODE_TIMEOUT_MS = 5_000;
+
+const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => new Promise((resolve, reject) => {
+  const timeout = setTimeout(() => reject(new Error('Timeout')), timeoutMs);
+  promise.then(
+    (value) => { clearTimeout(timeout); resolve(value); },
+    (error) => { clearTimeout(timeout); reject(error); },
+  );
+});
 
 const reverseGeocodeLabel = async (latitude: number, longitude: number): Promise<string | undefined> => {
   try {
-    const [address] = await Location.reverseGeocodeAsync({ latitude, longitude });
+    const [address] = await withTimeout(Location.reverseGeocodeAsync({ latitude, longitude }), REVERSE_GEOCODE_TIMEOUT_MS);
     return [address?.city, address?.district, address?.subregion, address?.region, address?.name, address?.country]
       .map(cleanPlaceName).find(Boolean);
   } catch {
@@ -54,32 +64,55 @@ export function ConditionsScreen() {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
   const [error, setError] = useState<string>();
+  const [locationNotice, setLocationNotice] = useState<string>();
   const [placeSearchError, setPlaceSearchError] = useState<string>();
   const [showWeatherDetails, setShowWeatherDetails] = useState(false);
+  const locationRequestId = useRef(0);
+  const initialLocationRequested = useRef(false);
+  const mounted = useRef(true);
   const coords = locationMode === 'gps' ? currentLocation : selectedPlace;
 
-  const acquireCurrent = async (share = true) => {
-    setLocationMode('gps'); setPlaceSearchOpen(false); setGpsLoading(true); setError(undefined);
+  const acquireCurrent = useCallback(async () => {
+    const requestId = ++locationRequestId.current;
+    const isCurrentRequest = () => mounted.current && locationRequestId.current === requestId;
+    setLocationMode('gps'); setPlaceSearchOpen(false); setGpsLoading(true); setError(undefined); setLocationNotice(undefined);
     try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) throw new Error('Dovoljenje za trenutno lokacijo ni odobreno. Izberite kraj ročno.');
-      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const next = { latitude: location.coords.latitude, longitude: location.coords.longitude };
+      const result = await acquireForegroundPosition(Location, Location.Accuracy.Balanced);
+      if (!isCurrentRequest()) return;
+      const next = { latitude: result.location.coords.latitude, longitude: result.location.coords.longitude };
+      const fallbackName = coordinateLabel(next.latitude, next.longitude);
       setCurrentLocation(next);
-      const name = await reverseGeocodeLabel(next.latitude, next.longitude) ?? coordinateLabel(next.latitude, next.longitude);
+      setCurrentLocationName(fallbackName);
+      if (result.source === 'lastKnown') {
+        const ageMinutes = Math.max(1, Math.round((Date.now() - result.location.timestamp) / 60_000));
+        setLocationNotice(`GPS ni pravočasno odgovoril. Uporabljena je zadnja znana lokacija, stara približno ${ageMinutes} min.`);
+      }
+      const name = await reverseGeocodeLabel(next.latitude, next.longitude) ?? fallbackName;
+      if (!isCurrentRequest()) return;
       setCurrentLocationName(name);
-      if (share) setExploreLocation({ ...next, name, source: 'gps' });
-    } catch (cause) { setError(cause instanceof Error ? cause.message : 'Lokacija ni na voljo.'); }
-    finally { setGpsLoading(false); }
-  };
+      setExploreLocation({ ...next, name, source: 'gps' });
+    } catch (cause) {
+      if (isCurrentRequest()) setError(cause instanceof Error ? cause.message : 'Lokacija ni na voljo.');
+    } finally {
+      if (isCurrentRequest()) setGpsLoading(false);
+    }
+  }, [setExploreLocation]);
 
   useEffect(() => {
-    if (!exploreLocation) void acquireCurrent(false);
+    mounted.current = true;
+    return () => { mounted.current = false; locationRequestId.current += 1; };
   }, []);
 
   useEffect(() => {
+    if (initialLocationRequested.current || exploreLocation) return;
+    initialLocationRequested.current = true;
+    void acquireCurrent();
+  }, [acquireCurrent, exploreLocation]);
+
+  useEffect(() => {
     if (!exploreLocation) return;
-    setPlaceSearchOpen(false); setPlaceQuery(''); setPlaceResults([]); setError(undefined);
+    locationRequestId.current += 1;
+    setGpsLoading(false); setPlaceSearchOpen(false); setPlaceQuery(''); setPlaceResults([]); setError(undefined);
     if (exploreLocation.source === 'gps') {
       setLocationMode('gps');
       setCurrentLocation({ latitude: exploreLocation.latitude, longitude: exploreLocation.longitude });
@@ -147,8 +180,8 @@ export function ConditionsScreen() {
     <Card>
       <SectionTitle>Lokacija</SectionTitle>
       <View style={commonStyles.wrap}>
-        <Chip label="Moja lokacija" selected={locationMode === 'gps'} onPress={() => void acquireCurrent(true)} />
-        <Chip label="Izberi lokacijo" selected={locationMode === 'manual'} onPress={() => { setLocationMode('manual'); setPlaceSearchOpen(!selectedPlace); setError(undefined); }} />
+        <Chip label="Moja lokacija" selected={locationMode === 'gps'} onPress={() => void acquireCurrent()} />
+        <Chip label="Izberi lokacijo" selected={locationMode === 'manual'} onPress={() => { locationRequestId.current += 1; setGpsLoading(false); setLocationMode('manual'); setPlaceSearchOpen(!selectedPlace); setError(undefined); setLocationNotice(undefined); }} />
       </View>
       {locationMode === 'gps' ? <View style={styles.locationSummary}>
         <Text style={commonStyles.muted}>Aktivna lokacija</Text>
@@ -167,6 +200,7 @@ export function ConditionsScreen() {
         {placeSearchLoading ? <ActivityIndicator color={colors.primary} /> : null}
         {placeSearchError ? <Notice tone="warning">{placeSearchError}</Notice> : null}
         {placeResults.map((place) => <Pressable key={place.id} accessibilityRole="button" onPress={() => {
+          locationRequestId.current += 1; setGpsLoading(false);
           const next: ExploreLocation = { name: place.name, latitude: place.latitude, longitude: place.longitude, admin1: place.admin1, admin2: place.admin2, country: place.country, source: 'place' };
           setSelectedPlace(next); setExploreLocation(next); setLocationMode('manual'); setPlaceSearchOpen(false); setPlaceQuery(''); setPlaceResults([]); setError(undefined);
         }} style={({ pressed }) => [styles.placeResult, pressed && styles.placeResultPressed]}>
@@ -180,6 +214,7 @@ export function ConditionsScreen() {
     </Card>
     {gpsLoading || weatherLoading ? <ActivityIndicator size="large" color={colors.primary} /> : null}
     {error ? <Notice tone="warning">{error}</Notice> : null}
+    {locationNotice ? <Notice tone="info">{locationNotice}</Notice> : null}
     {weatherSummary?.errors.historical ? <Notice tone="warning">{weatherSummary.errors.historical}</Notice> : null}
     {weatherSummary?.errors.forecast ? <Notice tone="warning">{weatherSummary.errors.forecast}</Notice> : null}
     {weatherSummary ? <>
