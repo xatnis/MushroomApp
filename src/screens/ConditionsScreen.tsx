@@ -62,12 +62,15 @@ export function ConditionsScreen() {
   const [speciesId, setSpeciesId] = useState<string>();
   const [gpsLoading, setGpsLoading] = useState(false);
   const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState<string>();
+  const [weatherRetry, setWeatherRetry] = useState(0);
   const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [locationNotice, setLocationNotice] = useState<string>();
   const [placeSearchError, setPlaceSearchError] = useState<string>();
   const [showWeatherDetails, setShowWeatherDetails] = useState(false);
   const locationRequestId = useRef(0);
+  const weatherRequestId = useRef(0);
   const initialLocationRequested = useRef(false);
   const mounted = useRef(true);
   const coords = locationMode === 'gps' ? currentLocation : selectedPlace;
@@ -128,15 +131,25 @@ export function ConditionsScreen() {
   };
 
   useEffect(() => {
-    if (!coords) { setWeatherSummary(undefined); return; }
-    let active = true;
-    setWeatherSummary(undefined); setWeatherLoading(true); setError(undefined); setShowWeatherDetails(false);
+    if (!coords) {
+      weatherRequestId.current += 1;
+      setWeatherSummary(undefined); setWeatherLoading(false); setWeatherError(undefined);
+      return;
+    }
+    const requestId = ++weatherRequestId.current;
+    const isCurrentRequest = () => mounted.current && weatherRequestId.current === requestId;
+    setWeatherSummary(undefined); setWeatherLoading(true); setWeatherError(undefined); setShowWeatherDetails(false);
     void getMushroomWeatherSummary(repository.database, coords.latitude, coords.longitude)
-      .then((data) => { if (active) setWeatherSummary(data); })
-      .catch(() => { if (active) setError('Vremenskih podatkov trenutno ni mogoče pridobiti.'); })
-      .finally(() => { if (active) setWeatherLoading(false); });
-    return () => { active = false; };
-  }, [coords?.latitude, coords?.longitude, repository]);
+      .then((data) => { if (isCurrentRequest()) setWeatherSummary(data); })
+      .catch((cause) => {
+        console.warn('Weather summary request failed', cause);
+        if (isCurrentRequest()) setWeatherError('Vremenskih podatkov trenutno ni bilo mogoče pridobiti.');
+      })
+      .finally(() => { if (isCurrentRequest()) setWeatherLoading(false); });
+    return () => {
+      if (weatherRequestId.current === requestId) weatherRequestId.current += 1;
+    };
+  }, [coords?.latitude, coords?.longitude, repository, weatherRetry]);
 
   useEffect(() => {
     if (!placeSearchOpen || placeQuery.trim().length < 2) {
@@ -214,9 +227,13 @@ export function ConditionsScreen() {
     </Card>
     {gpsLoading || weatherLoading ? <ActivityIndicator size="large" color={colors.primary} /> : null}
     {error ? <Notice tone="warning">{error}</Notice> : null}
+    {weatherError ? <Notice tone="warning">{weatherError}</Notice> : null}
     {locationNotice ? <Notice tone="info">{locationNotice}</Notice> : null}
     {weatherSummary?.errors.historical ? <Notice tone="warning">{weatherSummary.errors.historical}</Notice> : null}
     {weatherSummary?.errors.forecast ? <Notice tone="warning">{weatherSummary.errors.forecast}</Notice> : null}
+    {!weatherLoading && coords && (weatherError || weatherSummary?.errors.historical || weatherSummary?.errors.forecast)
+      ? <AppButton title="Poskusi znova" variant="secondary" onPress={() => setWeatherRetry((value) => value + 1)} />
+      : null}
     {weatherSummary ? <>
       {weatherSummary.current ? <Card><SectionTitle>Trenutno</SectionTitle>
         <View style={styles.currentRow}><Text style={styles.currentTemperature}>{weatherSummary.current.temperatureC == null ? '—' : `${slNumber(weatherSummary.current.temperatureC)} °C`}</Text><Text style={commonStyles.heading}>{weatherSummary.current.weatherDescription ?? 'Opis vremena ni na voljo'}</Text></View>

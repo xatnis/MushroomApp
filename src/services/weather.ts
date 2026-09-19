@@ -5,7 +5,12 @@ const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const ARCHIVE_URL = 'https://archive-api.open-meteo.com/v1/archive';
 const GEOCODING_URL = 'https://geocoding-api.open-meteo.com/v1/search';
 const CACHE_MS = 30 * 60 * 1000;
+export const OPEN_METEO_REQUEST_TIMEOUT_MS = 18_000;
 const inFlight = new Map<string, Promise<unknown>>();
+
+export interface MushroomWeatherRequestOptions {
+  requestTimeoutMs?: number;
+}
 
 export interface PlaceSearchResult {
   id: number;
@@ -66,6 +71,40 @@ const dateAtOffset = (days: number) => {
   return localDateOnly(value);
 };
 
+const weatherDebug = (event: string, details: Record<string, unknown>) => {
+  if (typeof __DEV__ !== 'undefined' && __DEV__) console.info(`[Weather] ${event}`, details);
+};
+
+const errorMessage = (error: unknown) => error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+
+async function fetchOpenMeteoJson<T>(url: string, key: string, timeoutMs: number): Promise<T> {
+  const controller = new AbortController();
+  const startedAt = Date.now();
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  weatherDebug('request-start', { key, url, timeoutMs });
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    weatherDebug('response', { key, status: response.status, durationMs: Date.now() - startedAt });
+    if (!response.ok) throw new Error(`Open-Meteo ${response.status}`);
+    return await response.json() as T;
+  } catch (error) {
+    if (timedOut) {
+      const timeoutError = new Error(`Open-Meteo request timed out after ${timeoutMs} ms.`);
+      timeoutError.name = 'OpenMeteoTimeoutError';
+      weatherDebug('request-timeout', { key, durationMs: Date.now() - startedAt });
+      throw timeoutError;
+    }
+    weatherDebug('request-error', { key, durationMs: Date.now() - startedAt, error: errorMessage(error) });
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 export const weatherCodeLabel = (code?: number) => {
   if (code == null) return undefined;
   if (code === 0) return 'Jasno';
@@ -92,29 +131,43 @@ export async function searchLocations(query: string, signal?: AbortSignal): Prom
   return (data.results ?? []).filter((result) => Number.isFinite(result.latitude) && Number.isFinite(result.longitude));
 }
 
-async function cachedFetch<T>(db: SQLiteDatabase, key: string, url: string, allowStale = true): Promise<{ data: T; stale: boolean; fetchedAt: string }> {
+async function cachedFetch<T>(
+  db: SQLiteDatabase,
+  key: string,
+  url: string,
+  allowStale = true,
+  requestTimeoutMs = OPEN_METEO_REQUEST_TIMEOUT_MS,
+): Promise<{ data: T; stale: boolean; fetchedAt: string }> {
   const cached = await db.getFirstAsync<{ payload: string; fetchedAt: string; expiresAt: string }>(`SELECT payload, fetchedAt, expiresAt FROM weather_cache WHERE cacheKey=?`, key);
   if (cached && new Date(cached.expiresAt).getTime() > Date.now()) {
+    weatherDebug('cache-hit', { key, stale: false });
     return { data: JSON.parse(cached.payload) as T, stale: false, fetchedAt: cached.fetchedAt };
   }
+  weatherDebug('cache-miss', { key, hasExpiredEntry: Boolean(cached) });
   const existing = inFlight.get(key) as Promise<{ data: T; stale: boolean; fetchedAt: string }> | undefined;
-  if (existing) return existing;
+  if (existing) {
+    weatherDebug('dedupe-hit', { key });
+    return existing;
+  }
   const request = (async () => {
     try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Open-Meteo ${response.status}`);
-      const data = await response.json() as T;
+      const data = await fetchOpenMeteoJson<T>(url, key, requestTimeoutMs);
       const fetchedAt = new Date().toISOString();
       await db.runAsync(
         `INSERT INTO weather_cache(cacheKey,payload,fetchedAt,expiresAt) VALUES(?,?,?,?) ON CONFLICT(cacheKey) DO UPDATE SET payload=excluded.payload,fetchedAt=excluded.fetchedAt,expiresAt=excluded.expiresAt`,
         key, JSON.stringify(data), fetchedAt, new Date(Date.now() + CACHE_MS).toISOString(),
       );
+      weatherDebug('cache-write', { key });
       return { data, stale: false, fetchedAt };
     } catch (error) {
-      if (cached && allowStale) return { data: JSON.parse(cached.payload) as T, stale: true, fetchedAt: cached.fetchedAt };
+      if (cached && allowStale) {
+        weatherDebug('stale-fallback', { key, error: errorMessage(error) });
+        return { data: JSON.parse(cached.payload) as T, stale: true, fetchedAt: cached.fetchedAt };
+      }
       throw error;
     } finally {
       inFlight.delete(key);
+      weatherDebug('dedupe-cleanup', { key });
     }
   })();
   inFlight.set(key, request);
@@ -246,7 +299,17 @@ const currentWeatherFrom = (data: MushroomWeatherResponse): MushroomWeatherSumma
   return Object.values(result).some((value) => value != null) ? result : undefined;
 };
 
-export async function getMushroomWeatherSummary(db: SQLiteDatabase, latitude: number, longitude: number): Promise<MushroomWeatherSummary> {
+export async function getMushroomWeatherSummary(
+  db: SQLiteDatabase,
+  latitude: number,
+  longitude: number,
+  options: MushroomWeatherRequestOptions = {},
+): Promise<MushroomWeatherSummary> {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    throw new Error('Neveljavne koordinate za vremensko poizvedbo.');
+  }
+  const startedAt = Date.now();
+  const requestTimeoutMs = options.requestTimeoutMs ?? OPEN_METEO_REQUEST_TIMEOUT_MS;
   const today = dateAtOffset(0);
   const archiveStart = dateAtOffset(-60);
   const archiveEnd = dateAtOffset(-8);
@@ -263,15 +326,21 @@ export async function getMushroomWeatherSummary(db: SQLiteDatabase, latitude: nu
     daily: 'temperature_2m_min,temperature_2m_max,temperature_2m_mean,precipitation_sum,et0_fao_evapotranspiration,weather_code',
     timezone: 'auto',
   });
+  const archiveUrl = `${ARCHIVE_URL}?${archiveParams}`;
+  const forecastUrl = `${FORECAST_URL}?${forecastParams}`;
+  weatherDebug('summary-start', { latitude, longitude, archiveStart, archiveEnd, today });
 
   const [archiveResult, forecastResult] = await Promise.allSettled([
-    cachedFetch<MushroomWeatherResponse>(db, `mushroom-archive-v2:${coordinateKey}:${archiveStart}:${archiveEnd}`, `${ARCHIVE_URL}?${archiveParams}`),
-    cachedFetch<MushroomWeatherResponse>(db, `mushroom-forecast-v1:${coordinateKey}:${today}`, `${FORECAST_URL}?${forecastParams}`),
+    cachedFetch<MushroomWeatherResponse>(db, `mushroom-archive-v2:${coordinateKey}:${archiveStart}:${archiveEnd}`, archiveUrl, true, requestTimeoutMs),
+    cachedFetch<MushroomWeatherResponse>(db, `mushroom-forecast-v1:${coordinateKey}:${today}`, forecastUrl, true, requestTimeoutMs),
   ]);
   const archive = archiveResult.status === 'fulfilled' ? archiveResult.value : undefined;
   const forecast = forecastResult.status === 'fulfilled' ? forecastResult.value : undefined;
   if (archiveResult.status === 'rejected') console.warn('Open-Meteo historical request failed', archiveResult.reason);
   if (forecastResult.status === 'rejected') console.warn('Open-Meteo forecast request failed', forecastResult.reason);
+  if (archiveResult.status === 'rejected' && forecastResult.status === 'rejected') {
+    throw new Error('Open-Meteo historical and forecast requests failed.');
+  }
 
   const historicalByDate = new Map<string, DailyWeatherPoint>();
   for (const day of archive ? mapDailyWeather(archive.data, 'historical') : []) {
@@ -284,6 +353,15 @@ export async function getMushroomWeatherSummary(db: SQLiteDatabase, latitude: nu
   const forecastDays = (forecast ? mapDailyWeather(forecast.data, 'forecast') : [])
     .filter((day) => day.date >= today).slice(0, 7);
   const fetchedTimes = [archive?.fetchedAt, forecast?.fetchedAt].filter((value): value is string => Boolean(value));
+  weatherDebug('summary-merge', {
+    latitude,
+    longitude,
+    archiveStatus: archiveResult.status,
+    forecastStatus: forecastResult.status,
+    historicalDays: historicalDays.length,
+    forecastDays: forecastDays.length,
+    durationMs: Date.now() - startedAt,
+  });
 
   return {
     latitude, longitude,
