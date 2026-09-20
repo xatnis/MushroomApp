@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,7 +8,7 @@ import type { RootStackParamList } from '../navigation/types';
 import type { ConditionsData, ExploreLocation, Hotspot, MushroomConditionsScore, MushroomWeatherProfileId, MushroomWeatherSummary, ScoreResult } from '../domain/types';
 import { useApp } from '../state/AppContext';
 import { getConditions, getMushroomWeatherSummary, searchLocations, type PlaceSearchResult } from '../services/weather';
-import { acquireForegroundPosition } from '../services/location';
+import { acquireForegroundPosition, LocationAcquisitionError } from '../services/location';
 import { calculateMushroomScore } from '../domain/scoring';
 import { BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
 import { haversineKm, slDateTime, slNumber } from '../domain/format';
@@ -66,44 +66,63 @@ export function ConditionsScreen() {
   const [weatherRetry, setWeatherRetry] = useState(0);
   const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
   const [error, setError] = useState<string>();
+  const [locationSettingsRequired, setLocationSettingsRequired] = useState(false);
   const [locationNotice, setLocationNotice] = useState<string>();
   const [placeSearchError, setPlaceSearchError] = useState<string>();
   const [showWeatherDetails, setShowWeatherDetails] = useState(false);
   const locationRequestId = useRef(0);
+  const locationAbortController = useRef<AbortController | undefined>(undefined);
   const weatherRequestId = useRef(0);
   const initialLocationRequested = useRef(false);
   const mounted = useRef(true);
   const coords = locationMode === 'gps' ? currentLocation : selectedPlace;
 
   const acquireCurrent = useCallback(async () => {
+    locationAbortController.current?.abort();
+    const controller = new AbortController();
+    locationAbortController.current = controller;
     const requestId = ++locationRequestId.current;
     const isCurrentRequest = () => mounted.current && locationRequestId.current === requestId;
-    setLocationMode('gps'); setPlaceSearchOpen(false); setGpsLoading(true); setError(undefined); setLocationNotice(undefined);
+    setLocationMode('gps'); setPlaceSearchOpen(false); setGpsLoading(true); setError(undefined); setLocationNotice(undefined); setLocationSettingsRequired(false);
     try {
-      const result = await acquireForegroundPosition(Location, Location.Accuracy.Balanced);
+      const result = await acquireForegroundPosition(Location, Location.Accuracy.High, undefined, controller.signal);
       if (!isCurrentRequest()) return;
       const next = { latitude: result.location.coords.latitude, longitude: result.location.coords.longitude };
       const fallbackName = coordinateLabel(next.latitude, next.longitude);
+      const accuracy = result.location.coords.accuracy;
+      const accuracyLabel = accuracy == null ? 'neznana' : `${Math.max(1, Math.round(accuracy))} m`;
       setCurrentLocation(next);
       setCurrentLocationName(fallbackName);
       if (result.source === 'lastKnown') {
-        const ageMinutes = Math.max(1, Math.round((Date.now() - result.location.timestamp) / 60_000));
-        setLocationNotice(`GPS ni pravočasno odgovoril. Uporabljena je zadnja znana lokacija, stara približno ${ageMinutes} min.`);
+        const ageMinutes = Math.max(0, Math.round((Date.now() - result.location.timestamp) / 60_000));
+        const ageLabel = ageMinutes < 1 ? 'stara manj kot minuto' : `stara približno ${ageMinutes} min`;
+        setLocationNotice(`Uporabljena je zadnja znana lokacija, natančnost približno ${accuracyLabel}, ${ageLabel}.`);
+      } else {
+        setLocationNotice(`Pridobljena je sveža lokacija, natančnost približno ${accuracyLabel}.`);
       }
       const name = await reverseGeocodeLabel(next.latitude, next.longitude) ?? fallbackName;
       if (!isCurrentRequest()) return;
       setCurrentLocationName(name);
       setExploreLocation({ ...next, name, source: 'gps' });
     } catch (cause) {
-      if (isCurrentRequest()) setError(cause instanceof Error ? cause.message : 'Lokacija ni na voljo.');
+      if (isCurrentRequest()) {
+        setLocationSettingsRequired(cause instanceof LocationAcquisitionError && cause.settingsRequired);
+        setError(cause instanceof Error ? cause.message : 'Lokacija ni na voljo.');
+      }
     } finally {
+      if (locationAbortController.current === controller) locationAbortController.current = undefined;
       if (isCurrentRequest()) setGpsLoading(false);
     }
   }, [setExploreLocation]);
 
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; locationRequestId.current += 1; };
+    return () => {
+      mounted.current = false;
+      locationRequestId.current += 1;
+      locationAbortController.current?.abort();
+      locationAbortController.current = undefined;
+    };
   }, []);
 
   useEffect(() => {
@@ -115,7 +134,8 @@ export function ConditionsScreen() {
   useEffect(() => {
     if (!exploreLocation) return;
     locationRequestId.current += 1;
-    setGpsLoading(false); setPlaceSearchOpen(false); setPlaceQuery(''); setPlaceResults([]); setError(undefined);
+    locationAbortController.current?.abort(); locationAbortController.current = undefined;
+    setGpsLoading(false); setPlaceSearchOpen(false); setPlaceQuery(''); setPlaceResults([]); setError(undefined); setLocationSettingsRequired(false);
     if (exploreLocation.source === 'gps') {
       setLocationMode('gps');
       setCurrentLocation({ latitude: exploreLocation.latitude, longitude: exploreLocation.longitude });
@@ -194,7 +214,7 @@ export function ConditionsScreen() {
       <SectionTitle>Lokacija</SectionTitle>
       <View style={commonStyles.wrap}>
         <Chip label="Moja lokacija" selected={locationMode === 'gps'} onPress={() => void acquireCurrent()} />
-        <Chip label="Izberi lokacijo" selected={locationMode === 'manual'} onPress={() => { locationRequestId.current += 1; setGpsLoading(false); setLocationMode('manual'); setPlaceSearchOpen(!selectedPlace); setError(undefined); setLocationNotice(undefined); }} />
+        <Chip label="Izberi lokacijo" selected={locationMode === 'manual'} onPress={() => { locationRequestId.current += 1; locationAbortController.current?.abort(); locationAbortController.current = undefined; setGpsLoading(false); setLocationMode('manual'); setPlaceSearchOpen(!selectedPlace); setError(undefined); setLocationNotice(undefined); setLocationSettingsRequired(false); }} />
       </View>
       {locationMode === 'gps' ? <View style={styles.locationSummary}>
         <Text style={commonStyles.muted}>Aktivna lokacija</Text>
@@ -213,9 +233,9 @@ export function ConditionsScreen() {
         {placeSearchLoading ? <ActivityIndicator color={colors.primary} /> : null}
         {placeSearchError ? <Notice tone="warning">{placeSearchError}</Notice> : null}
         {placeResults.map((place) => <Pressable key={place.id} accessibilityRole="button" onPress={() => {
-          locationRequestId.current += 1; setGpsLoading(false);
+          locationRequestId.current += 1; locationAbortController.current?.abort(); locationAbortController.current = undefined; setGpsLoading(false);
           const next: ExploreLocation = { name: place.name, latitude: place.latitude, longitude: place.longitude, admin1: place.admin1, admin2: place.admin2, country: place.country, source: 'place' };
-          setSelectedPlace(next); setExploreLocation(next); setLocationMode('manual'); setPlaceSearchOpen(false); setPlaceQuery(''); setPlaceResults([]); setError(undefined);
+          setSelectedPlace(next); setExploreLocation(next); setLocationMode('manual'); setPlaceSearchOpen(false); setPlaceQuery(''); setPlaceResults([]); setError(undefined); setLocationSettingsRequired(false);
         }} style={({ pressed }) => [styles.placeResult, pressed && styles.placeResultPressed]}>
           <Text style={commonStyles.heading}>{place.name}</Text>
           {placeDetails(place) ? <Text style={commonStyles.muted}>{placeDetails(place)}</Text> : null}
@@ -227,6 +247,7 @@ export function ConditionsScreen() {
     </Card>
     {gpsLoading || weatherLoading ? <ActivityIndicator size="large" color={colors.primary} /> : null}
     {error ? <Notice tone="warning">{error}</Notice> : null}
+    {locationSettingsRequired ? <AppButton title="Odpri nastavitve aplikacije" variant="secondary" onPress={() => void Linking.openSettings().catch(() => setError('Nastavitev aplikacije ni bilo mogoče odpreti.'))} /> : null}
     {weatherError ? <Notice tone="warning">{weatherError}</Notice> : null}
     {locationNotice ? <Notice tone="info">{locationNotice}</Notice> : null}
     {weatherSummary?.errors.historical ? <Notice tone="warning">{weatherSummary.errors.historical}</Notice> : null}
