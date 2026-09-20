@@ -9,6 +9,7 @@ import type { ConditionsData, ExploreLocation, Hotspot, MushroomConditionsScore,
 import { useApp } from '../state/AppContext';
 import { getConditions, getMushroomWeatherSummary, searchLocations, type PlaceSearchResult } from '../services/weather';
 import { acquireForegroundPosition, LocationAcquisitionError } from '../services/location';
+import { buildGpsExploreLocation, debugGpsLocality, resolveGpsLocality } from '../services/locality';
 import { calculateMushroomScore } from '../domain/scoring';
 import { BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
 import { haversineKm, slDateTime, slNumber } from '../domain/format';
@@ -18,7 +19,6 @@ import { colors, radii, spacing } from '../theme';
 interface Ranked { hotspot: Hotspot; conditions?: ConditionsData; score: ScoreResult; distanceKm?: number; }
 
 const coordinateLabel = (latitude: number, longitude: number) => `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
-const cleanPlaceName = (value?: string | null) => value?.replace(/^(?:Upravna enota|Mestna občina|Občina)\s+/i, '').trim();
 const REVERSE_GEOCODE_TIMEOUT_MS = 5_000;
 
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => new Promise((resolve, reject) => {
@@ -28,16 +28,6 @@ const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => 
     (error) => { clearTimeout(timeout); reject(error); },
   );
 });
-
-const reverseGeocodeLabel = async (latitude: number, longitude: number): Promise<string | undefined> => {
-  try {
-    const [address] = await withTimeout(Location.reverseGeocodeAsync({ latitude, longitude }), REVERSE_GEOCODE_TIMEOUT_MS);
-    return [address?.city, address?.district, address?.subregion, address?.region, address?.name, address?.country]
-      .map(cleanPlaceName).find(Boolean);
-  } catch {
-    return undefined;
-  }
-};
 
 const placeDetails = (place: Pick<ExploreLocation, 'name' | 'admin1' | 'admin2' | 'country'>) => {
   const values = [place.admin2, place.admin1, place.country]
@@ -88,11 +78,8 @@ export function ConditionsScreen() {
       const result = await acquireForegroundPosition(Location, Location.Accuracy.High, undefined, controller.signal);
       if (!isCurrentRequest()) return;
       const next = { latitude: result.location.coords.latitude, longitude: result.location.coords.longitude };
-      const fallbackName = coordinateLabel(next.latitude, next.longitude);
       const accuracy = result.location.coords.accuracy;
       const accuracyLabel = accuracy == null ? 'neznana' : `${Math.max(1, Math.round(accuracy))} m`;
-      setCurrentLocation(next);
-      setCurrentLocationName(fallbackName);
       if (result.source === 'lastKnown') {
         const ageMinutes = Math.max(0, Math.round((Date.now() - result.location.timestamp) / 60_000));
         const ageLabel = ageMinutes < 1 ? 'stara manj kot minuto' : `stara približno ${ageMinutes} min`;
@@ -100,10 +87,19 @@ export function ConditionsScreen() {
       } else {
         setLocationNotice(`Pridobljena je sveža lokacija, natančnost približno ${accuracyLabel}.`);
       }
-      const name = await reverseGeocodeLabel(next.latitude, next.longitude) ?? fallbackName;
+      let addresses: Location.LocationGeocodedAddress[] = [];
+      try {
+        addresses = await withTimeout(Location.reverseGeocodeAsync(next), REVERSE_GEOCODE_TIMEOUT_MS);
+      } catch {
+        // Accepted GPS coordinates remain authoritative even when reverse geocoding is unavailable.
+      }
+      const resolution = await resolveGpsLocality({ ...next, addresses, signal: controller.signal });
       if (!isCurrentRequest()) return;
-      setCurrentLocationName(name);
-      setExploreLocation({ ...next, name, source: 'gps' });
+      debugGpsLocality(result.source, accuracy, addresses, resolution);
+      const resolvedLocation = buildGpsExploreLocation(next.latitude, next.longitude, resolution);
+      setCurrentLocation(next);
+      setCurrentLocationName(resolvedLocation.name);
+      setExploreLocation(resolvedLocation);
     } catch (cause) {
       if (isCurrentRequest()) {
         setLocationSettingsRequired(cause instanceof LocationAcquisitionError && cause.settingsRequired);
