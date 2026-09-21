@@ -12,6 +12,7 @@ import { acquireForegroundPosition, LocationAcquisitionError } from '../services
 import { buildGpsExploreLocation, debugGpsLocality, resolveGpsLocality } from '../services/locality';
 import { calculateMushroomScore } from '../domain/scoring';
 import { BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
+import { buildGenericWeatherDetails } from '../domain/weatherDetails';
 import { haversineKm, slDateTime, slNumber } from '../domain/format';
 import { speciesCatalogue } from '../domain/species';
 import { colors, radii, spacing } from '../theme';
@@ -315,13 +316,21 @@ function WeatherProfileScoreDetails({ profileId, summary, score }: { profileId: 
 }
 
 function GenericScoreDetails({ summary, score }: { summary: MushroomWeatherSummary; score: MushroomConditionsScore }) {
-  return <Card><SectionTitle>Vhodni podatki in score</SectionTitle>
-    <Text style={commonStyles.body}>rain3d: {debugNumber(summary.historical?.rain3dMm, 'mm')}</Text><Text style={commonStyles.body}>rain7d: {debugNumber(summary.historical?.rain7dMm, 'mm')}</Text><Text style={commonStyles.body}>rain14d: {debugNumber(summary.historical?.rain14dMm, 'mm')}</Text><Text style={commonStyles.body}>rain30d: {debugNumber(summary.historical?.rain30dMm, 'mm')}</Text>
-    <Text style={commonStyles.body}>avgTemp7d: {debugNumber(summary.historical?.avgTemp7dC, '°C')}</Text><Text style={commonStyles.body}>avgTemp14d: {debugNumber(summary.historical?.avgTemp14dC, '°C')}</Text><Text style={commonStyles.body}>avgTemp20d: {debugNumber(summary.historical?.avgTemp20dC, '°C')}</Text>
-    <Text style={commonStyles.body}>soilMoisture 0–7 cm: {debugNumber(summary.current?.soilMoisture0To7Cm, 'm³/m³', 3)}</Text><Text style={commonStyles.body}>soilMoisture 7–28 cm: {debugNumber(summary.current?.soilMoisture7To28Cm, 'm³/m³', 3)}</Text>
-    <Text style={commonStyles.body}>futureRain3d: {debugNumber(summary.forecast?.rain3dMm, 'mm')}</Text><Text style={commonStyles.body}>futureRain7d: {debugNumber(summary.forecast?.rain7dMm, 'mm')}</Text>
-    {score.components.map((component) => <Text key={component.key} style={commonStyles.body}>{component.label}: {slNumber(component.value * 100, 0)} % × utež {component.weight} = {slNumber(component.weightedPoints, 1)}</Text>)}
-    <Text style={commonStyles.muted}>Pokritost zgodovine: dež {summary.historical?.coverage.rain30dDays ?? 0}/30 dni, temperatura {summary.historical?.coverage.temp20dDays ?? 0}/20 dni.</Text>
+  const details = buildGenericWeatherDetails(summary, score);
+  return <Card><SectionTitle>Kako je izračunana ocena?</SectionTitle>
+    <Text style={commonStyles.heading}>Splošne razmere za gobe</Text>
+    <Text style={commonStyles.muted}>{details.description}</Text>
+    {details.scoreSections.map((section) => <View key={section.title}>
+      <Text style={styles.detailHeading}>{section.title}</Text>
+      {section.rows.map((row) => <DetailLine key={row.label} label={row.label} value={row.value} />)}
+    </View>)}
+    <Text style={styles.detailHeading}>SKUPAJ</Text>
+    <DetailLine label="Vremenske razmere" value={details.total} />
+    <Text style={styles.detailHeading}>TREND</Text>
+    {details.trendRows.map((row) => <DetailLine key={row.label} label={row.label} value={row.value} />)}
+    <Text style={commonStyles.muted}>{details.trendNote}</Text>
+    <Text style={commonStyles.muted}>{details.coverage}</Text>
+    <Text style={commonStyles.muted}>{MUSHROOM_WEATHER_PROFILES.generic.tuningNote} Če signal manjka, se njegova utež izloči in preostale se transparentno preračunajo na 100 %.</Text>
   </Card>;
 }
 
