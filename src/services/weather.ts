@@ -476,7 +476,7 @@ export async function getHeatmapWeatherBatch(
     cachedFetch<MushroomWeatherResponse | MushroomWeatherResponse[]>(db, forecastKey, `${FORECAST_URL}?${forecastParams}`, true, requestTimeoutMs),
   ]);
   if (archiveResult.status === 'rejected' && forecastResult.status === 'rejected') {
-    throw new Error('Vremenskih podatkov za pilot trenutno ni mogoče pridobiti.');
+    throw new Error('Vremenskih podatkov za območja trenutno ni mogoče pridobiti.');
   }
   const archive = archiveResult.status === 'fulfilled' ? archiveResult.value : undefined;
   const forecast = forecastResult.status === 'fulfilled' ? forecastResult.value : undefined;

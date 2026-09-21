@@ -19,6 +19,7 @@ import { buildHeatmapRenderCollection, HEATMAP_HABITAT, HEATMAP_PILOT_METADATA }
 import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
 import { slNumber } from '../domain/format';
 import { createHeatmapRequestGate, loadHeatmapPilot, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
+import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '../services/heatmap/areaLocality';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const SLOVENIA_CENTER: [number, number] = [14.82, 46.12];
@@ -116,6 +117,11 @@ export function MapScreen() {
   const selectedHeatmapFeature = selectedHeatmapAreaId
     ? HEATMAP_HABITAT.features.find((feature) => feature.properties.id === selectedHeatmapAreaId)
     : undefined;
+  const heatmapAreaLocality = useMemo<HeatmapAreaLocalityResolution | undefined>(() => {
+    if (!selectedHeatmapFeature) return undefined;
+    const { id, centerLatitude, centerLongitude } = selectedHeatmapFeature.properties;
+    return resolveHeatmapAreaLocality(id, centerLatitude, centerLongitude);
+  }, [selectedHeatmapFeature?.properties.id]);
 
   useEffect(() => () => heatmapRequestGate.invalidate(), [heatmapRequestGate]);
 
@@ -130,7 +136,7 @@ export function MapScreen() {
       })
       .catch((error) => {
         if (heatmapRequestGate.isCurrent(requestId)) {
-          setHeatmapError(error instanceof Error ? error.message : 'Pogojev za pilot trenutno ni mogoče naložiti.');
+          setHeatmapError(error instanceof Error ? error.message : 'Pogojev za območja trenutno ni mogoče naložiti.');
         }
       })
       .finally(() => {
@@ -338,14 +344,16 @@ export function MapScreen() {
       </Card> : null}
       {!selected && heatmapEnabled && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
         assessment={selectedHeatmapArea}
+        areaLabel={heatmapAreaLocality?.location.name ?? 'Izbrano območje'}
+        areaDetails={heatmapAreaLocality?.location.admin1 && heatmapAreaLocality?.location.country
+          ? `${heatmapAreaLocality.location.admin1}, ${heatmapAreaLocality.location.country}`
+          : undefined}
         onClose={() => setSelectedHeatmapAreaId(undefined)}
         onOpenConditions={() => {
-          setExploreLocation({
-            name: 'Pilot območje pri Črni na Koroškem',
+          setExploreLocation(heatmapAreaLocality?.location ?? {
+            name: 'Izbrano območje',
             latitude: selectedHeatmapFeature.properties.centerLatitude,
             longitude: selectedHeatmapFeature.properties.centerLongitude,
-            admin1: 'Koroška',
-            country: 'Slovenija',
             source: 'place',
           });
           navigation.navigate('Tabs', { screen: 'Conditions' });
@@ -394,12 +402,12 @@ function heatmapInfluences(assessment: HeatmapAreaAssessment): Array<{ label: st
   ];
 }
 
-function HeatmapAreaCard({ assessment, onClose, onOpenConditions }: { assessment: HeatmapAreaAssessment; onClose: () => void; onOpenConditions: () => void }) {
+function HeatmapAreaCard({ assessment, areaLabel, areaDetails, onClose, onOpenConditions }: { assessment: HeatmapAreaAssessment; areaLabel: string; areaDetails?: string; onClose: () => void; onOpenConditions: () => void }) {
   const profile = MUSHROOM_WEATHER_PROFILES[assessment.speciesId];
   const quality = assessment.dataQuality === 'complete' ? 'Popolni podatki' : assessment.dataQuality === 'limited' ? 'Omejeni podatki' : 'Ni dovolj podatkov';
-  const habitat = assessment.habitatState === 'candidate' ? 'Potencialno habitatno območje' : assessment.habitatState === 'unknown' ? 'Habitat ni potrjen' : 'Zunaj pilotnega habitatnega modela';
+  const habitat = assessment.habitatState === 'candidate' ? 'Potencialno habitatno območje' : assessment.habitatState === 'unknown' ? 'Habitat ni potrjen' : 'Zunaj habitatnega modela';
   return <Card style={styles.heatmapPreview}>
-    <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{profile.label}</Text><Text style={commonStyles.muted}>{assessment.targetDay === 'today' ? 'Danes' : 'Jutri'} · {assessment.targetLocalDate}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
+    <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{areaLabel}</Text>{areaDetails ? <Text style={commonStyles.muted}>{areaDetails}</Text> : null}<Text style={commonStyles.muted}>{profile.label} · {assessment.targetDay === 'today' ? 'Danes' : 'Jutri'}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
     <ScrollView style={styles.heatmapDetailsScroll} contentContainerStyle={styles.heatmapDetailsContent} nestedScrollEnabled>
       <View style={styles.heatmapScoreLine}><Text style={styles.heatmapAreaScore}>{assessment.score == null ? '—' : `${assessment.score} / 100`}</Text><Text style={commonStyles.body}>{assessment.classLabel}</Text></View>
       <Text style={styles.heatmapDetailTitle}>HABITAT</Text><Text style={commonStyles.body}>{habitat}</Text>
@@ -407,7 +415,8 @@ function HeatmapAreaCard({ assessment, onClose, onOpenConditions }: { assessment
       <Text style={styles.heatmapDetailTitle}>GLAVNI VPLIVI</Text>
       {heatmapInfluences(assessment).map((row) => <View key={row.label} style={styles.heatmapInfluence}><Text style={styles.heatmapInfluenceLabel}>{row.label}</Text><Text style={styles.heatmapInfluenceValue}>{row.value}</Text></View>)}
       {assessment.limitations.slice(0, 3).map((limitation) => <Text key={limitation} style={commonStyles.muted}>• {limitation}</Text>)}
-      <Text style={commonStyles.muted}>Eksperimentalna primernost vremenskih razmer in potencialnega habitata, ne verjetnost najdbe. Karta ne potrjuje dostopa, dovoljenja za nabiranje ali prisotnosti vrste.</Text>
+      <Text style={commonStyles.muted}>Eksperimentalna ocena vremenskih razmer in primernosti habitata. Ne predstavlja verjetnosti najdbe.</Text>
+      <Text style={commonStyles.muted}>Karta ne potrjuje dostopa ali dovoljenja za nabiranje.</Text>
       <AppButton title="Poglej podrobne razmere" variant="secondary" onPress={onOpenConditions} />
     </ScrollView>
   </Card>;

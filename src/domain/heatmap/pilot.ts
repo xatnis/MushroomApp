@@ -51,12 +51,13 @@ export function habitatStateFor(
 }
 
 export function habitatExplanation(profileId: MushroomWeatherProfileId, state: HeatmapHabitatState): string {
-  if (state === 'outside-model') return 'Ta celica nima dovolj ustreznega vegetacijskega oziroma drevesnega pokrova za pilotni habitatni model.';
+  if (state === 'outside-model') return 'Območje nima dovolj ustreznega vegetacijskega oziroma drevesnega pokrova za habitatni model.';
   if (profileId === 'lactariusDeliciosus') {
     return 'Na voljo je podatek o drevesnem pokrovu, vendar vrsta dreves ni potrjena. Za užitno sirovko habitat zato ostaja neznan.';
   }
-  if (profileId === 'generic') return 'Celica ima dovolj vegetacijskega pokrova, da jo pilot obravnava kot območje za splošno vremensko oceno.';
-  return 'Območje ima dovolj drevesnega pokrova, da ga pilot obravnava kot potencialno gozdno rastišče.';
+  if (profileId === 'generic') return 'Območje ima dovolj vegetacijskega pokrova za splošno vremensko oceno.';
+  if (profileId === 'cantharellusCibarius') return 'Območje ima dovolj drevesnega pokrova za potencialno gozdno rastišče.';
+  return 'Območje ima dovolj drevesnega pokrova, da ga model obravnava kot potencialno gozdno rastišče.';
 }
 
 export function renderStateFor(assessment: HeatmapAreaAssessment): HeatmapRenderFeatureCollection['features'][number]['properties']['renderState'] {
