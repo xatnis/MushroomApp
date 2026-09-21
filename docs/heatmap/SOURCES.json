@@ -1,0 +1,38 @@
+{
+  "pilot": {
+    "id": "crna-koroska-v1",
+    "center": {
+      "latitude": 46.47045,
+      "longitude": 14.85009,
+      "source": "Open-Meteo Geocoding API"
+    },
+    "radiusM": 25000
+  },
+  "habitat": {
+    "dataset": "ESA WorldCover",
+    "version": "2021 v200",
+    "resolutionM": 10,
+    "license": "CC BY 4.0",
+    "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+    "documentation": "https://esa-worldcover.org/en/data-access",
+    "classCodes": {
+      "treeCover": 10,
+      "grassland": 30
+    },
+    "derivedArtifact": "src/data/heatmapPilot/habitat.geojson.json"
+  },
+  "weather": {
+    "provider": "Open-Meteo",
+    "archiveApi": "https://archive-api.open-meteo.com/v1/archive",
+    "forecastApi": "https://api.open-meteo.com/v1/forecast",
+    "timezone": "Europe/Ljubljana",
+    "license": "CC BY 4.0",
+    "attribution": "Weather data by Open-Meteo.com"
+  },
+  "zgs": {
+    "checkedEndpoint": "https://prostor.zgs.gov.si/geoserver/wfs",
+    "checkedLayer": "pregledovalnik:sestoji",
+    "used": false,
+    "blocker": "Tree-species attribute semantics and downstream reuse terms were not verified strongly enough for a safe pine-presence claim."
+  }
+}

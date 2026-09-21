@@ -1,0 +1,215 @@
+{
+  "schemaVersion": 1,
+  "pilotId": "crna-koroska-v1",
+  "label": "Črna na Koroškem · Heatmap Pilot V1",
+  "center": {
+    "latitude": 46.47045,
+    "longitude": 14.85009,
+    "source": "Open-Meteo Geocoding API"
+  },
+  "radiusM": 25000,
+  "bbox": [
+    14.518519,
+    46.241057,
+    15.181549,
+    46.699809
+  ],
+  "habitatCellSizeM": 1000,
+  "habitatPolygonCount": 1961,
+  "weatherSamplingSpacingM": 10000,
+  "weatherCellCount": 25,
+  "weatherCells": [
+    {
+      "id": "weather-0-0",
+      "latitude": 46.302159,
+      "longitude": 14.57494,
+      "projectedX": 4673599.35,
+      "projectedY": 2587409.63
+    },
+    {
+      "id": "weather-0-1",
+      "latitude": 46.296541,
+      "longitude": 14.704391,
+      "projectedX": 4683599.35,
+      "projectedY": 2587409.63
+    },
+    {
+      "id": "weather-0-2",
+      "latitude": 46.290767,
+      "longitude": 14.833818,
+      "projectedX": 4693599.35,
+      "projectedY": 2587409.63
+    },
+    {
+      "id": "weather-0-3",
+      "latitude": 46.284835,
+      "longitude": 14.963219,
+      "projectedX": 4703599.35,
+      "projectedY": 2587409.63
+    },
+    {
+      "id": "weather-0-4",
+      "latitude": 46.278748,
+      "longitude": 15.092594,
+      "projectedX": 4713599.35,
+      "projectedY": 2587409.63
+    },
+    {
+      "id": "weather-1-0",
+      "latitude": 46.392026,
+      "longitude": 14.582626,
+      "projectedX": 4673599.35,
+      "projectedY": 2597409.63
+    },
+    {
+      "id": "weather-1-1",
+      "latitude": 46.386397,
+      "longitude": 14.712294,
+      "projectedX": 4683599.35,
+      "projectedY": 2597409.63
+    },
+    {
+      "id": "weather-1-2",
+      "latitude": 46.380611,
+      "longitude": 14.841936,
+      "projectedX": 4693599.35,
+      "projectedY": 2597409.63
+    },
+    {
+      "id": "weather-1-3",
+      "latitude": 46.374668,
+      "longitude": 14.971553,
+      "projectedX": 4703599.35,
+      "projectedY": 2597409.63
+    },
+    {
+      "id": "weather-1-4",
+      "latitude": 46.368569,
+      "longitude": 15.101143,
+      "projectedX": 4713599.35,
+      "projectedY": 2597409.63
+    },
+    {
+      "id": "weather-2-0",
+      "latitude": 46.481887,
+      "longitude": 14.590346,
+      "projectedX": 4673599.35,
+      "projectedY": 2607409.63
+    },
+    {
+      "id": "weather-2-1",
+      "latitude": 46.476247,
+      "longitude": 14.720231,
+      "projectedX": 4683599.35,
+      "projectedY": 2607409.63
+    },
+    {
+      "id": "weather-2-2",
+      "latitude": 46.47045,
+      "longitude": 14.85009,
+      "projectedX": 4693599.35,
+      "projectedY": 2607409.63
+    },
+    {
+      "id": "weather-2-3",
+      "latitude": 46.464496,
+      "longitude": 14.979923,
+      "projectedX": 4703599.35,
+      "projectedY": 2607409.63
+    },
+    {
+      "id": "weather-2-4",
+      "latitude": 46.458385,
+      "longitude": 15.10973,
+      "projectedX": 4713599.35,
+      "projectedY": 2607409.63
+    },
+    {
+      "id": "weather-3-0",
+      "latitude": 46.571743,
+      "longitude": 14.5981,
+      "projectedX": 4673599.35,
+      "projectedY": 2617409.63
+    },
+    {
+      "id": "weather-3-1",
+      "latitude": 46.566092,
+      "longitude": 14.728202,
+      "projectedX": 4683599.35,
+      "projectedY": 2617409.63
+    },
+    {
+      "id": "weather-3-2",
+      "latitude": 46.560283,
+      "longitude": 14.858279,
+      "projectedX": 4693599.35,
+      "projectedY": 2617409.63
+    },
+    {
+      "id": "weather-3-3",
+      "latitude": 46.554318,
+      "longitude": 14.98833,
+      "projectedX": 4703599.35,
+      "projectedY": 2617409.63
+    },
+    {
+      "id": "weather-3-4",
+      "latitude": 46.548194,
+      "longitude": 15.118354,
+      "projectedX": 4713599.35,
+      "projectedY": 2617409.63
+    },
+    {
+      "id": "weather-4-0",
+      "latitude": 46.661593,
+      "longitude": 14.605888,
+      "projectedX": 4673599.35,
+      "projectedY": 2627409.63
+    },
+    {
+      "id": "weather-4-1",
+      "latitude": 46.655931,
+      "longitude": 14.736209,
+      "projectedX": 4683599.35,
+      "projectedY": 2627409.63
+    },
+    {
+      "id": "weather-4-2",
+      "latitude": 46.650111,
+      "longitude": 14.866504,
+      "projectedX": 4693599.35,
+      "projectedY": 2627409.63
+    },
+    {
+      "id": "weather-4-3",
+      "latitude": 46.644134,
+      "longitude": 14.996774,
+      "projectedX": 4703599.35,
+      "projectedY": 2627409.63
+    },
+    {
+      "id": "weather-4-4",
+      "latitude": 46.637999,
+      "longitude": 15.127016,
+      "projectedX": 4713599.35,
+      "projectedY": 2627409.63
+    }
+  ],
+  "worldCover": {
+    "dataset": "ESA WorldCover",
+    "version": "2021 v200",
+    "resolutionM": 10,
+    "crs": "EPSG:4326",
+    "classCodes": {
+      "treeCover": 10,
+      "grassland": 30
+    },
+    "license": "CC BY 4.0",
+    "attribution": "© ESA WorldCover project 2021 / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium",
+    "sourceUrls": [
+      "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N45E012_Map.tif",
+      "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_N45E015_Map.tif"
+    ]
+  },
+  "generatedBy": "scripts/heatmap/prepare_pilot.py"
+}

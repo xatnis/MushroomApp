@@ -1,5 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { ConditionsData, DailyWeatherPoint, ForecastWeatherSummary, HistoricalWeatherSummary, MushroomWeatherSummary, WeatherSnapshot } from '../domain/types';
+import type { HeatmapWeatherBatch, HeatmapWeatherCellDefinition, HeatmapWeatherCellSource, HeatmapSoilPoint } from '../domain/heatmap/types';
+import { HEATMAP_WEATHER_POLICY_VERSION } from '../domain/heatmap/config';
 
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const ARCHIVE_URL = 'https://archive-api.open-meteo.com/v1/archive';
@@ -32,6 +34,9 @@ interface HourlyResponse {
 }
 
 interface MushroomWeatherResponse {
+  latitude?: number;
+  longitude?: number;
+  location_id?: number;
   current?: { time?: string; temperature_2m?: number | null; weather_code?: number | null };
   hourly?: {
     time?: string[];
@@ -69,6 +74,12 @@ const dateAtOffset = (days: number) => {
   value.setHours(12, 0, 0, 0);
   value.setDate(value.getDate() + days);
   return localDateOnly(value);
+};
+
+export const shiftLocalDate = (date: string, days: number) => {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
 };
 
 const weatherDebug = (event: string, details: Record<string, unknown>) => {
@@ -232,9 +243,14 @@ const mapDailyWeather = (data: MushroomWeatherResponse, kind: DailyWeatherPoint[
   }));
 };
 
-const valuesInLastDays = (days: DailyWeatherPoint[], count: number, read: (day: DailyWeatherPoint) => number | undefined) => {
-  const start = dateAtOffset(-count);
-  const end = dateAtOffset(0);
+const valuesInLastDays = (
+  days: DailyWeatherPoint[],
+  count: number,
+  read: (day: DailyWeatherPoint) => number | undefined,
+  targetLocalDate = dateAtOffset(0),
+) => {
+  const start = shiftLocalDate(targetLocalDate, -count);
+  const end = targetLocalDate;
   return days.filter((day) => day.date >= start && day.date < end).flatMap((day) => {
     const value = read(day);
     return value == null ? [] : [value];
@@ -249,17 +265,20 @@ const completeAverage = (values: number[], requiredDays: number) => values.lengt
   ? values.reduce((sum, value) => sum + value, 0) / values.length
   : undefined;
 
-const buildHistoricalSummary = (days: DailyWeatherPoint[]): HistoricalWeatherSummary => {
-  const rain3 = valuesInLastDays(days, 3, (day) => day.precipitationMm);
-  const rain7 = valuesInLastDays(days, 7, (day) => day.precipitationMm);
-  const rain14 = valuesInLastDays(days, 14, (day) => day.precipitationMm);
-  const rain26 = valuesInLastDays(days, 26, (day) => day.precipitationMm);
-  const rain30 = valuesInLastDays(days, 30, (day) => day.precipitationMm);
-  const rain60 = valuesInLastDays(days, 60, (day) => day.precipitationMm);
-  const temp7 = valuesInLastDays(days, 7, (day) => day.temperatureMeanC);
-  const temp14 = valuesInLastDays(days, 14, (day) => day.temperatureMeanC);
-  const temp20 = valuesInLastDays(days, 20, (day) => day.temperatureMeanC);
-  const evapotranspiration7 = valuesInLastDays(days, 7, (day) => day.evapotranspirationMm);
+export const buildHistoricalWeatherSummaryForTarget = (
+  days: DailyWeatherPoint[],
+  targetLocalDate: string,
+): HistoricalWeatherSummary => {
+  const rain3 = valuesInLastDays(days, 3, (day) => day.precipitationMm, targetLocalDate);
+  const rain7 = valuesInLastDays(days, 7, (day) => day.precipitationMm, targetLocalDate);
+  const rain14 = valuesInLastDays(days, 14, (day) => day.precipitationMm, targetLocalDate);
+  const rain26 = valuesInLastDays(days, 26, (day) => day.precipitationMm, targetLocalDate);
+  const rain30 = valuesInLastDays(days, 30, (day) => day.precipitationMm, targetLocalDate);
+  const rain60 = valuesInLastDays(days, 60, (day) => day.precipitationMm, targetLocalDate);
+  const temp7 = valuesInLastDays(days, 7, (day) => day.temperatureMeanC, targetLocalDate);
+  const temp14 = valuesInLastDays(days, 14, (day) => day.temperatureMeanC, targetLocalDate);
+  const temp20 = valuesInLastDays(days, 20, (day) => day.temperatureMeanC, targetLocalDate);
+  const evapotranspiration7 = valuesInLastDays(days, 7, (day) => day.evapotranspirationMm, targetLocalDate);
   return {
     days,
     rain3dMm: completeSum(rain3, 3), rain7dMm: completeSum(rain7, 7), rain14dMm: completeSum(rain14, 14), rain26dMm: completeSum(rain26, 26), rain30dMm: completeSum(rain30, 30), rain60dMm: completeSum(rain60, 60),
@@ -273,11 +292,16 @@ const buildHistoricalSummary = (days: DailyWeatherPoint[]): HistoricalWeatherSum
   };
 };
 
+const buildHistoricalSummary = (days: DailyWeatherPoint[]): HistoricalWeatherSummary =>
+  buildHistoricalWeatherSummaryForTarget(days, dateAtOffset(0));
+
 const buildForecastSummary = (days: DailyWeatherPoint[]): ForecastWeatherSummary => {
   const rain3 = days.slice(0, 3).flatMap((day) => day.precipitationMm == null ? [] : [day.precipitationMm]);
   const rain7 = days.slice(0, 7).flatMap((day) => day.precipitationMm == null ? [] : [day.precipitationMm]);
   return { days, rain3dMm: completeSum(rain3, 3), rain7dMm: completeSum(rain7, 7) };
 };
+
+export const buildForecastWeatherSummary = buildForecastSummary;
 
 const currentWeatherFrom = (data: MushroomWeatherResponse): MushroomWeatherSummary['current'] => {
   const current = data.current;
@@ -375,6 +399,136 @@ export async function getMushroomWeatherSummary(
     updatedAt: fetchedTimes.sort().at(-1) ?? new Date().toISOString(),
     stale: Boolean(archive?.stale || forecast?.stale),
     source: 'open-meteo',
+  };
+}
+
+const responseList = (value: MushroomWeatherResponse | MushroomWeatherResponse[]) =>
+  Array.isArray(value) ? value : [value];
+
+const responseAt = (values: MushroomWeatherResponse[], index: number) =>
+  values.find((value) => value.location_id === index) ?? values[index];
+
+const soilPointAt = (
+  data: MushroomWeatherResponse | undefined,
+  localDate: string,
+  preferredTime?: string,
+): HeatmapSoilPoint | undefined => {
+  if (!data?.hourly?.time?.length) return undefined;
+  const times = data.hourly.time;
+  const candidates = times.flatMap((time, index) => time.startsWith(`${localDate}T`) ? [{ time, index }] : []);
+  if (!candidates.length) return undefined;
+  const target = preferredTime ?? `${localDate}T09:00`;
+  const selected = candidates.reduce((best, candidate) =>
+    Math.abs(new Date(candidate.time).getTime() - new Date(target).getTime())
+      < Math.abs(new Date(best.time).getTime() - new Date(target).getTime()) ? candidate : best);
+  const result: HeatmapSoilPoint = {
+    time: selected.time,
+    soilMoisture0To7Cm: data.hourly.soil_moisture_0_to_7cm?.[selected.index] ?? undefined,
+    soilMoisture7To28Cm: data.hourly.soil_moisture_7_to_28cm?.[selected.index] ?? undefined,
+  };
+  return result.soilMoisture0To7Cm == null && result.soilMoisture7To28Cm == null ? undefined : result;
+};
+
+/**
+ * Fetches the complete pilot grid in two batched Open-Meteo requests: one
+ * archive request and one recent/forecast request. The returned timeline is
+ * shared by every species profile and both target days.
+ */
+export async function getHeatmapWeatherBatch(
+  db: SQLiteDatabase,
+  points: HeatmapWeatherCellDefinition[],
+  baseLocalDate: string,
+  options: MushroomWeatherRequestOptions = {},
+): Promise<HeatmapWeatherBatch> {
+  if (!points.length) throw new Error('Heatmap vremenska mreža nima vzorčnih točk.');
+  const requestTimeoutMs = options.requestTimeoutMs ?? OPEN_METEO_REQUEST_TIMEOUT_MS;
+  const archiveStart = shiftLocalDate(baseLocalDate, -60);
+  const archiveEnd = shiftLocalDate(baseLocalDate, -8);
+  const tomorrow = shiftLocalDate(baseLocalDate, 1);
+  const latitudes = points.map((point) => point.latitude).join(',');
+  const longitudes = points.map((point) => point.longitude).join(',');
+  const coordinateKey = points.map((point) => `${point.id}:${point.latitude.toFixed(4)}:${point.longitude.toFixed(4)}`).join('|');
+  const dailyVariables = 'temperature_2m_min,temperature_2m_max,temperature_2m_mean,precipitation_sum,et0_fao_evapotranspiration,weather_code';
+  const archiveParams = new URLSearchParams({
+    latitude: latitudes,
+    longitude: longitudes,
+    start_date: archiveStart,
+    end_date: archiveEnd,
+    daily: dailyVariables,
+    timezone: 'Europe/Ljubljana',
+  });
+  const forecastParams = new URLSearchParams({
+    latitude: latitudes,
+    longitude: longitudes,
+    past_days: '7',
+    forecast_days: '7',
+    current: 'temperature_2m,weather_code',
+    hourly: 'soil_moisture_0_to_7cm,soil_moisture_7_to_28cm',
+    daily: dailyVariables,
+    timezone: 'Europe/Ljubljana',
+  });
+  const archiveKey = `heatmap-archive:${HEATMAP_WEATHER_POLICY_VERSION}:${archiveStart}:${archiveEnd}:${coordinateKey}`;
+  const forecastKey = `heatmap-forecast:${HEATMAP_WEATHER_POLICY_VERSION}:${baseLocalDate}:${coordinateKey}`;
+  const startedAt = Date.now();
+  weatherDebug('heatmap-batch-start', { pointCount: points.length, archiveStart, archiveEnd, baseLocalDate });
+  const [archiveResult, forecastResult] = await Promise.allSettled([
+    cachedFetch<MushroomWeatherResponse | MushroomWeatherResponse[]>(db, archiveKey, `${ARCHIVE_URL}?${archiveParams}`, true, requestTimeoutMs),
+    cachedFetch<MushroomWeatherResponse | MushroomWeatherResponse[]>(db, forecastKey, `${FORECAST_URL}?${forecastParams}`, true, requestTimeoutMs),
+  ]);
+  if (archiveResult.status === 'rejected' && forecastResult.status === 'rejected') {
+    throw new Error('Vremenskih podatkov za pilot trenutno ni mogoče pridobiti.');
+  }
+  const archive = archiveResult.status === 'fulfilled' ? archiveResult.value : undefined;
+  const forecast = forecastResult.status === 'fulfilled' ? forecastResult.value : undefined;
+  const archiveValues = archive ? responseList(archive.data) : [];
+  const forecastValues = forecast ? responseList(forecast.data) : [];
+  const cells: Record<string, HeatmapWeatherCellSource> = {};
+
+  points.forEach((point, index) => {
+    const archiveData = responseAt(archiveValues, index);
+    const forecastData = responseAt(forecastValues, index);
+    const byDate = new Map<string, DailyWeatherPoint>();
+    for (const day of archiveData ? mapDailyWeather(archiveData, 'historical') : []) {
+      if (day.date >= archiveStart && day.date < baseLocalDate) byDate.set(day.date, day);
+    }
+    for (const day of forecastData ? mapDailyWeather(forecastData, 'forecast') : []) {
+      if (day.date >= archiveStart && day.date <= tomorrow) {
+        byDate.set(day.date, { ...day, kind: day.date < baseLocalDate ? 'historical' : 'forecast' });
+      }
+    }
+    const currentTime = forecastData?.current?.time;
+    const fetchedAt = [archive?.fetchedAt, forecast?.fetchedAt].filter((value): value is string => Boolean(value)).sort().at(-1)
+      ?? new Date().toISOString();
+    cells[point.id] = {
+      id: point.id,
+      latitude: point.latitude,
+      longitude: point.longitude,
+      baseLocalDate,
+      days: [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)),
+      currentSoil: soilPointAt(forecastData, baseLocalDate, currentTime),
+      tomorrowMorningSoil: soilPointAt(forecastData, tomorrow, `${tomorrow}T09:00`),
+      errors: {
+        historical: archiveResult.status === 'rejected' ? 'Starejša vremenska zgodovina ni na voljo.' : undefined,
+        forecast: forecastResult.status === 'rejected' ? 'Nedavni podatki in napoved niso na voljo.' : undefined,
+      },
+      fetchedAt,
+      stale: Boolean(archive?.stale || forecast?.stale),
+    };
+  });
+  const fetchedAt = Object.values(cells).map((cell) => cell.fetchedAt).sort().at(-1) ?? new Date().toISOString();
+  weatherDebug('heatmap-batch-complete', {
+    pointCount: points.length,
+    archiveStatus: archiveResult.status,
+    forecastStatus: forecastResult.status,
+    durationMs: Date.now() - startedAt,
+  });
+  return {
+    policyVersion: HEATMAP_WEATHER_POLICY_VERSION,
+    baseLocalDate,
+    fetchedAt,
+    stale: Object.values(cells).some((cell) => cell.stale),
+    coldRequestCount: 2,
+    cells,
   };
 }
 

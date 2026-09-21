@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Keyboard, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Camera, Map, Marker, UserLocation, type CameraRef } from '@maplibre/maplibre-react-native';
+import { Camera, GeoJSONSource, Layer, Map, Marker, UserLocation, type CameraRef, type FillLayerSpecification, type LineLayerSpecification } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
+import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,9 +13,46 @@ import { colors, radii, spacing } from '../theme';
 import { normalizeSearch } from '../domain/species';
 import { listFriendHotspots, type FriendHotspot } from '../services/friends';
 import { searchLocations, type PlaceSearchResult } from '../services/weather';
+import type { MushroomWeatherProfileId } from '../domain/types';
+import type { HeatmapAreaAssessment, HeatmapTargetDay } from '../domain/heatmap/types';
+import { buildHeatmapRenderCollection, HEATMAP_HABITAT, HEATMAP_PILOT_METADATA } from '../domain/heatmap/pilot';
+import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
+import { slNumber } from '../domain/format';
+import { createHeatmapRequestGate, loadHeatmapPilot, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const SLOVENIA_CENTER: [number, number] = [14.82, 46.12];
+
+const HEATMAP_FILL_PAINT: FillLayerSpecification['paint'] = {
+  'fill-color': ['match', ['get', 'renderState'],
+    'poor', '#A96B50',
+    'average', '#C7A85A',
+    'good', '#7EA46E',
+    'very-good', '#3F7C57',
+    'excellent', '#174E3D',
+    'limited', '#B7AE90',
+    'unknown', '#8B9190',
+    'outside', '#D8D2C5',
+    '#A6A6A6'],
+  'fill-opacity': ['match', ['get', 'renderState'],
+    'outside', 0.22,
+    'unknown', 0.38,
+    'limited', 0.45,
+    'insufficient', 0.3,
+    0.62],
+};
+
+const HEATMAP_BORDER_PAINT: LineLayerSpecification['paint'] = {
+  'line-color': '#FFFDF7',
+  'line-width': 0.6,
+  'line-opacity': 0.65,
+};
+
+const HEATMAP_SELECTED_PAINT: LineLayerSpecification['paint'] = {
+  'line-color': '#173F35',
+  'line-width': 3,
+  'line-opacity': 1,
+};
 
 const placeDetails = (place: PlaceSearchResult) => {
   const values = [place.admin2, place.admin1, place.country]
@@ -24,6 +62,7 @@ const placeDetails = (place: PlaceSearchResult) => {
 };
 
 export function MapScreen() {
+  const db = useSQLiteContext();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<TabsParamList, 'Map'>>();
   const { hotspots, finds, session, exploreLocation, setExploreLocation, pendingHotspotFocus, clearHotspotFocus } = useApp();
@@ -42,6 +81,15 @@ export function MapScreen() {
   const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
   const [placeSearchError, setPlaceSearchError] = useState<string>();
   const [cameraTarget, setCameraTarget] = useState<{ center: [number, number]; zoom: number; focusRequestId?: string }>();
+  const [heatmapEnabled, setHeatmapEnabled] = useState(false);
+  const [heatmapProfileId, setHeatmapProfileId] = useState<MushroomWeatherProfileId>('boletusEdulis');
+  const [heatmapTargetDay, setHeatmapTargetDay] = useState<HeatmapTargetDay>('today');
+  const [selectedHeatmapAreaId, setSelectedHeatmapAreaId] = useState<string>();
+  const [heatmapBundle, setHeatmapBundle] = useState<HeatmapPilotBundle>();
+  const [heatmapLoading, setHeatmapLoading] = useState(false);
+  const [heatmapError, setHeatmapError] = useState<string>();
+  const [heatmapRetry, setHeatmapRetry] = useState(0);
+  const heatmapRequestGate = useRef(createHeatmapRequestGate()).current;
   useEffect(() => {
     if (!session) { setFriendHotspots([]); return; }
     void listFriendHotspots().then(setFriendHotspots).catch((error) => setLocationMessage(error instanceof Error ? error.message : 'Rastišč prijateljev ni mogoče naložiti.'));
@@ -58,6 +106,37 @@ export function MapScreen() {
   }, [finds, hotspots, query]);
   const selected = hotspots.find((item) => item.id === selectedId);
   const searchOpen = query.trim().length >= 2;
+  const heatmapView = useMemo(() => {
+    if (!heatmapBundle) return undefined;
+    return buildHeatmapRenderCollection(
+      weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay),
+    );
+  }, [heatmapBundle, heatmapProfileId, heatmapTargetDay]);
+  const selectedHeatmapArea = selectedHeatmapAreaId ? heatmapView?.assessments[selectedHeatmapAreaId] : undefined;
+  const selectedHeatmapFeature = selectedHeatmapAreaId
+    ? HEATMAP_HABITAT.features.find((feature) => feature.properties.id === selectedHeatmapAreaId)
+    : undefined;
+
+  useEffect(() => () => heatmapRequestGate.invalidate(), [heatmapRequestGate]);
+
+  useEffect(() => {
+    if (!heatmapEnabled || heatmapBundle) return;
+    const requestId = heatmapRequestGate.next();
+    setHeatmapLoading(true);
+    setHeatmapError(undefined);
+    void loadHeatmapPilot(db, { force: heatmapRetry > 0 })
+      .then((bundle) => {
+        if (heatmapRequestGate.isCurrent(requestId)) setHeatmapBundle(bundle);
+      })
+      .catch((error) => {
+        if (heatmapRequestGate.isCurrent(requestId)) {
+          setHeatmapError(error instanceof Error ? error.message : 'Pogojev za pilot trenutno ni mogoče naložiti.');
+        }
+      })
+      .finally(() => {
+        if (heatmapRequestGate.isCurrent(requestId)) setHeatmapLoading(false);
+      });
+  }, [db, heatmapBundle, heatmapEnabled, heatmapRequestGate, heatmapRetry]);
 
   useEffect(() => {
     if (!searchOpen) {
@@ -183,6 +262,7 @@ export function MapScreen() {
         onPress={() => {
           if (Date.now() <= suppressMapPressUntil.current) return;
           setSelectedId(undefined);
+          setSelectedHeatmapAreaId(undefined);
         }}
         onLongPress={(event) => {
           const [longitude, latitude] = event.nativeEvent.lngLat;
@@ -190,10 +270,32 @@ export function MapScreen() {
         }}
       >
         <Camera ref={camera} initialViewState={{ center: SLOVENIA_CENTER, zoom: 7 }} />
+        {heatmapEnabled && heatmapView ? <GeoJSONSource
+          id="mushroom-heatmap-pilot"
+          data={heatmapView.collection}
+          onPress={(event) => {
+            event.stopPropagation();
+            const areaId = event.nativeEvent.features[0]?.properties?.id;
+            if (typeof areaId === 'string') {
+              setSelectedId(undefined);
+              setSelectedHeatmapAreaId(areaId);
+            }
+          }}
+        >
+          <Layer id="mushroom-heatmap-fill" type="fill" paint={HEATMAP_FILL_PAINT} />
+          <Layer id="mushroom-heatmap-borders" type="line" paint={HEATMAP_BORDER_PAINT} />
+          {selectedHeatmapAreaId ? <Layer
+            id="mushroom-heatmap-selected"
+            type="line"
+            filter={['==', ['get', 'id'], selectedHeatmapAreaId]}
+            paint={HEATMAP_SELECTED_PAINT}
+          /> : null}
+        </GeoJSONSource> : null}
         {locationGranted ? <UserLocation animated accuracy minDisplacement={3} /> : null}
         {ownerFilter === 'mine' ? filtered.map((hotspot) => <Marker key={hotspot.id} id={hotspot.id} lngLat={[hotspot.longitude, hotspot.latitude]} anchor="bottom" onPress={(event) => {
           event.stopPropagation();
           suppressMapPressUntil.current = Date.now() + 300;
+          setSelectedHeatmapAreaId(undefined);
           focusHotspot(hotspot);
         }}>
           <View style={[styles.markerShell, selectedId === hotspot.id && styles.markerSelected]}>
@@ -204,7 +306,28 @@ export function MapScreen() {
         </Marker>)}
       </Map>
       <Pressable accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
-      {exploreLocation && !selected ? <Pressable accessibilityRole="button" accessibilityLabel={`Poglej razmere za ${exploreLocation.name}`} onPress={() => navigation.navigate('Tabs', { screen: 'Conditions' })} style={({ pressed }) => [styles.conditionsAction, pressed && styles.searchResultPressed]}>
+      <Pressable accessibilityRole="button" accessibilityLabel={heatmapEnabled ? 'Izklopi zemljevid pogojev' : 'Vklopi zemljevid pogojev'} onPress={() => {
+        const next = !heatmapEnabled;
+        setHeatmapEnabled(next);
+        setSelectedId(undefined);
+        if (!next) setSelectedHeatmapAreaId(undefined);
+        if (next) setCameraTarget({ center: [HEATMAP_PILOT_METADATA.center.longitude, HEATMAP_PILOT_METADATA.center.latitude], zoom: 9 });
+      }} style={({ pressed }) => [styles.heatmapToggle, heatmapEnabled && styles.heatmapToggleActive, pressed && styles.searchResultPressed]}>
+        <Ionicons name="layers-outline" size={20} color={heatmapEnabled ? colors.white : colors.primary} />
+        <Text style={[styles.heatmapToggleText, heatmapEnabled && styles.heatmapToggleTextActive]}>Pogoji</Text>
+      </Pressable>
+      {heatmapEnabled ? <View style={styles.heatmapControls}>
+        <Text style={styles.heatmapControlLabel}>VRSTA</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.heatmapChipRow}>
+          {(Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[]).map((profileId) => <Chip key={profileId} label={MUSHROOM_WEATHER_PROFILES[profileId].label} selected={heatmapProfileId === profileId} onPress={() => setHeatmapProfileId(profileId)} />)}
+        </ScrollView>
+        <View style={styles.heatmapDateRow}><Text style={styles.heatmapControlLabel}>DATUM</Text><Chip label="Danes" selected={heatmapTargetDay === 'today'} onPress={() => setHeatmapTargetDay('today')} /><Chip label="Jutri" selected={heatmapTargetDay === 'tomorrow'} onPress={() => setHeatmapTargetDay('tomorrow')} /></View>
+        <View style={styles.heatmapLegend}><View style={[styles.legendDot, { backgroundColor: '#A96B50' }]} /><Text style={styles.legendText}>slabe</Text><View style={[styles.legendDot, { backgroundColor: '#C7A85A' }]} /><View style={[styles.legendDot, { backgroundColor: '#7EA46E' }]} /><View style={[styles.legendDot, { backgroundColor: '#3F7C57' }]} /><View style={[styles.legendDot, { backgroundColor: '#174E3D' }]} /><Text style={styles.legendText}>odlične</Text><View style={[styles.legendDot, { backgroundColor: '#8B9190' }]} /><Text style={styles.legendText}>omejeno/neznano</Text></View>
+        <Text style={styles.heatmapAttribution}>Habitat: ESA WorldCover 2021 · Vreme: Open-Meteo</Text>
+        {heatmapLoading ? <View style={styles.heatmapStatus}><ActivityIndicator size="small" color={colors.primary} /><Text style={commonStyles.muted}>Nalagam realne habitatne in vremenske podatke …</Text></View> : null}
+        {heatmapError ? <View style={styles.heatmapStatus}><Text style={styles.heatmapErrorText}>{heatmapError}</Text><Pressable accessibilityRole="button" onPress={() => { setHeatmapBundle(undefined); setHeatmapRetry((value) => value + 1); }}><Text style={styles.retryText}>Poskusi znova</Text></Pressable></View> : null}
+      </View> : null}
+      {exploreLocation && !selected && !heatmapEnabled ? <Pressable accessibilityRole="button" accessibilityLabel={`Poglej razmere za ${exploreLocation.name}`} onPress={() => navigation.navigate('Tabs', { screen: 'Conditions' })} style={({ pressed }) => [styles.conditionsAction, pressed && styles.searchResultPressed]}>
         <Ionicons name="cloud-outline" size={21} color={colors.primary} />
         <View style={styles.grow}><Text numberOfLines={1} style={styles.conditionsLocation}>{exploreLocation.name}</Text><Text style={styles.conditionsActionText}>Poglej razmere</Text></View>
         <Ionicons name="chevron-forward" size={18} color={colors.primary} />
@@ -213,9 +336,81 @@ export function MapScreen() {
         <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{selected.title || 'Rastišče brez naslova'}</Text><Text style={commonStyles.muted}>{finds.filter((find) => find.hotspotId === selected.id).length} obiskov</Text></View><StatusPill state={selected.syncState} /><Pressable accessibilityRole="button" accessibilityLabel="Zapri kartico rastišča" hitSlop={8} onPress={() => setSelectedId(undefined)} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
         <AppButton title="Podrobnosti" variant="secondary" onPress={() => navigation.navigate('HotspotDetail', { hotspotId: selected.id })} />
       </Card> : null}
+      {!selected && heatmapEnabled && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
+        assessment={selectedHeatmapArea}
+        onClose={() => setSelectedHeatmapAreaId(undefined)}
+        onOpenConditions={() => {
+          setExploreLocation({
+            name: 'Pilot območje pri Črni na Koroškem',
+            latitude: selectedHeatmapFeature.properties.centerLatitude,
+            longitude: selectedHeatmapFeature.properties.centerLongitude,
+            admin1: 'Koroška',
+            country: 'Slovenija',
+            source: 'place',
+          });
+          navigation.navigate('Tabs', { screen: 'Conditions' });
+        }}
+      /> : null}
       {locating ? <View style={styles.locating}><Text style={commonStyles.muted}>Pridobivam lokacijo …</Text></View> : null}
     </View> : <View style={styles.list}>{ownerFilter === 'friends' ? friendHotspots.map((hotspot) => <Pressable key={hotspot.id} onPress={() => void Linking.openURL(`geo:${hotspot.latitude},${hotspot.longitude}?q=${hotspot.latitude},${hotspot.longitude}`)}><Card><Text style={commonStyles.heading}>{hotspot.title || 'Deljeno rastišče'}</Text><Text style={commonStyles.muted}>@{hotspot.owner_username} · točna lokacija, izrecno deljena s prijatelji</Text></Card></Pressable>) : filtered.length ? filtered.map((hotspot) => <Pressable key={hotspot.id} onPress={() => navigation.navigate('HotspotDetail', { hotspotId: hotspot.id })}><Card><View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{hotspot.title || 'Rastišče brez naslova'}</Text><Text style={commonStyles.muted}>{hotspot.latitude.toFixed(4)}, {hotspot.longitude.toFixed(4)} · {finds.filter((find) => find.hotspotId === hotspot.id).length} obiskov</Text></View><StatusPill state={hotspot.syncState} /></View></Card></Pressable>) : <EmptyState title={query.trim() ? 'Ni zadetkov med rastišči' : 'Še ni rastišč'} message={query.trim() ? 'Poskusite z drugim nazivom ali vrsto.' : 'Dodajte prvo rastišče z gumbom + ali z dolgim pritiskom na zemljevid.'} />}</View>}
   </Screen>;
+}
+
+const heatmapValue = (value: number | undefined, unit: string, digits = 1) =>
+  value == null ? 'ni podatka' : `${slNumber(value, digits)} ${unit}`;
+
+function heatmapInfluences(assessment: HeatmapAreaAssessment): Array<{ label: string; value: string }> {
+  const history = assessment.summary.historical;
+  const current = assessment.summary.current;
+  const contribution = (key: string, maximum: number) => {
+    const component = assessment.scoreDetails.components.find((item) => item.key === key);
+    return component ? `${slNumber(component.weightedPoints, 1)} / ${maximum}` : `ni podatka / ${maximum}`;
+  };
+  if (assessment.speciesId === 'boletusEdulis') return [
+    { label: 'Padavine 26 dni', value: `${heatmapValue(history?.rain26dMm, 'mm')} · ${contribution('rain26', 50)}` },
+    { label: 'Temperatura 20 dni', value: `${heatmapValue(history?.avgTemp20dC, '°C')} · ${contribution('temperature', 30)}` },
+    { label: 'Vlaga tal 0–7 / 7–28 cm', value: `${heatmapValue(current?.soilMoisture0To7Cm, 'm³/m³', 3)} / ${heatmapValue(current?.soilMoisture7To28Cm, 'm³/m³', 3)} · ${contribution('soilMoisture', 15)}` },
+    { label: 'ET₀ / dež 7 dni', value: `${heatmapValue(history?.evapotranspiration7dMm, 'mm')} / ${heatmapValue(history?.rain7dMm, 'mm')} · ${contribution('drying', 5)}` },
+  ];
+  if (assessment.speciesId === 'cantharellusCibarius') return [
+    { label: 'Padavine 30 dni', value: `${heatmapValue(history?.rain30dMm, 'mm')} · ${contribution('rain30', 40)}` },
+    { label: 'Padavine 7 dni', value: `${heatmapValue(history?.rain7dMm, 'mm')} · ${contribution('rain7', 10)}` },
+    { label: 'Temperatura 14 dni', value: `${heatmapValue(history?.avgTemp14dC, '°C')} · ${contribution('temperature', 25)}` },
+    { label: 'Vlaga tal 0–7 / 7–28 cm', value: `${heatmapValue(current?.soilMoisture0To7Cm, 'm³/m³', 3)} / ${heatmapValue(current?.soilMoisture7To28Cm, 'm³/m³', 3)} · ${contribution('soilMoisture', 20)}` },
+    { label: 'Izsuševanje', value: contribution('drying', 5) },
+  ];
+  if (assessment.speciesId === 'lactariusDeliciosus') return [
+    { label: 'Padavine 60 dni', value: `${heatmapValue(history?.rain60dMm, 'mm')} · ${contribution('rain60', 35)}` },
+    { label: 'Padavine 14 dni', value: `${heatmapValue(history?.rain14dMm, 'mm')} · ${contribution('rain14', 10)}` },
+    { label: 'Temperatura 20 dni', value: `${heatmapValue(history?.avgTemp20dC, '°C')} · ${contribution('temperature', 25)}` },
+    { label: 'Vlaga tal 0–7 / 7–28 cm', value: `${heatmapValue(current?.soilMoisture0To7Cm, 'm³/m³', 3)} / ${heatmapValue(current?.soilMoisture7To28Cm, 'm³/m³', 3)} · ${contribution('soilMoisture', 25)}` },
+    { label: 'Izsuševanje', value: contribution('drying', 5) },
+  ];
+  return [
+    { label: 'Padavine 7 / 14 / 30 dni', value: `${heatmapValue(history?.rain7dMm, 'mm')} / ${heatmapValue(history?.rain14dMm, 'mm')} / ${heatmapValue(history?.rain30dMm, 'mm')} · ${contribution('rain', 45)}` },
+    { label: 'Temperatura 20 dni', value: `${heatmapValue(history?.avgTemp20dC, '°C')} · ${contribution('temperature', 25)}` },
+    { label: 'Vlaga tal 0–7 / 7–28 cm', value: `${heatmapValue(current?.soilMoisture0To7Cm, 'm³/m³', 3)} / ${heatmapValue(current?.soilMoisture7To28Cm, 'm³/m³', 3)} · ${contribution('soilMoisture', 20)}` },
+    { label: 'ET₀ / dež 7 dni', value: `${heatmapValue(history?.evapotranspiration7dMm, 'mm')} / ${heatmapValue(history?.rain7dMm, 'mm')} · ${contribution('drying', 10)}` },
+  ];
+}
+
+function HeatmapAreaCard({ assessment, onClose, onOpenConditions }: { assessment: HeatmapAreaAssessment; onClose: () => void; onOpenConditions: () => void }) {
+  const profile = MUSHROOM_WEATHER_PROFILES[assessment.speciesId];
+  const quality = assessment.dataQuality === 'complete' ? 'Popolni podatki' : assessment.dataQuality === 'limited' ? 'Omejeni podatki' : 'Ni dovolj podatkov';
+  const habitat = assessment.habitatState === 'candidate' ? 'Potencialno habitatno območje' : assessment.habitatState === 'unknown' ? 'Habitat ni potrjen' : 'Zunaj pilotnega habitatnega modela';
+  return <Card style={styles.heatmapPreview}>
+    <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{profile.label}</Text><Text style={commonStyles.muted}>{assessment.targetDay === 'today' ? 'Danes' : 'Jutri'} · {assessment.targetLocalDate}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
+    <ScrollView style={styles.heatmapDetailsScroll} contentContainerStyle={styles.heatmapDetailsContent} nestedScrollEnabled>
+      <View style={styles.heatmapScoreLine}><Text style={styles.heatmapAreaScore}>{assessment.score == null ? '—' : `${assessment.score} / 100`}</Text><Text style={commonStyles.body}>{assessment.classLabel}</Text></View>
+      <Text style={styles.heatmapDetailTitle}>HABITAT</Text><Text style={commonStyles.body}>{habitat}</Text>
+      <Text style={styles.heatmapDetailTitle}>KAKOVOST PODATKOV</Text><Text style={commonStyles.body}>{quality}</Text>
+      <Text style={styles.heatmapDetailTitle}>GLAVNI VPLIVI</Text>
+      {heatmapInfluences(assessment).map((row) => <View key={row.label} style={styles.heatmapInfluence}><Text style={styles.heatmapInfluenceLabel}>{row.label}</Text><Text style={styles.heatmapInfluenceValue}>{row.value}</Text></View>)}
+      {assessment.limitations.slice(0, 3).map((limitation) => <Text key={limitation} style={commonStyles.muted}>• {limitation}</Text>)}
+      <Text style={commonStyles.muted}>Eksperimentalna primernost vremenskih razmer in potencialnega habitata, ne verjetnost najdbe. Karta ne potrjuje dostopa, dovoljenja za nabiranje ali prisotnosti vrste.</Text>
+      <AppButton title="Poglej podrobne razmere" variant="secondary" onPress={onOpenConditions} />
+    </ScrollView>
+  </Card>;
 }
 
 const styles = StyleSheet.create({
@@ -239,5 +434,29 @@ const styles = StyleSheet.create({
   conditionsLocation: { color: colors.text, fontSize: 13, fontWeight: '700' },
   conditionsActionText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
   preview: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.lg }, previewTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, closeButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSoft }, closeButtonPressed: { opacity: 0.65 }, grow: { flex: 1 }, locating: { position: 'absolute', alignSelf: 'center', top: spacing.lg, backgroundColor: colors.surface, padding: spacing.sm, borderRadius: radii.round },
+  heatmapToggle: { position: 'absolute', left: spacing.md, top: spacing.md, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, borderRadius: radii.round, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, elevation: 4 },
+  heatmapToggleActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  heatmapToggleText: { color: colors.primary, fontSize: 14, fontWeight: '800' },
+  heatmapToggleTextActive: { color: colors.white },
+  heatmapControls: { position: 'absolute', left: spacing.sm, right: spacing.sm, top: 66, gap: spacing.xs, padding: spacing.sm, borderRadius: radii.md, backgroundColor: 'rgba(255,253,247,0.96)', borderWidth: 1, borderColor: colors.border, elevation: 4 },
+  heatmapControlLabel: { color: colors.primary, fontSize: 11, fontWeight: '900', letterSpacing: 0.7 },
+  heatmapChipRow: { gap: spacing.xs, paddingRight: spacing.md },
+  heatmapDateRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  heatmapLegend: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 5 },
+  heatmapAttribution: { color: colors.muted, fontSize: 10 },
+  legendDot: { width: 10, height: 10, borderRadius: 5 },
+  legendText: { color: colors.muted, fontSize: 10 },
+  heatmapStatus: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  heatmapErrorText: { flex: 1, color: colors.danger, fontSize: 12 },
+  retryText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
+  heatmapPreview: { position: 'absolute', left: spacing.sm, right: spacing.sm, bottom: spacing.sm, maxHeight: '58%' },
+  heatmapDetailsScroll: { flexGrow: 0 },
+  heatmapDetailsContent: { gap: spacing.xs, paddingBottom: spacing.xs },
+  heatmapScoreLine: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
+  heatmapAreaScore: { color: colors.primary, fontSize: 28, fontWeight: '900' },
+  heatmapDetailTitle: { marginTop: spacing.xs, color: colors.primary, fontSize: 11, fontWeight: '900', letterSpacing: 0.7 },
+  heatmapInfluence: { paddingVertical: 3, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  heatmapInfluenceLabel: { color: colors.muted, fontSize: 11, fontWeight: '700' },
+  heatmapInfluenceValue: { color: colors.text, fontSize: 12, fontWeight: '700' },
   list: { flex: 1, minHeight: 0, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.md },
 });

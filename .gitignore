@@ -51,3 +51,9 @@ yarn-error.*
 # local Android builds
 output/
 *.apk
+
+# Heatmap pilot preparation scratch data (derived compact artifacts live in src/data/)
+/scripts/heatmap/.cache/
+/scripts/heatmap/raw/
+/scripts/heatmap/**/*.tif
+/scripts/heatmap/**/*.tiff
