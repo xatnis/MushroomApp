@@ -40,10 +40,10 @@ const placeDetails = (place: Pick<ExploreLocation, 'name' | 'admin1' | 'admin2' 
 export function ConditionsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { hotspots, finds, repository, online, exploreLocation, setExploreLocation, requestHotspotFocus } = useApp();
-  const [locationMode, setLocationMode] = useState<'gps' | 'manual'>(exploreLocation?.source === 'place' ? 'manual' : 'gps');
+  const [locationMode, setLocationMode] = useState<'gps' | 'manual'>(exploreLocation?.source === 'gps' ? 'gps' : 'manual');
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | undefined>(exploreLocation?.source === 'gps' ? exploreLocation : undefined);
   const [currentLocationName, setCurrentLocationName] = useState<string | undefined>(exploreLocation?.source === 'gps' ? exploreLocation.name : undefined);
-  const [selectedPlace, setSelectedPlace] = useState<ExploreLocation | undefined>(exploreLocation?.source === 'place' ? exploreLocation : undefined);
+  const [selectedPlace, setSelectedPlace] = useState<ExploreLocation | undefined>(exploreLocation?.source !== 'gps' ? exploreLocation : undefined);
   const [placeSearchOpen, setPlaceSearchOpen] = useState(false);
   const [placeQuery, setPlaceQuery] = useState('');
   const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);

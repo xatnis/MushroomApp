@@ -13,7 +13,7 @@ export interface ExploreLocation {
   admin1?: string;
   admin2?: string;
   country?: string;
-  source: 'place' | 'gps';
+  source: 'place' | 'gps' | 'heatmap';
 }
 
 export interface MushroomSpecies {

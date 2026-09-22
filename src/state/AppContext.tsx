@@ -5,6 +5,11 @@ import * as Sharing from 'expo-sharing';
 import { useSQLiteContext } from 'expo-sqlite';
 import type { Session, User } from '@supabase/supabase-js';
 import type { ExploreLocation, FindRecord, Hotspot, ProfileSummary, RecordingDraft } from '../domain/types';
+import {
+  DEFAULT_HEATMAP_NAVIGATION_STATE,
+  patchHeatmapNavigationState,
+  type HeatmapNavigationState,
+} from '../domain/heatmap/navigationState';
 import { DiaryRepository } from '../storage/database';
 import { cloudConfigured, supabase } from '../services/supabase';
 import { SyncEngine } from '../services/sync';
@@ -26,6 +31,8 @@ interface AppContextValue {
   cloudNotice?: string;
   exploreLocation?: ExploreLocation;
   setExploreLocation: (location: ExploreLocation) => void;
+  heatmapNavigation: HeatmapNavigationState;
+  updateHeatmapNavigation: (patch: Partial<HeatmapNavigationState>) => void;
   pendingHotspotFocus?: PendingHotspotFocus;
   requestHotspotFocus: (hotspot: Pick<Hotspot, 'id' | 'latitude' | 'longitude'>) => void;
   clearHotspotFocus: (requestId: string) => void;
@@ -71,6 +78,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [online, setOnline] = useState(true);
   const [cloudNotice, setCloudNotice] = useState<string>();
   const [exploreLocation, setExploreLocation] = useState<ExploreLocation>();
+  const [heatmapNavigation, setHeatmapNavigation] = useState<HeatmapNavigationState>(DEFAULT_HEATMAP_NAVIGATION_STATE);
   const [pendingHotspotFocus, setPendingHotspotFocus] = useState<PendingHotspotFocus>();
   const focusSequence = useRef(0);
 
@@ -86,6 +94,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const clearHotspotFocus = useCallback((requestId: string) => {
     setPendingHotspotFocus((current) => current?.requestId === requestId ? undefined : current);
+  }, []);
+
+  const updateHeatmapNavigation = useCallback((patch: Partial<HeatmapNavigationState>) => {
+    setHeatmapNavigation((current) => patchHeatmapNavigationState(current, patch));
   }, []);
 
   const refreshFor = useCallback(async (current: ProfileSummary) => {
@@ -223,7 +235,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [profile.id, repository]);
 
   return <AppContext.Provider value={{
-    ready, onboarded, profile, session, currentUser: session?.user, authLoading, cloudConfigured, hotspots, finds, online, cloudNotice, exploreLocation, setExploreLocation,
+    ready, onboarded, profile, session, currentUser: session?.user, authLoading, cloudConfigured, hotspots, finds, online, cloudNotice, exploreLocation, setExploreLocation, heatmapNavigation, updateHeatmapNavigation,
     pendingHotspotFocus, requestHotspotFocus, clearHotspotFocus, repository, refresh, finishOnboarding,
     saveVisit, saveDraft: (draft) => repository.saveDraft(profile.id, draft), clearDraft: () => repository.clearDraft(profile.id),
     syncNow, retrySync, attachLocalDiary, useCloudDiary, useLocalDiary, signIn, signUp, signOut: logout, logout, exportDiary,

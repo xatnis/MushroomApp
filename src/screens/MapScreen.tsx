@@ -66,7 +66,10 @@ export function MapScreen() {
   const db = useSQLiteContext();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<TabsParamList, 'Map'>>();
-  const { hotspots, finds, session, exploreLocation, setExploreLocation, pendingHotspotFocus, clearHotspotFocus } = useApp();
+  const {
+    hotspots, finds, session, exploreLocation, setExploreLocation, pendingHotspotFocus, clearHotspotFocus,
+    heatmapNavigation, updateHeatmapNavigation,
+  } = useApp();
   const camera = useRef<CameraRef>(null);
   const suppressMapPressUntil = useRef(0);
   const [mode, setMode] = useState<'map' | 'list'>('map');
@@ -82,10 +85,7 @@ export function MapScreen() {
   const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
   const [placeSearchError, setPlaceSearchError] = useState<string>();
   const [cameraTarget, setCameraTarget] = useState<{ center: [number, number]; zoom: number; focusRequestId?: string }>();
-  const [heatmapEnabled, setHeatmapEnabled] = useState(false);
-  const [heatmapProfileId, setHeatmapProfileId] = useState<MushroomWeatherProfileId>('boletusEdulis');
-  const [heatmapTargetDay, setHeatmapTargetDay] = useState<HeatmapTargetDay>('today');
-  const [selectedHeatmapAreaId, setSelectedHeatmapAreaId] = useState<string>();
+  const { enabled: heatmapEnabled, profileId: heatmapProfileId, targetDay: heatmapTargetDay, selectedAreaId: selectedHeatmapAreaId } = heatmapNavigation;
   const [heatmapBundle, setHeatmapBundle] = useState<HeatmapPilotBundle>();
   const [heatmapLoading, setHeatmapLoading] = useState(false);
   const [heatmapError, setHeatmapError] = useState<string>();
@@ -188,8 +188,9 @@ export function MapScreen() {
   useEffect(() => {
     if (!route.params?.focusExploreLocationAt || !exploreLocation) return;
     setSelectedId(undefined); setMode('map');
+    if (exploreLocation.source === 'heatmap') updateHeatmapNavigation({ enabled: true });
     setCameraTarget({ center: [exploreLocation.longitude, exploreLocation.latitude], zoom: exploreLocation.source === 'gps' ? 15 : 12 });
-  }, [exploreLocation, route.params?.focusExploreLocationAt]);
+  }, [exploreLocation, route.params?.focusExploreLocationAt, updateHeatmapNavigation]);
 
   const focusHotspot = (hotspot: (typeof hotspots)[number]) => {
     setSelectedId(hotspot.id); setOwnerFilter('mine'); setMode('map');
@@ -265,17 +266,25 @@ export function MapScreen() {
         logo={false}
         scaleBar={false}
         onDidFinishLoadingMap={() => setMapReady(true)}
+        onRegionDidChange={(event) => {
+          if (!heatmapEnabled) return;
+          const [longitude, latitude] = event.nativeEvent.center;
+          const { zoom } = event.nativeEvent;
+          if (Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(zoom)) {
+            updateHeatmapNavigation({ viewport: { center: [longitude, latitude], zoom } });
+          }
+        }}
         onPress={() => {
           if (Date.now() <= suppressMapPressUntil.current) return;
           setSelectedId(undefined);
-          setSelectedHeatmapAreaId(undefined);
+          updateHeatmapNavigation({ selectedAreaId: undefined });
         }}
         onLongPress={(event) => {
           const [longitude, latitude] = event.nativeEvent.lngLat;
           navigation.navigate('Record', { latitude, longitude });
         }}
       >
-        <Camera ref={camera} initialViewState={{ center: SLOVENIA_CENTER, zoom: 7 }} />
+        <Camera ref={camera} initialViewState={heatmapNavigation.viewport ?? { center: SLOVENIA_CENTER, zoom: 7 }} />
         {heatmapEnabled && heatmapView ? <GeoJSONSource
           id="mushroom-heatmap-pilot"
           data={heatmapView.collection}
@@ -284,7 +293,7 @@ export function MapScreen() {
             const areaId = event.nativeEvent.features[0]?.properties?.id;
             if (typeof areaId === 'string') {
               setSelectedId(undefined);
-              setSelectedHeatmapAreaId(areaId);
+              updateHeatmapNavigation({ selectedAreaId: areaId });
             }
           }}
         >
@@ -301,7 +310,7 @@ export function MapScreen() {
         {ownerFilter === 'mine' ? filtered.map((hotspot) => <Marker key={hotspot.id} id={hotspot.id} lngLat={[hotspot.longitude, hotspot.latitude]} anchor="bottom" onPress={(event) => {
           event.stopPropagation();
           suppressMapPressUntil.current = Date.now() + 300;
-          setSelectedHeatmapAreaId(undefined);
+          updateHeatmapNavigation({ selectedAreaId: undefined });
           focusHotspot(hotspot);
         }}>
           <View style={[styles.markerShell, selectedId === hotspot.id && styles.markerSelected]}>
@@ -314,9 +323,8 @@ export function MapScreen() {
       <Pressable accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel={heatmapEnabled ? 'Izklopi zemljevid pogojev' : 'Vklopi zemljevid pogojev'} onPress={() => {
         const next = !heatmapEnabled;
-        setHeatmapEnabled(next);
+        updateHeatmapNavigation({ enabled: next });
         setSelectedId(undefined);
-        if (!next) setSelectedHeatmapAreaId(undefined);
         if (next) setCameraTarget({ center: [HEATMAP_PILOT_METADATA.center.longitude, HEATMAP_PILOT_METADATA.center.latitude], zoom: 9 });
       }} style={({ pressed }) => [styles.heatmapToggle, heatmapEnabled && styles.heatmapToggleActive, pressed && styles.searchResultPressed]}>
         <Ionicons name="layers-outline" size={20} color={heatmapEnabled ? colors.white : colors.primary} />
@@ -325,9 +333,9 @@ export function MapScreen() {
       {heatmapEnabled ? <View style={styles.heatmapControls}>
         <Text style={styles.heatmapControlLabel}>VRSTA</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.heatmapChipRow}>
-          {(Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[]).map((profileId) => <Chip key={profileId} label={MUSHROOM_WEATHER_PROFILES[profileId].label} selected={heatmapProfileId === profileId} onPress={() => setHeatmapProfileId(profileId)} />)}
+          {(Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[]).map((profileId) => <Chip key={profileId} label={MUSHROOM_WEATHER_PROFILES[profileId].label} selected={heatmapProfileId === profileId} onPress={() => updateHeatmapNavigation({ profileId })} />)}
         </ScrollView>
-        <View style={styles.heatmapDateRow}><Text style={styles.heatmapControlLabel}>DATUM</Text><Chip label="Danes" selected={heatmapTargetDay === 'today'} onPress={() => setHeatmapTargetDay('today')} /><Chip label="Jutri" selected={heatmapTargetDay === 'tomorrow'} onPress={() => setHeatmapTargetDay('tomorrow')} /></View>
+        <View style={styles.heatmapDateRow}><Text style={styles.heatmapControlLabel}>DATUM</Text><Chip label="Danes" selected={heatmapTargetDay === 'today'} onPress={() => updateHeatmapNavigation({ targetDay: 'today' })} /><Chip label="Jutri" selected={heatmapTargetDay === 'tomorrow'} onPress={() => updateHeatmapNavigation({ targetDay: 'tomorrow' })} /></View>
         <View style={styles.heatmapLegend}><View style={[styles.legendDot, { backgroundColor: '#A96B50' }]} /><Text style={styles.legendText}>slabe</Text><View style={[styles.legendDot, { backgroundColor: '#C7A85A' }]} /><View style={[styles.legendDot, { backgroundColor: '#7EA46E' }]} /><View style={[styles.legendDot, { backgroundColor: '#3F7C57' }]} /><View style={[styles.legendDot, { backgroundColor: '#174E3D' }]} /><Text style={styles.legendText}>odlične</Text><View style={[styles.legendDot, { backgroundColor: '#8B9190' }]} /><Text style={styles.legendText}>omejeno/neznano</Text></View>
         <Text style={styles.heatmapAttribution}>Habitat: ESA WorldCover 2021 · Vreme: Open-Meteo</Text>
         {heatmapLoading ? <View style={styles.heatmapStatus}><ActivityIndicator size="small" color={colors.primary} /><Text style={commonStyles.muted}>Nalagam realne habitatne in vremenske podatke …</Text></View> : null}
@@ -348,14 +356,15 @@ export function MapScreen() {
         areaDetails={heatmapAreaLocality?.location.admin1 && heatmapAreaLocality?.location.country
           ? `${heatmapAreaLocality.location.admin1}, ${heatmapAreaLocality.location.country}`
           : undefined}
-        onClose={() => setSelectedHeatmapAreaId(undefined)}
+        onClose={() => updateHeatmapNavigation({ selectedAreaId: undefined })}
         onOpenConditions={() => {
-          setExploreLocation(heatmapAreaLocality?.location ?? {
+          const areaLocation = heatmapAreaLocality?.location ?? {
             name: 'Izbrano območje',
             latitude: selectedHeatmapFeature.properties.centerLatitude,
             longitude: selectedHeatmapFeature.properties.centerLongitude,
-            source: 'place',
-          });
+            source: 'heatmap',
+          };
+          setExploreLocation({ ...areaLocation, source: 'heatmap' });
           navigation.navigate('Tabs', { screen: 'Conditions' });
         }}
       /> : null}
