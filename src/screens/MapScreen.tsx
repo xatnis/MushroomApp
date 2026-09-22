@@ -357,7 +357,7 @@ export function MapScreen() {
         </ScrollView>
         <View style={styles.heatmapDateRow}><Text style={styles.heatmapControlLabel}>DATUM</Text><Chip label="Danes" selected={heatmapTargetDay === 'today'} onPress={() => updateHeatmapNavigation({ targetDay: 'today' })} /><Chip label="Jutri" selected={heatmapTargetDay === 'tomorrow'} onPress={() => updateHeatmapNavigation({ targetDay: 'tomorrow' })} /></View>
         <View style={styles.heatmapLegend}><View style={[styles.legendDot, { backgroundColor: '#A96B50' }]} /><Text style={styles.legendText}>slabe</Text><View style={[styles.legendDot, { backgroundColor: '#C7A85A' }]} /><View style={[styles.legendDot, { backgroundColor: '#7EA46E' }]} /><View style={[styles.legendDot, { backgroundColor: '#3F7C57' }]} /><View style={[styles.legendDot, { backgroundColor: '#174E3D' }]} /><Text style={styles.legendText}>odlične</Text><View style={[styles.legendDot, { backgroundColor: '#8B9190' }]} /><Text style={styles.legendText}>omejeno/neznano</Text></View>
-        <Text style={styles.heatmapAttribution}>Habitat: ESA WorldCover 2021 · Vreme: Open-Meteo</Text>
+        <Text style={styles.heatmapAttribution}>Habitat: ESA WorldCover 2021 + Zavod za gozdove Slovenije – podatki o sestojih · Vreme: Open-Meteo</Text>
         {heatmapLoading ? <View style={styles.heatmapStatus}><ActivityIndicator size="small" color={colors.primary} /><Text style={commonStyles.muted}>Nalagam realne habitatne in vremenske podatke …</Text></View> : null}
         {heatmapError ? <View style={styles.heatmapStatus}><Text style={styles.heatmapErrorText}>{heatmapError}</Text><Pressable accessibilityRole="button" onPress={() => { setHeatmapBundle(undefined); setHeatmapRetry((value) => value + 1); }}><Text style={styles.retryText}>Poskusi znova</Text></Pressable></View> : null}
       </View> : null}
@@ -434,12 +434,17 @@ function heatmapInfluences(assessment: HeatmapAreaAssessment): Array<{ label: st
 function HeatmapAreaCard({ assessment, areaLabel, areaDetails, onClose, onOpenConditions }: { assessment: HeatmapAreaAssessment; areaLabel: string; areaDetails?: string; onClose: () => void; onOpenConditions: () => void }) {
   const profile = MUSHROOM_WEATHER_PROFILES[assessment.speciesId];
   const quality = assessment.dataQuality === 'complete' ? 'Popolni podatki' : assessment.dataQuality === 'limited' ? 'Omejeni podatki' : 'Ni dovolj podatkov';
-  const habitat = assessment.habitatState === 'candidate' ? 'Potencialno habitatno območje' : assessment.habitatState === 'unknown' ? 'Habitat ni potrjen' : 'Zunaj habitatnega modela';
+  const habitat = assessment.habitatState === 'candidate'
+    ? assessment.speciesId === 'lactariusDeliciosus' ? 'Potencialno ustrezno gozdno območje' : 'Potencialno habitatno območje'
+    : assessment.habitatState === 'unknown'
+      ? assessment.speciesId === 'lactariusDeliciosus' ? 'Vrsta dreves ni dovolj potrjena' : 'Habitat ni potrjen'
+      : 'Zunaj habitatnega modela';
   return <Card style={styles.heatmapPreview}>
     <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{areaLabel}</Text>{areaDetails ? <Text style={commonStyles.muted}>{areaDetails}</Text> : null}<Text style={commonStyles.muted}>{profile.label} · {assessment.targetDay === 'today' ? 'Danes' : 'Jutri'}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
     <ScrollView style={styles.heatmapDetailsScroll} contentContainerStyle={styles.heatmapDetailsContent} nestedScrollEnabled>
       <View style={styles.heatmapScoreLine}><Text style={styles.heatmapAreaScore}>{assessment.score == null ? '—' : `${assessment.score} / 100`}</Text><Text style={commonStyles.body}>{assessment.classLabel}</Text></View>
       <Text style={styles.heatmapDetailTitle}>HABITAT</Text><Text style={commonStyles.body}>{habitat}</Text>
+      {assessment.treeCompositionSource ? <Text style={commonStyles.muted}>Vir drevesne sestave: {assessment.treeCompositionSource}</Text> : null}
       <Text style={styles.heatmapDetailTitle}>KAKOVOST PODATKOV</Text><Text style={commonStyles.body}>{quality}</Text>
       <Text style={styles.heatmapDetailTitle}>GLAVNI VPLIVI</Text>
       {heatmapInfluences(assessment).map((row) => <View key={row.label} style={styles.heatmapInfluence}><Text style={styles.heatmapInfluenceLabel}>{row.label}</Text><Text style={styles.heatmapInfluenceValue}>{row.value}</Text></View>)}

@@ -57,3 +57,4 @@ output/
 /scripts/heatmap/raw/
 /scripts/heatmap/**/*.tif
 /scripts/heatmap/**/*.tiff
+/scripts/heatmap/__pycache__/

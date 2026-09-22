@@ -1,5 +1,7 @@
 import habitatArtifact from '../../data/heatmapPilot/habitat.geojson.json';
 import metadataArtifact from '../../data/heatmapPilot/metadata.json';
+import zgsArtifact from '../../data/heatmapPilot/zgs-enrichment.json';
+import { lactariusHabitatState } from './zgs';
 import type { MushroomWeatherProfileId } from '../types';
 import type {
   HeatmapAreaAssessment,
@@ -10,6 +12,7 @@ import type {
   HeatmapRenderFeatureCollection,
   HeatmapTargetDay,
   HeatmapWeatherAssessment,
+  ZgsEnrichmentArtifact,
 } from './types';
 import {
   HEATMAP_WEATHER_POLICY_VERSION,
@@ -20,7 +23,16 @@ import {
 export { HEATMAP_WEATHER_POLICY_VERSION, PILOT_MIN_TREE_COVER_FRACTION, PILOT_MIN_VEGETATION_FRACTION } from './config';
 
 export const HEATMAP_PILOT_METADATA = metadataArtifact as HeatmapPilotMetadata;
-export const HEATMAP_HABITAT = habitatArtifact as HeatmapHabitatFeatureCollection;
+export const ZGS_ENRICHMENT = zgsArtifact as ZgsEnrichmentArtifact;
+export const HEATMAP_HABITAT: HeatmapHabitatFeatureCollection = {
+  ...(habitatArtifact as HeatmapHabitatFeatureCollection),
+  features: (habitatArtifact as HeatmapHabitatFeatureCollection).features.map((feature) => ({
+    ...feature,
+    properties: { ...feature.properties, zgs: ZGS_ENRICHMENT.schemaVersion === 1
+      && ZGS_ENRICHMENT.pilotId === HEATMAP_PILOT_METADATA.pilotId
+      ? ZGS_ENRICHMENT.areas[feature.properties.id] : undefined },
+  })),
+};
 
 export const HEATMAP_PROFILE_IDS: MushroomWeatherProfileId[] = [
   'generic',
@@ -43,17 +55,18 @@ export function habitatStateFor(
       : 'outside-model';
   }
   if (profileId === 'lactariusDeliciosus') {
-    // WorldCover tree cover does not identify pine. Without verified tree-species
-    // data the honest state is unknown, never candidate.
-    return wooded ? 'unknown' : 'outside-model';
+    return lactariusHabitatState(wooded, feature.properties.zgs);
   }
   return wooded ? 'candidate' : 'outside-model';
 }
 
-export function habitatExplanation(profileId: MushroomWeatherProfileId, state: HeatmapHabitatState): string {
+export function habitatExplanation(profileId: MushroomWeatherProfileId, state: HeatmapHabitatState, zgsAvailable = false): string {
   if (state === 'outside-model') return 'Območje nima dovolj ustreznega vegetacijskega oziroma drevesnega pokrova za habitatni model.';
   if (profileId === 'lactariusDeliciosus') {
-    return 'Na voljo je podatek o drevesnem pokrovu, vendar vrsta dreves ni potrjena. Za užitno sirovko habitat zato ostaja neznan.';
+    if (state === 'candidate') return 'Podatki ZGS potrjujejo prisotnost bora v delu gozdnih sestojev na tem območju.';
+    return zgsAvailable
+      ? 'Območje je gozdnato, vendar ni dovolj podatkov za zanesljivo potrditev bora.'
+      : 'Za to območje ni dovolj podatkov o drevesni sestavi.';
   }
   if (profileId === 'generic') return 'Območje ima dovolj vegetacijskega pokrova za splošno vremensko oceno.';
   if (profileId === 'cantharellusCibarius') return 'Območje ima dovolj drevesnega pokrova za potencialno gozdno rastišče.';
@@ -89,13 +102,15 @@ export function areaAssessmentFor(
     habitatState,
     scoreDetails: weather.score,
     summary: weather.summary,
-    limitations: [habitatExplanation(weather.speciesId, habitatState), ...weather.limitations],
+    limitations: [habitatExplanation(weather.speciesId, habitatState, feature.properties.zgs?.zgsAvailable), ...weather.limitations],
     sourceAge: weather.summary.stale ? 'predpomnjeni podatki' : 'sveži podatki',
     fetchedAt: weather.summary.updatedAt,
     weatherSamplingResolutionM: HEATMAP_PILOT_METADATA.weatherSamplingSpacingM,
     habitatSource: HEATMAP_PILOT_METADATA.worldCover.dataset,
     habitatSourceVintage: HEATMAP_PILOT_METADATA.worldCover.version,
     modelledHistoryDays: weather.modelledHistoryDays,
+    treeCompositionSource: feature.properties.zgs?.zgsAvailable ? ZGS_ENRICHMENT.source : undefined,
+    treeCompositionFetchedAt: feature.properties.zgs?.zgsAvailable ? ZGS_ENRICHMENT.fetchedAt : undefined,
   };
 }
 
@@ -109,10 +124,12 @@ export function buildHeatmapRenderCollection(
     if (!weather) throw new Error(`Manjka vremenska celica ${feature.properties.weatherCellId}.`);
     const assessment = areaAssessmentFor(feature, weather);
     assessments[feature.properties.id] = assessment;
+    // Composition stays in the static domain index, not in every MapLibre source update.
+    const { zgs: _zgs, ...renderProperties } = feature.properties;
     return {
       ...feature,
       properties: {
-        ...feature.properties,
+        ...renderProperties,
         score: assessment.score ?? -1,
         scoreLabel: assessment.classLabel,
         renderState: renderStateFor(assessment),

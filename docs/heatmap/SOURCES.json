@@ -32,7 +32,50 @@
   "zgs": {
     "checkedEndpoint": "https://prostor.zgs.gov.si/geoserver/wfs",
     "checkedLayer": "pregledovalnik:sestoji",
-    "used": false,
-    "blocker": "Tree-species attribute semantics and downstream reuse terms were not verified strongly enough for a safe pine-presence claim."
+    "used": true,
+    "acquisitionDate": "2026-09-22",
+    "wfsVersion": "2.0.0",
+    "defaultCrs": "EPSG:3794",
+    "analysisCrs": "EPSG:3794",
+    "mobileGeometryCrs": "EPSG:4326",
+    "geometryField": "geom (gml:MultiSurfacePropertyType)",
+    "pagination": "count=1000, startIndex, sortBy=ggo,odsek,sestoj; matched counts and unique feature IDs checked; server advertises PagingIsTransactionSafe=FALSE",
+    "format": "application/json",
+    "schemaVersion": "Official description 2.8, section 3.3.2, table 14; live DescribeFeatureType verified",
+    "schemaDocumentation": "https://prostor.zgs.gov.si/pregledovalnik/viewer/GetHelp?info=true",
+    "fieldSemantics": "Base lzskdvXX = tree-group percentage of stand growing stock. Not canopy cover, cell area share or mushroom suitability. All *_m regeneration fields excluded from analysis.",
+    "fields": {
+      "ggo": "forest management region code",
+      "odsek": "forest subsection code",
+      "sestoj": "stand code",
+      "povrsina": "stand area in hectares; geometric intersections used instead for aggregation",
+      "rfaza": "development phase code",
+      "rfaza_naziv": "development phase name",
+      "lzskdv11": "smreka [%] glede na lesno zalogo sestoja",
+      "lzskdv21": "jelka [%] glede na lesno zalogo sestoja",
+      "lzskdv30": "delež skupine drevesnih vrst bor [%] glede na lesno zalogo sestoja",
+      "lzskdv34": "macesen [%] glede na lesno zalogo sestoja",
+      "lzskdv39": "ostali iglavci [%] glede na lesno zalogo sestoja",
+      "lzskdv41": "bukev [%] glede na lesno zalogo sestoja",
+      "lzskdv50": "hrasti [%] glede na lesno zalogo sestoja",
+      "lzskdv60": "plemeniti listavci [%] glede na lesno zalogo sestoja",
+      "lzskdv70": "trdi listavci [%] glede na lesno zalogo sestoja",
+      "lzskdv80": "mehki listavci [%] glede na lesno zalogo sestoja"
+    },
+    "attribution": "Zavod za gozdove Slovenije – podatki o sestojih; prostorska agregacija MushroomApp",
+    "reuse": {
+      "officialTerms": "https://www.zgs.si/informacije/informacije-javnega-znacaja/",
+      "status": "Published section 5 specifies mandatory source attribution for reuse of all public information. Section 3.c exempts attribution-only reuse from a written reuse decision. This is the basis for storing and distributing the derived pilot aggregation with attribution.",
+      "namedOpenLicense": null,
+      "limits": "No CC/open-license label is asserted for ZGS. No ownership data or raw stand geometry is distributed. Recheck current terms before a wider/commercial rollout or a changed source."
+    },
+    "derivedArtifact": "src/data/heatmapPilot/zgs-enrichment.json",
+    "limitations": [
+      "Acquisition date is not survey vintage; per-stand observation date is unavailable in this schema.",
+      "A positive pine share applies to a whole stand and does not locate pine within that stand.",
+      "Data cover Slovenian stands; the pilot also crosses the national border.",
+      "Valid zero shares, missing values, low coverage and lack of stand coverage remain distinguishable.",
+      "Weather scores and other species habitat rules are not modified."
+    ]
   }
 }

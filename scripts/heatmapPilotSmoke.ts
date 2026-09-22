@@ -85,7 +85,7 @@ assert(treeFeature && openFeature, 'Pilot artifact must contain both wooded and 
 assert(habitatStateFor(treeFeature, 'boletusEdulis') === 'candidate', 'Wooded Boletus cell must be candidate.');
 assert(habitatStateFor(treeFeature, 'cantharellusCibarius') === 'candidate', 'Wooded Chanterelle cell must be candidate.');
 assert(habitatStateFor(openFeature, 'boletusEdulis') === 'outside-model', 'Open Boletus cell must be outside-model.');
-assert(habitatStateFor(treeFeature, 'lactariusDeliciosus') === 'unknown', 'WorldCover-only Lactarius cell must remain unknown.');
+assert(habitatStateFor({ ...treeFeature, properties: { ...treeFeature.properties, zgs: undefined } }, 'lactariusDeliciosus') === 'unknown', 'WorldCover-only Lactarius cell must remain unknown.');
 
 const weatherIds = new Set(HEATMAP_PILOT_METADATA.weatherCells.map((cell) => cell.id));
 assert(HEATMAP_HABITAT.features.every((feature) => weatherIds.has(feature.properties.weatherCellId)), 'Every habitat area must map to a real pilot weather cell.');

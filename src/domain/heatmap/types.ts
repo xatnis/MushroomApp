@@ -52,6 +52,32 @@ export interface HeatmapHabitatProperties {
   sourcePixelCount: number;
   sourceVersion: string;
   sourceResolutionM: number;
+  zgs?: ZgsHabitatEnrichment;
+}
+
+/** Area-weighted stand growing-stock shares, NOT canopy or cell pine coverage. */
+export interface ZgsHabitatEnrichment {
+  zgsAvailable: boolean;
+  zgsForestCoveredAreaFraction: number;
+  zgsDataCoverageFraction: number;
+  pineEvidenceAreaFraction: number;
+  pineShareAreaWeightedPct: number | null;
+  spruceShareAreaWeightedPct: number | null;
+  firShareAreaWeightedPct: number | null;
+  beechShareAreaWeightedPct: number | null;
+  zgsStandCount: number;
+  zgsPinePositiveStandCount: number;
+  overlapAreaFraction: number;
+  invalidPineStandCount: number;
+}
+
+export interface ZgsEnrichmentArtifact {
+  schemaVersion: number;
+  pilotId: string;
+  fetchedAt: string;
+  source: string;
+  sourceSchemaVersion: string;
+  areas: Record<string, ZgsHabitatEnrichment>;
 }
 
 export interface HeatmapPolygonGeometry {
@@ -130,6 +156,8 @@ export interface HeatmapAreaAssessment {
   habitatSource: string;
   habitatSourceVintage: string;
   modelledHistoryDays: number;
+  treeCompositionSource?: string;
+  treeCompositionFetchedAt?: string;
 }
 
 export interface HeatmapRenderProperties extends HeatmapHabitatProperties {
