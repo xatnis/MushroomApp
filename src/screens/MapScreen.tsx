@@ -238,6 +238,35 @@ export function MapScreen() {
     </View>
     <View style={styles.controls}>
       <Field label="Poišči" placeholder="Poišči kraj, rastišče ali vrsto" value={query} onChangeText={setQuery} autoCorrect={false} returnKeyType="search" />
+      <View style={styles.mapModeSwitch} accessibilityRole="tablist">
+        <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: !heatmapEnabled }}
+          accessibilityLabel="Način Rastišča"
+          onPress={() => updateHeatmapNavigation({ enabled: false })}
+          style={({ pressed }) => [styles.mapModeOption, !heatmapEnabled && styles.mapModeOptionActive, pressed && styles.mapModeOptionPressed]}
+        >
+          <Ionicons name="map-outline" size={18} color={!heatmapEnabled ? colors.white : colors.primary} />
+          <Text style={[styles.mapModeText, !heatmapEnabled && styles.mapModeTextActive]}>Rastišča</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: heatmapEnabled }}
+          accessibilityLabel="Način Pogoji"
+          onPress={() => {
+            updateHeatmapNavigation({ enabled: true });
+            setSelectedId(undefined);
+            setCameraTarget(heatmapNavigation.viewport ?? {
+              center: [HEATMAP_PILOT_METADATA.center.longitude, HEATMAP_PILOT_METADATA.center.latitude],
+              zoom: 9,
+            });
+          }}
+          style={({ pressed }) => [styles.mapModeOption, heatmapEnabled && styles.mapModeOptionActive, pressed && styles.mapModeOptionPressed]}
+        >
+          <Ionicons name="layers-outline" size={18} color={heatmapEnabled ? colors.white : colors.primary} />
+          <Text style={[styles.mapModeText, heatmapEnabled && styles.mapModeTextActive]}>Pogoji</Text>
+        </Pressable>
+      </View>
       {searchOpen ? <View style={styles.searchPanel}>
         <ScrollView style={styles.searchScroll} contentContainerStyle={styles.searchContent} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
           {placeSearchLoading ? <ActivityIndicator color={colors.primary} /> : null}
@@ -321,15 +350,6 @@ export function MapScreen() {
         </Marker>)}
       </Map>
       <Pressable accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel={heatmapEnabled ? 'Izklopi zemljevid pogojev' : 'Vklopi zemljevid pogojev'} onPress={() => {
-        const next = !heatmapEnabled;
-        updateHeatmapNavigation({ enabled: next });
-        setSelectedId(undefined);
-        if (next) setCameraTarget({ center: [HEATMAP_PILOT_METADATA.center.longitude, HEATMAP_PILOT_METADATA.center.latitude], zoom: 9 });
-      }} style={({ pressed }) => [styles.heatmapToggle, heatmapEnabled && styles.heatmapToggleActive, pressed && styles.searchResultPressed]}>
-        <Ionicons name="layers-outline" size={20} color={heatmapEnabled ? colors.white : colors.primary} />
-        <Text style={[styles.heatmapToggleText, heatmapEnabled && styles.heatmapToggleTextActive]}>Pogoji</Text>
-      </Pressable>
       {heatmapEnabled ? <View style={styles.heatmapControls}>
         <Text style={styles.heatmapControlLabel}>VRSTA</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.heatmapChipRow}>
@@ -435,6 +455,12 @@ const styles = StyleSheet.create({
   screen: { flex: 1, minHeight: 0, padding: 0, gap: 0 },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md, gap: spacing.md },
   controls: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.sm },
+  mapModeSwitch: { flexDirection: 'row', padding: 3, gap: 3, borderRadius: radii.round, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border },
+  mapModeOption: { minHeight: 42, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderRadius: radii.round },
+  mapModeOptionActive: { backgroundColor: colors.primary },
+  mapModeOptionPressed: { opacity: 0.78 },
+  mapModeText: { color: colors.primary, fontSize: 14, fontWeight: '800' },
+  mapModeTextActive: { color: colors.white },
   searchPanel: { maxHeight: 270, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, backgroundColor: colors.surface, overflow: 'hidden', elevation: 3 },
   searchScroll: { flexGrow: 0 },
   searchContent: { padding: spacing.sm, gap: spacing.xs },
@@ -452,10 +478,6 @@ const styles = StyleSheet.create({
   conditionsLocation: { color: colors.text, fontSize: 13, fontWeight: '700' },
   conditionsActionText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
   preview: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.lg }, previewTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, closeButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSoft }, closeButtonPressed: { opacity: 0.65 }, grow: { flex: 1 }, locating: { position: 'absolute', alignSelf: 'center', top: spacing.lg, backgroundColor: colors.surface, padding: spacing.sm, borderRadius: radii.round },
-  heatmapToggle: { position: 'absolute', left: spacing.md, top: spacing.md, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, borderRadius: radii.round, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, elevation: 4 },
-  heatmapToggleActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  heatmapToggleText: { color: colors.primary, fontSize: 14, fontWeight: '800' },
-  heatmapToggleTextActive: { color: colors.white },
   heatmapControls: { position: 'absolute', left: spacing.sm, right: spacing.sm, top: 66, gap: spacing.xs, padding: spacing.sm, borderRadius: radii.md, backgroundColor: 'rgba(255,253,247,0.96)', borderWidth: 1, borderColor: colors.border, elevation: 4 },
   heatmapControlLabel: { color: colors.primary, fontSize: 11, fontWeight: '900', letterSpacing: 0.7 },
   heatmapChipRow: { gap: spacing.xs, paddingRight: spacing.md },

@@ -35,6 +35,16 @@ assert(
 
 const disabled = patchHeatmapNavigationState(chanterelleTomorrow, { enabled: false });
 assert(!disabled.enabled && disabled.selectedAreaId == null, 'Disabling the heatmap must only clear its selected area.');
+assert(
+  disabled.profileId === 'cantharellusCibarius' && disabled.targetDay === 'tomorrow' && disabled.viewport?.zoom === 11.5,
+  'Switching to Rastišča must preserve heatmap species, date, and viewport for the next Pogoji entry.',
+);
+
+const reopenedConditions = patchHeatmapNavigationState(disabled, { enabled: true });
+assert(
+  reopenedConditions.enabled && reopenedConditions.profileId === 'cantharellusCibarius' && reopenedConditions.targetDay === 'tomorrow',
+  'Switching back to Pogoji must restore the previous species and target date.',
+);
 
 console.info('Heatmap navigation smoke tests passed', {
   selectedAreaId: returnedFromConditions.selectedAreaId,
