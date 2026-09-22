@@ -5,19 +5,43 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppButton, Card, Chip, Field, Notice, Screen, SectionTitle, commonStyles } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
-import type { ConditionsData, ExploreLocation, Hotspot, MushroomConditionsScore, MushroomWeatherProfileId, MushroomWeatherSummary, ScoreResult } from '../domain/types';
+import type { ExploreLocation, Hotspot, MushroomConditionsScore, MushroomWeatherProfileId, MushroomWeatherSummary } from '../domain/types';
 import { useApp } from '../state/AppContext';
-import { getConditions, getMushroomWeatherSummary, searchLocations, type PlaceSearchResult } from '../services/weather';
+import { getMushroomWeatherSummary, searchLocations, type PlaceSearchResult } from '../services/weather';
 import { acquireForegroundPosition, LocationAcquisitionError } from '../services/location';
 import { buildGpsExploreLocation, debugGpsLocality, resolveGpsLocality } from '../services/locality';
-import { calculateMushroomScore } from '../domain/scoring';
 import { BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
+import { assessLocationWeather, type LocationRankingAssessment } from '../domain/locationRanking';
 import { buildGenericWeatherDetails } from '../domain/weatherDetails';
 import { haversineKm, slDateTime, slNumber } from '../domain/format';
 import { speciesCatalogue } from '../domain/species';
 import { colors, radii, spacing } from '../theme';
 
-interface Ranked { hotspot: Hotspot; conditions?: ConditionsData; score: ScoreResult; distanceKm?: number; }
+interface RankingWeatherState {
+  hotspot: Hotspot;
+  summary?: MushroomWeatherSummary;
+  loading: boolean;
+  error?: string;
+  originalIndex: number;
+}
+
+interface Ranked extends RankingWeatherState {
+  assessment: LocationRankingAssessment;
+  distanceKm?: number;
+}
+
+const RANKING_CONCURRENCY = 4;
+
+async function runWithConcurrency<T>(items: T[], concurrency: number, worker: (item: T) => Promise<void>) {
+  let nextIndex = 0;
+  const run = async () => {
+    while (nextIndex < items.length) {
+      const item = items[nextIndex++];
+      await worker(item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, run));
+}
 
 const coordinateLabel = (latitude: number, longitude: number) => `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
 const REVERSE_GEOCODE_TIMEOUT_MS = 5_000;
@@ -39,7 +63,7 @@ const placeDetails = (place: Pick<ExploreLocation, 'name' | 'admin1' | 'admin2' 
 
 export function ConditionsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { hotspots, finds, repository, online, exploreLocation, setExploreLocation, requestHotspotFocus } = useApp();
+  const { hotspots, repository, online, exploreLocation, setExploreLocation, requestHotspotFocus } = useApp();
   const [locationMode, setLocationMode] = useState<'gps' | 'manual'>(exploreLocation?.source === 'gps' ? 'gps' : 'manual');
   const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | undefined>(exploreLocation?.source === 'gps' ? exploreLocation : undefined);
   const [currentLocationName, setCurrentLocationName] = useState<string | undefined>(exploreLocation?.source === 'gps' ? exploreLocation.name : undefined);
@@ -49,7 +73,7 @@ export function ConditionsScreen() {
   const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
   const [weatherSummary, setWeatherSummary] = useState<MushroomWeatherSummary>();
   const [weatherProfileId, setWeatherProfileId] = useState<MushroomWeatherProfileId>('generic');
-  const [ranked, setRanked] = useState<Ranked[]>([]);
+  const [rankingWeather, setRankingWeather] = useState<RankingWeatherState[]>([]);
   const [speciesId, setSpeciesId] = useState<string>();
   const [gpsLoading, setGpsLoading] = useState(false);
   const [weatherLoading, setWeatherLoading] = useState(false);
@@ -188,17 +212,35 @@ export function ConditionsScreen() {
   }, [placeQuery, placeSearchOpen]);
 
   useEffect(() => {
-    if (!hotspots.length) { setRanked([]); return; }
+    const entries = hotspots.slice(0, 30).map((hotspot, originalIndex): RankingWeatherState => ({ hotspot, loading: true, originalIndex }));
+    setRankingWeather(entries);
+    if (!entries.length) return;
     let active = true;
-    void Promise.all(hotspots.slice(0, 30).map(async (hotspot): Promise<Ranked> => {
+    void runWithConcurrency(entries, RANKING_CONCURRENCY, async (entry) => {
       try {
-        const data = await getConditions(repository.database, hotspot.latitude, hotspot.longitude);
-        const history = finds.filter((find) => find.hotspotId === hotspot.id);
-        return { hotspot, conditions: data, score: calculateMushroomScore(data, history, speciesId), distanceKm: coords ? haversineKm(coords.latitude, coords.longitude, hotspot.latitude, hotspot.longitude) : undefined };
-      } catch { return { hotspot, score: calculateMushroomScore(undefined, [], speciesId) }; }
-    })).then((values) => { if (active) setRanked(values.sort((a, b) => (b.score.score ?? -1) - (a.score.score ?? -1))); });
+        const summary = await getMushroomWeatherSummary(repository.database, entry.hotspot.latitude, entry.hotspot.longitude);
+        if (active) setRankingWeather((current) => current.map((item) => item.hotspot.id === entry.hotspot.id ? { ...item, summary, loading: false, error: undefined } : item));
+      } catch (cause) {
+        console.warn('Location ranking weather request failed', entry.hotspot.id, cause);
+        if (active) setRankingWeather((current) => current.map((item) => item.hotspot.id === entry.hotspot.id ? { ...item, loading: false, error: 'Vremenskih podatkov ni bilo mogoče pridobiti.' } : item));
+      }
+    });
     return () => { active = false; };
-  }, [finds, hotspots, repository, speciesId, coords?.latitude, coords?.longitude]);
+  }, [hotspots, repository]);
+
+  const ranked = useMemo(() => rankingWeather.map((entry): Ranked => ({
+    ...entry,
+    assessment: assessLocationWeather(entry.summary, speciesId),
+    distanceKm: coords ? haversineKm(coords.latitude, coords.longitude, entry.hotspot.latitude, entry.hotspot.longitude) : undefined,
+  })).sort((a, b) => {
+    const qualityOrder = { complete: 2, limited: 1, insufficient: 0 } as const;
+    const qualityDifference = qualityOrder[b.assessment.dataQuality] - qualityOrder[a.assessment.dataQuality];
+    if (qualityDifference) return qualityDifference;
+    const scoreDifference = (b.assessment.score.score ?? -1) - (a.assessment.score.score ?? -1);
+    if (scoreDifference) return scoreDifference;
+    if (a.distanceKm != null && b.distanceKm != null && a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
+    return a.originalIndex - b.originalIndex;
+  }), [coords, rankingWeather, speciesId]);
 
   const score = useMemo(() => calculateMushroomWeatherScore(weatherSummary, weatherProfileId), [weatherProfileId, weatherSummary]);
   const weatherProfile = MUSHROOM_WEATHER_PROFILES[weatherProfileId];
@@ -300,8 +342,8 @@ export function ConditionsScreen() {
       <Text style={commonStyles.muted}>Open‑Meteo · posodobljeno {slDateTime(weatherSummary.updatedAt)}{weatherSummary.stale ? ' · predpomnjeni podatki' : ''}</Text>
     </> : null}
     {hotspots.length ? <><SectionTitle>Kam po gobe?</SectionTitle>
-    <Card><Text style={commonStyles.body}>Ciljna vrsta (neobvezno)</Text><View style={commonStyles.wrap}><Chip label="Splošno" selected={!speciesId} onPress={() => setSpeciesId(undefined)} />{speciesCatalogue.filter((item) => item.kind === 'species').slice(0, 6).map((species) => <Chip key={species.id} label={species.nameSl} selected={speciesId === species.id} onPress={() => setSpeciesId(species.id)} />)}</View><Text style={commonStyles.muted}>Če ni dovolj osebne zgodovine za vrsto, ostane ocena splošna in tega ne šteje kot slabost.</Text></Card>
-    {ranked.map((entry, index) => <Pressable key={entry.hotspot.id} onPress={() => { requestHotspotFocus(entry.hotspot); navigation.navigate('Tabs', { screen: 'Map' }); }}><Card><View style={styles.rankRow}><Text style={styles.rank}>{index + 1}</Text><View style={styles.rankCopy}><Text style={commonStyles.heading}>{entry.hotspot.title?.trim() || coordinateLabel(entry.hotspot.latitude, entry.hotspot.longitude)}</Text><Text style={commonStyles.body}>{entry.score.score != null ? `${entry.score.score}/100 · ${entry.score.label}` : entry.score.label}</Text><Text style={commonStyles.muted}>{entry.score.reasons[0] ?? entry.score.coverage}{entry.distanceKm != null ? ` · ${slNumber(entry.distanceKm)} km zračne razdalje` : ''}</Text></View></View></Card></Pressable>)}</> : null}
+    <Card><Text style={commonStyles.body}>Ciljna vrsta (neobvezno)</Text><View style={commonStyles.wrap}><Chip label="Splošno" selected={!speciesId} onPress={() => setSpeciesId(undefined)} />{speciesCatalogue.filter((item) => item.kind === 'species').slice(0, 6).map((species) => <Chip key={species.id} label={species.nameSl} selected={speciesId === species.id} onPress={() => setSpeciesId(species.id)} />)}</View><Text style={commonStyles.muted}>Ocena uporablja isti vremenski profil kot podrobne Razmere. Za vrste brez lastnega profila se uporabi splošna vremenska ocena.</Text></Card>
+    {ranked.map((entry, index) => <Pressable key={entry.hotspot.id} onPress={() => { requestHotspotFocus(entry.hotspot); navigation.navigate('Tabs', { screen: 'Map' }); }}><Card><View style={styles.rankRow}><Text style={styles.rank}>{index + 1}</Text><View style={styles.rankCopy}><Text style={commonStyles.heading}>{entry.hotspot.title?.trim() || coordinateLabel(entry.hotspot.latitude, entry.hotspot.longitude)}</Text>{entry.loading ? <Text style={commonStyles.body}>Pridobivam vremenske podatke …</Text> : <><Text style={commonStyles.body}>{entry.assessment.score.score != null ? `${entry.assessment.score.score}/100 · ${entry.assessment.score.label}` : 'Ni dovolj podatkov za zanesljivo oceno.'}</Text><Text style={commonStyles.muted}>{entry.error ?? entry.assessment.reason}{entry.distanceKm != null ? ` · ${slNumber(entry.distanceKm)} km zračne razdalje` : ''}</Text>{entry.assessment.usesGenericFallback ? <Text style={commonStyles.muted}>Splošna vremenska ocena</Text> : null}{entry.assessment.dataQuality === 'limited' ? <Text style={commonStyles.muted}>Omejeni vremenski podatki</Text> : null}</>}</View></View></Card></Pressable>)}</> : null}
     <Notice tone="info">Open-Meteo je zamenljiv ponudnik. Pred komercialno uporabo preverite njegove aktualne pogoje uporabe in zahteve glede navedbe vira.</Notice>
   </Screen>;
 }
