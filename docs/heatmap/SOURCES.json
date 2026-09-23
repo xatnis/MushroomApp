@@ -75,7 +75,23 @@
       "A positive pine share applies to a whole stand and does not locate pine within that stand.",
       "Data cover Slovenian stands; the pilot also crosses the national border.",
       "Valid zero shares, missing values, low coverage and lack of stand coverage remain distinguishable.",
-      "Weather scores and other species habitat rules are not modified."
+      "Weather scores remain unchanged. ZGS evidence is used only by Lactarius and Boletus habitat policies."
+    ]
+  },
+  "boletusHabitatMethod": {
+    "version": "v1",
+    "checkedDate": "2026-09-23",
+    "hostFields": ["lzskdv11", "lzskdv21", "lzskdv30", "lzskdv41", "lzskdv50"],
+    "hostGroups": ["Picea", "Abies", "Pinus", "Fagus", "Quercus"],
+    "unmappedHosts": ["Betula", "Tilia", "Castanea"],
+    "unmappedReason": "Aggregated broadleaf groups cannot identify these genera independently.",
+    "semantics": "Area-weighted sum of stand growing-stock shares; never canopy cover or weather-score bonus.",
+    "missingPolicy": "Sum valid fields as a known lower bound; all missing remains null. Any incomplete/invalid intersecting host stand keeps wooded cell unknown.",
+    "coverage": "Reuse pine-valid zgsDataCoverageFraction, with complete five-group requirement for candidate eligibility.",
+    "heuristic": "wooded >=0.30 AND coverage >=0.30 AND (host share >=10 OR union evidence area >=0.20), no incomplete/invalid host stands, overlap <=0.001",
+    "references": [
+      {"title": "A phylogenetic study of Boletus section Boletus in Europe", "year": 2008, "doi": "10.3767/003158508X283692", "url": "https://repository.naturalis.nl/pub/532229/PERS2008020001001.pdf"},
+      {"title": "Synthesis of Japanese Boletus edulis ectomycorrhizae with Japanese red pine", "year": 2014, "url": "https://www.sciencedirect.com/science/article/pii/S1340354013002039", "limitation": "Japanese study, not validation of European habitat thresholds."}
     ]
   }
 }

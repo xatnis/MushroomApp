@@ -82,7 +82,8 @@ assert(heatmapDataQuality('generic', ['soilMoisture'], 50) === 'insufficient', '
 const treeFeature = HEATMAP_HABITAT.features.find((feature) => feature.properties.treeCoverFraction >= PILOT_MIN_TREE_COVER_FRACTION);
 const openFeature = HEATMAP_HABITAT.features.find((feature) => feature.properties.treeCoverFraction < PILOT_MIN_TREE_COVER_FRACTION);
 assert(treeFeature && openFeature, 'Pilot artifact must contain both wooded and more open cells.');
-assert(habitatStateFor(treeFeature, 'boletusEdulis') === 'candidate', 'Wooded Boletus cell must be candidate.');
+assert(habitatStateFor({ ...treeFeature, properties: { ...treeFeature.properties, zgs: undefined } }, 'boletusEdulis') === 'unknown', 'WorldCover-only Boletus cell requires host evidence.');
+assert(HEATMAP_HABITAT.features.some(f => habitatStateFor(f, 'boletusEdulis') === 'candidate'), 'Real pilot must contain verified Boletus host evidence.');
 assert(habitatStateFor(treeFeature, 'cantharellusCibarius') === 'candidate', 'Wooded Chanterelle cell must be candidate.');
 assert(habitatStateFor(openFeature, 'boletusEdulis') === 'outside-model', 'Open Boletus cell must be outside-model.');
 assert(habitatStateFor({ ...treeFeature, properties: { ...treeFeature.properties, zgs: undefined } }, 'lactariusDeliciosus') === 'unknown', 'WorldCover-only Lactarius cell must remain unknown.');

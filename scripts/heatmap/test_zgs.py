@@ -1,10 +1,43 @@
 """Focused GIS tests, no remote dependency."""
 import unittest
 from shapely.geometry import box
-from enrich_zgs import parse_share, aggregate
+from enrich_zgs import parse_share, aggregate, boletus_host_share, BOLETUS_HOSTS
 
 
 class ZgsTests(unittest.TestCase):
+    def test_boletus_known_sum_and_missing(self):
+        self.assertEqual(boletus_host_share(dict(zip(BOLETUS_HOSTS, [20, 10, 5, 30, 15]))), (80, True))
+        self.assertEqual(boletus_host_share({'spruce': 20, 'pine': 0}), (20, False))
+        self.assertEqual(boletus_host_share({}), (None, False))
+        self.assertEqual(boletus_host_share(dict.fromkeys(BOLETUS_HOSTS, 0)), (0, True))
+        for shares in [{'spruce': -1}, {'oak': float('nan')}, {'fir': '20'}, {'spruce': 80, 'beech': 40}]:
+            with self.assertRaises(ValueError):
+                boletus_host_share(shares)
+
+    def test_boletus_weighting_and_union(self):
+        zero = dict.fromkeys(BOLETUS_HOSTS, 0)
+        cell = box(0, 0, 100, 100)
+        result = aggregate(cell, [(box(0, 0, 20, 100), zero | {'spruce': 80}),
+                                  (box(20, 0, 80, 100), zero | {'beech': 20})])
+        self.assertEqual(result['boletusHostShareAreaWeightedPct'], 35)
+        self.assertEqual(result['boletusHostEvidenceAreaFraction'], .8)
+        self.assertEqual(result['boletusHostStandCount'], 2)
+        self.assertEqual(result['boletusHostPositiveStandCount'], 2)
+        self.assertEqual(result['boletusHostIncompleteStandCount'], 0)
+        overlap = aggregate(cell, [(box(0, 0, 70, 100), zero | {'oak': 10}),
+                                   (box(50, 0, 100, 100), zero | {'fir': 10})])
+        self.assertEqual(overlap['boletusHostEvidenceAreaFraction'], 1)
+
+    def test_boletus_missing_and_invalid_are_not_zero(self):
+        result = aggregate(box(0, 0, 100, 100), [(box(0, 0, 50, 100), {'spruce': 30}),
+                                              (box(50, 0, 100, 100), {})])
+        self.assertEqual(result['boletusHostShareAreaWeightedPct'], 30)
+        self.assertEqual(result['boletusHostIncompleteStandCount'], 2)
+        self.assertEqual(result['boletusHostEvidenceAreaFraction'], .5)
+        invalid = aggregate(box(0, 0, 1, 1), [(box(0, 0, 1, 1), {'oak': 120})])
+        self.assertIsNone(invalid['boletusHostShareAreaWeightedPct'])
+        self.assertEqual(invalid['boletusHostInvalidStandCount'], 1)
+
     def test_share(self):
         self.assertIsNone(parse_share(None))
         self.assertEqual(parse_share(0), 0)

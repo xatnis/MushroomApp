@@ -35,7 +35,7 @@ Centralizirana pragova sta kartografski hevristiki:
 Pravila:
 
 - Splošno: `candidate`, če je vsota drevesnega pokrova in travinja vsaj 0,20.
-- Jesenski goban: `candidate`, če je drevesni pokrov vsaj 0,30.
+- Jesenski goban: drevesni pokrov vsaj 0,30 in zadostna preverjena ZGS evidence petih gostiteljskih skupin po spodnji politiki; brez nje gozdna celica ostane `unknown`.
 - Navadna lisička: `candidate`, če je drevesni pokrov vsaj 0,30.
 - Užitna sirovka: brez zadostnih preverjenih ZGS dokazov pri drevesnem pokrovu ostane `unknown`; zadostni dokazi po spodnji politiki omogočijo `candidate`. Negozdna celica ostane `outside-model`.
 
@@ -132,7 +132,7 @@ Centralno v `src/domain/heatmap/zgs.ts`; vse so inženirske kartografske hevrist
 - delež bora v uteženi lesni zalogi ≥10 **ali** površina sestojev z dokazom bora ≥0,20;
 - brez invalidnega pine deleža v celici in brez pomembnega prekrivanja sestojev.
 
-Samo takrat `candidate`. Vsi drugi gozdni primeri ostanejo `unknown`, tudi 0 % bora ob dobri pokritosti: to ne dokazuje odsotnosti bora v preostanku celice. Negozdne celice so `outside-model`. Weather score, dataQuality, Today/Tomorrow in habitat ostalih treh profilov ostanejo nespremenjeni.
+Samo takrat `candidate`. Vsi drugi gozdni primeri ostanejo `unknown`, tudi 0 % bora ob dobri pokritosti: to ne dokazuje odsotnosti bora v preostanku celice. Negozdne celice so `outside-model`. Weather score, dataQuality in Today/Tomorrow ostanejo nespremenjeni. Ločena kasnejša politika za Boletus je opisana spodaj.
 
 ### Rezultat zajema
 
@@ -151,3 +151,59 @@ Povprečna coverage celice je 0,469943, razpon 0–1. Lactarius pred: candidate 
 ### Omejitve ZGS
 
 Datum zajema ni datum terenskega popisa; schema ne podaja vintage za posamezni sestoj. Pozitivni bor velja za sestoj, ne za vsak njegov del. Pilot sega tudi v Avstrijo, ki je ZGS ne pokriva. Podatek ne potrjuje vrst bora, mikrolokacije, prisotnosti sirovk ali dostopa. Mobile bere le agregacije brez izvornih sestojnih geometrij. Za širitev so potrebni regionalna preverjanja pokritosti, časovnosti in pravil straničenja ter testiranje na telefonu.
+
+## Boletus edulis – ZGS habitatna evidence V1
+
+Preverjeno 23. 9. 2026. Uporabljene skupine so smreka/Picea (`lzskdv11`), jelka/Abies (`lzskdv21`), bor/Pinus (`lzskdv30`), bukev/Fagus (`lzskdv41`) in hrasti/Quercus (`lzskdv50`). Vse pomenijo deleže **lesne zaloge sestoja**, ne canopy coverage. So enakovredni dokazi potencialnega gostitelja, brez bonusov ali preferiranja bora. Boletus pinophilus ni ta profil.
+
+### Raziskovalna podlaga in omejitve
+
+Beugelsdijk et al. (2008), *A phylogenetic study of Boletus section Boletus in Europe*, Persoonia 20:1–7, DOI [10.3767/003158508X283692](https://doi.org/10.3767/003158508X283692), [celotno besedilo](https://repository.naturalis.nl/pub/532229/PERS2008020001001.pdf): molekularna raziskava podpira širok spekter listavcev in iglavcev za B. edulis in ločitev od B. pinophilus. Uvod in tabele navajajo Picea, Fagus, Quercus, Pinus, Betula in Tilia; tabela 1 vsebuje Abies pri obravnavanih infraspecifičnih taksonih, filogenetski vzorci tudi Castanea. To niso enako močni eksperimentalni dokazi za vsak rod ali lokalno prisotnost gostitelja.
+
+Dodatno izhodišče: *Synthesis of Japanese Boletus edulis ectomycorrhizae with Japanese red pine* (2014), Mycoscience 55(5), [založniški zapis](https://www.sciencedirect.com/science/article/pii/S1340354013002039): raziskava vključuje zbirke iz gozdov Abies, Quercus, Betula in Fagus; japonski kontekst ni neposredna validacija slovenskih pragov.
+
+Betula, Tilia in Castanea se ne mapirajo iz širših skupin trdih/mehkih/plemenitih listavcev. Zato odsotnost petih izbranih skupin ni dokaz neprimernega habitata. Gostiteljska evidence ne dokazuje prisotnosti gob. Noben raziskovalni vir ne validira naših 30 % / 10 % / 20 % pragov.
+
+### Metoda in missing podatki
+
+Za vsak sestoj `boletus_host_share` sešteje samo veljavne vrednosti petih polj. Vsi missing → `null`; znana ničla ostane 0. Delno znana vsota je označena kot nepopolna spodnja meja in se ne normalizira na 100. Neveljavna vrednost ali vsota >100,5 se izloči; 0,5 je obstoječa toleranca za zaokroževanje, ne biological threshold.
+
+`boletusHostShareAreaWeightedPct` = Σ(površina preseka × znana vsota) / Σ(površina preseka z vsaj eno veljavno skupino). `boletusHostEvidenceAreaFraction` = površina unije presekov s pozitivno vsoto / površina celice. `boletusHostStandCount` šteje sestoje z vsaj enim veljavnim poljem; `boletusHostPositiveStandCount` pozitivne. Ločena incomplete/invalid števca ohranita razliko med missing in 0 ter preprečita pozitivno klasifikacijo nepopolne celice.
+
+Ponovno uporabimo `zgsDataCoverageFraction`, ki je v sedanjem artefaktu vezan na veljaven pine field. Ker Boletus zahteva nič nepopolnih/invalidnih gostiteljskih sestojev, je pri celicah, ki lahko postanejo candidate, ta coverage tudi uporaben coverage vseh petih skupin. Pine coverage se zaradi regresije Lactarius ne spreminja. To je konservativna V1 politika: že nepopoln presek ohrani celico unknown.
+
+### Klasifikacija
+
+`ZGS_BOLETUS_POLICY` centralizira: WorldCover wooded ≥0,30 (obstoječi prag), ZGS coverage ≥0,30, host share ≥10 % **ali** host evidence fraction ≥0,20; incomplete=0, invalid=0, overlap ≤0,001. To so kartografske/inženirske hevristike. Wooded brez zadostnih dokazov → unknown, tudi pri znanih ničlah. Outside-model samo pri nezadostnem WorldCover drevesnem pokrovu.
+
+Vremenska formula R26/T20/soil/drying in renormalizacija ostajajo nespremenjene. Generic, Chanterelle in Lactarius habitatna pravila ostajajo nespremenjena. Mobile uporablja statični agregat, **0 WFS zahtevkov**. Regeneracija uporablja zgornji isti `enrich_zgs.py` ukaz, brez `--refresh` ponovno uporabi prvotni zajem. Izpeljani podatki o vseh desetih skupinah ostanejo ohranjeni.
+
+### Realni rezultati Boletus
+
+Vseh 1.961 celic: pred spremembo candidate 1.826 / unknown 0 / outside-model 135; po spremembi **1.235 / 591 / 135**. Pragovi niso bili prilagojeni rezultatom. Povprečna ZGS coverage 0,469943, razpon 0–1. Lactarius ostaja 808 / 1.018 / 135. Vsi originalni ZGS fieldi so primerjani z git baseline `4cefca15a91a9909678198aa145d160aaeb4ce53` in so numerično identični.
+
+Host-share distribucija: missing 571, ničla 5, (0,10) 5, [10,50) 54, [50,90) 956, ≥90 370. Pozitiven posamezen agregat je prisoten v: smreka 1.383, jelka 1.111, bor 1.183, bukev 1.364, hrasti 815 celicah. Štetja se prekrivajo in se ne seštevajo.
+
+| Primer / celica | Tree | Coverage | Smreka % | Jelka % | Bor % | Bukev % | Hrasti % | Host % | Evidence | Stanje |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| smreka / area-19-27 | 0,9319 | 0,862645 | 96,0105 | 0 | 0 | 2,3138 | 0 | 98,3243 | 0,854224 | candidate |
+| bukev / area-02-25 | 0,7925 | 0,704941 | 17,5554 | 0,7725 | 0 | 76,7819 | 0 | 95,1099 | 0,700168 | candidate |
+| najmočnejši hrast ob coverage ≥0,30 / area-08-35 | 0,7356 | 0,611360 | 32,5428 | 0,0438 | 10,7776 | 14,0508 | 30,8239 | 88,2389 | 0,608950 | candidate |
+| mešan / area-00-25 | 0,7328 | 0,597316 | 46,0570 | 0 | 0 | 49,8390 | 0 | 95,8960 | 0,572803 | candidate |
+| nizka coverage / area-05-10 | 0,3388 | 0,074326 | 27,8034 | 0 | 0 | 59,6466 | 0 | 87,4500 | 0,074326 | unknown |
+| nič naših skupin / area-10-10 | 0,6767 | 0,027577 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | unknown |
+
+Hrastov primer ni čist hrastov gozd; je najmočnejši razpoložljivi hrastov signal med gozdnimi celicami z zadostno coverage. Zadnji primer pomeni ničelne zapise petih skupin v pokritem delu celice, ne odsotnosti gostiteljev po celotni celici.
+
+### Ciljna preverjanja
+
+```powershell
+npm run typecheck
+scripts/heatmap/.cache/zgs-venv/Scripts/python.exe scripts/heatmap/test_zgs.py
+npx tsc scripts/boletusHabitatSmoke.ts scripts/zgsEnrichmentSmoke.ts scripts/heatmapPilotSmoke.ts --outDir output/boletus-habitat-tests --module node16 --target es2022 --esModuleInterop --skipLibCheck --moduleResolution node16 --resolveJsonModule --ignoreConfig
+node output/boletus-habitat-tests/scripts/boletusHabitatSmoke.js
+node output/boletus-habitat-tests/scripts/zgsEnrichmentSmoke.js
+node output/boletus-habitat-tests/scripts/heatmapPilotSmoke.js
+```
+
+Sedem Python testov pokriva null/invalid, vsote, uteževanje in unijo presekov. TypeScript smoke preveri 1.961 realnih habitatnih celic × Danes/Jutri na nadzorovanem vremenskem fixture-u za vse štiri profile, nespremenjene vremenske score/components/dataQuality in celoten originalni ZGS agregat. Ne gre za nov live weather test ali fizični Android UI test. Obstoječi renderState preslika unknown v nevtralni prikaz in outside-model v obstoječi zunanji razred; barvna lestvica se ne spreminja.

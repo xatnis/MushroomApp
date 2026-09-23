@@ -1,5 +1,31 @@
 import type { HeatmapHabitatState, ZgsHabitatEnrichment } from './types';
 
+// Equal evidence from spruce, fir, pine, beech and oak. Engineering heuristics,
+// not biological thresholds or bonuses to the weather score.
+export const ZGS_BOLETUS_POLICY = {
+  minimumDataCoverageFraction: 0.30,
+  minimumGrowingStockSharePct: 10,
+  minimumEvidenceAreaFraction: 0.20,
+  maximumOverlapAreaFraction: 0.001,
+  maximumRoundedSharePct: 100.5,
+} as const;
+
+export function boletusHabitatState(wooded: boolean, zgs?: ZgsHabitatEnrichment): HeatmapHabitatState {
+  if (!wooded) return 'outside-model';
+  if (!zgs?.zgsAvailable || zgs.boletusHostIncompleteStandCount !== 0
+    || zgs.boletusHostInvalidStandCount !== 0) return 'unknown';
+  const share = zgs.boletusHostShareAreaWeightedPct;
+  const evidence = zgs.boletusHostEvidenceAreaFraction;
+  const coverage = zgs.zgsDataCoverageFraction;
+  if (share == null || !Number.isFinite(share) || share < 0 || share > ZGS_BOLETUS_POLICY.maximumRoundedSharePct
+    || evidence == null || !Number.isFinite(evidence) || evidence < 0 || evidence > 1
+    || !Number.isFinite(coverage) || coverage < ZGS_BOLETUS_POLICY.minimumDataCoverageFraction || coverage > 1
+    || !Number.isFinite(zgs.overlapAreaFraction) || zgs.overlapAreaFraction < 0
+    || zgs.overlapAreaFraction > ZGS_BOLETUS_POLICY.maximumOverlapAreaFraction) return 'unknown';
+  return share >= ZGS_BOLETUS_POLICY.minimumGrowingStockSharePct
+    || evidence >= ZGS_BOLETUS_POLICY.minimumEvidenceAreaFraction ? 'candidate' : 'unknown';
+}
+
 // Cartographic pilot engineering heuristics; not biological thresholds.
 export const ZGS_PINE_POLICY = {
   minimumDataCoverageFraction: 0.30,

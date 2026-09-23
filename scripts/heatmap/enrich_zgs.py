@@ -25,6 +25,17 @@ FIELDS = dict(zip(['lzskdv11', 'lzskdv21', 'lzskdv30', 'lzskdv34', 'lzskdv39',
                   ['spruce', 'fir', 'pine', 'larch', 'otherConifers', 'beech', 'oak',
                    'nobleBroadleaves', 'hardBroadleaves', 'softBroadleaves']))
 BASE = {'service': 'WFS', 'version': '2.0.0'}
+BOLETUS_HOSTS = ('spruce', 'fir', 'pine', 'beech', 'oak')
+
+
+def boletus_host_share(shares):
+    """Known lower bound plus completeness; missing is never a biological zero."""
+    values = [parse_share(shares.get(name)) for name in BOLETUS_HOSTS]
+    known = [value for value in values if value is not None]
+    total = sum(known) if known else None
+    if total is not None and total > 100.5:
+        raise ValueError('Impossible Boletus host sum')
+    return total, len(known) == len(BOLETUS_HOSTS)
 
 
 def request(params):
@@ -91,6 +102,28 @@ def aggregate(cell, intersections):
     for name in FIELDS.values():
         values = [(g.area, p[name]) for g, p in intersections if p.get(name) is not None]
         result[name + 'ShareAreaWeightedPct'] = round(sum(a * v for a, v in values) / sum(a for a, _ in values), 4) if values else None
+    host_values, host_evidence = [], []
+    incomplete, invalid = 0, 0
+    for geometry, shares in intersections:
+        try:
+            if shares.get('_invalidBoletus'):
+                raise ValueError('Invalid source host field')
+            share, complete = boletus_host_share(shares)
+            incomplete += not complete
+            if share is not None:
+                host_values.append((geometry.area, share))
+                if share > 0:
+                    host_evidence.append(geometry)
+        except ValueError:
+            invalid += 1
+    result.update({
+        'boletusHostShareAreaWeightedPct': round(sum(a * v for a, v in host_values) / sum(a for a, _ in host_values), 4) if host_values else None,
+        'boletusHostEvidenceAreaFraction': round(unary_union(host_evidence).area / cell.area, 6) if host_evidence else 0,
+        'boletusHostStandCount': len(host_values),
+        'boletusHostPositiveStandCount': len(host_evidence),
+        'boletusHostIncompleteStandCount': incomplete,
+        'boletusHostInvalidStandCount': invalid,
+    })
     return result
 
 
@@ -192,12 +225,14 @@ def main():
                 except ValueError:
                     warnings['invalid_' + field] += 1
                     shares[name] = None
+                    if name in BOLETUS_HOSTS:
+                        shares['_invalidBoletus'] = True
                     if name == 'pine':
                         shares['_invalidPine'] = True
             known_sum = sum(v for k, v in shares.items() if not k.startswith('_') and v is not None)
             if known_sum > 100.5:
                 warnings['impossibleShareSum'] += 1
-                shares = {name: None for name in FIELDS.values()} | {'_invalidPine': True}
+                shares = {name: None for name in FIELDS.values()} | {'_invalidPine': True, '_invalidBoletus': True}
             elif abs(known_sum - 100) > 0.5:
                 warnings['shareSumNotNear100'] += 1
                 if known_sum == 0:

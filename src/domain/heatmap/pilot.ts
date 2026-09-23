@@ -1,7 +1,7 @@
 import habitatArtifact from '../../data/heatmapPilot/habitat.geojson.json';
 import metadataArtifact from '../../data/heatmapPilot/metadata.json';
 import zgsArtifact from '../../data/heatmapPilot/zgs-enrichment.json';
-import { lactariusHabitatState } from './zgs';
+import { boletusHabitatState, lactariusHabitatState } from './zgs';
 import type { MushroomWeatherProfileId } from '../types';
 import type {
   HeatmapAreaAssessment,
@@ -57,6 +57,7 @@ export function habitatStateFor(
   if (profileId === 'lactariusDeliciosus') {
     return lactariusHabitatState(wooded, feature.properties.zgs);
   }
+  if (profileId === 'boletusEdulis') return boletusHabitatState(wooded, feature.properties.zgs);
   return wooded ? 'candidate' : 'outside-model';
 }
 
@@ -70,7 +71,10 @@ export function habitatExplanation(profileId: MushroomWeatherProfileId, state: H
   }
   if (profileId === 'generic') return 'Območje ima dovolj vegetacijskega pokrova za splošno vremensko oceno.';
   if (profileId === 'cantharellusCibarius') return 'Območje ima dovolj drevesnega pokrova za potencialno gozdno rastišče.';
-  return 'Območje ima dovolj drevesnega pokrova, da ga model obravnava kot potencialno gozdno rastišče.';
+  if (state === 'candidate') return 'ZGS podatki potrjujejo prisotnost drevesnih skupin, s katerimi je jesenski goban pogosto povezan.';
+  return zgsAvailable
+    ? 'Območje je gozdnato, vendar podatki o drevesni sestavi niso dovolj popolni za zanesljivo habitatno oceno.'
+    : 'Za to območje ni dovolj podatkov o drevesni sestavi.';
 }
 
 export function renderStateFor(assessment: HeatmapAreaAssessment): HeatmapRenderFeatureCollection['features'][number]['properties']['renderState'] {

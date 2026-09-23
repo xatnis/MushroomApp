@@ -65,6 +65,13 @@ export interface ZgsHabitatEnrichment {
   spruceShareAreaWeightedPct: number | null;
   firShareAreaWeightedPct: number | null;
   beechShareAreaWeightedPct: number | null;
+  oakShareAreaWeightedPct?: number | null;
+  boletusHostShareAreaWeightedPct?: number | null;
+  boletusHostEvidenceAreaFraction?: number;
+  boletusHostStandCount?: number;
+  boletusHostPositiveStandCount?: number;
+  boletusHostIncompleteStandCount?: number;
+  boletusHostInvalidStandCount?: number;
   zgsStandCount: number;
   zgsPinePositiveStandCount: number;
   overlapAreaFraction: number;
