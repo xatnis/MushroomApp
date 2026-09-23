@@ -63,7 +63,7 @@ export function habitatStateFor(
 export function habitatExplanation(profileId: MushroomWeatherProfileId, state: HeatmapHabitatState, zgsAvailable = false): string {
   if (state === 'outside-model') return 'Območje nima dovolj ustreznega vegetacijskega oziroma drevesnega pokrova za habitatni model.';
   if (profileId === 'lactariusDeliciosus') {
-    if (state === 'candidate') return 'Podatki ZGS potrjujejo prisotnost bora v delu gozdnih sestojev na tem območju.';
+    if (state === 'candidate') return 'ZGS podatki potrjujejo prisotnost bora v delu območja.';
     return zgsAvailable
       ? 'Območje je gozdnato, vendar ni dovolj podatkov za zanesljivo potrditev bora.'
       : 'Za to območje ni dovolj podatkov o drevesni sestavi.';

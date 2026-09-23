@@ -450,7 +450,7 @@ function HeatmapAreaCard({ assessment, areaLabel, areaDetails, onClose, onOpenCo
   const habitat = assessment.habitatState === 'candidate'
     ? assessment.speciesId === 'lactariusDeliciosus' ? 'Potencialno ustrezno gozdno območje' : 'Potencialno habitatno območje'
     : assessment.habitatState === 'unknown'
-      ? assessment.speciesId === 'lactariusDeliciosus' ? 'Vrsta dreves ni dovolj potrjena' : 'Habitat ni potrjen'
+      ? assessment.speciesId === 'lactariusDeliciosus' ? 'Bor ni dovolj potrjen' : 'Habitat ni potrjen'
       : 'Zunaj habitatnega modela';
   return <Card style={styles.heatmapPreview}>
     <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{areaLabel}</Text>{areaDetails ? <Text style={commonStyles.muted}>{areaDetails}</Text> : null}<Text style={commonStyles.muted}>{profile.label} · {assessment.targetDay === 'today' ? 'Danes' : 'Jutri'}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
