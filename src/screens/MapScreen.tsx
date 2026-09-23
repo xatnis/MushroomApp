@@ -90,6 +90,7 @@ export function MapScreen() {
   const [heatmapLoading, setHeatmapLoading] = useState(false);
   const [heatmapError, setHeatmapError] = useState<string>();
   const [heatmapRetry, setHeatmapRetry] = useState(0);
+  const [heatmapControlsVisible, setHeatmapControlsVisible] = useState(true);
   const heatmapRequestGate = useRef(createHeatmapRequestGate()).current;
   useEffect(() => {
     if (!session) { setFriendHotspots([]); return; }
@@ -254,6 +255,7 @@ export function MapScreen() {
           accessibilityState={{ selected: heatmapEnabled }}
           accessibilityLabel="Način Pogoji"
           onPress={() => {
+            setHeatmapControlsVisible(true);
             updateHeatmapNavigation({ enabled: true });
             setSelectedId(undefined);
             setCameraTarget(heatmapNavigation.viewport ?? {
@@ -350,8 +352,19 @@ export function MapScreen() {
         </Marker>)}
       </Map>
       <Pressable accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
-      {heatmapEnabled ? <View style={styles.heatmapControls}>
-        <Text style={styles.heatmapControlLabel}>VRSTA</Text>
+      {heatmapEnabled && heatmapControlsVisible ? <View style={styles.heatmapControls}>
+        <View style={styles.heatmapControlsHeader}>
+          <Text style={styles.heatmapControlLabel}>VRSTA</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Skrij izbiro pogojev"
+            hitSlop={8}
+            onPress={() => setHeatmapControlsVisible(false)}
+            style={({ pressed }) => [styles.closeButton, styles.heatmapControlsClose, pressed && styles.closeButtonPressed]}
+          >
+            <Ionicons name="close" size={21} color={colors.muted} />
+          </Pressable>
+        </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.heatmapChipRow}>
           {(Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[]).map((profileId) => <Chip key={profileId} label={MUSHROOM_WEATHER_PROFILES[profileId].label} selected={heatmapProfileId === profileId} onPress={() => updateHeatmapNavigation({ profileId })} />)}
         </ScrollView>
@@ -484,6 +497,8 @@ const styles = StyleSheet.create({
   conditionsActionText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
   preview: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.lg }, previewTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, closeButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSoft }, closeButtonPressed: { opacity: 0.65 }, grow: { flex: 1 }, locating: { position: 'absolute', alignSelf: 'center', top: spacing.lg, backgroundColor: colors.surface, padding: spacing.sm, borderRadius: radii.round },
   heatmapControls: { position: 'absolute', left: spacing.sm, right: spacing.sm, top: 66, gap: spacing.xs, padding: spacing.sm, borderRadius: radii.md, backgroundColor: 'rgba(255,253,247,0.96)', borderWidth: 1, borderColor: colors.border, elevation: 4 },
+  heatmapControlsHeader: { minHeight: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heatmapControlsClose: { width: 34, height: 34 },
   heatmapControlLabel: { color: colors.primary, fontSize: 11, fontWeight: '900', letterSpacing: 0.7 },
   heatmapChipRow: { gap: spacing.xs, paddingRight: spacing.md },
   heatmapDateRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
