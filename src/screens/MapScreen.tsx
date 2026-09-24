@@ -91,6 +91,7 @@ export function MapScreen() {
   const [heatmapError, setHeatmapError] = useState<string>();
   const [heatmapRetry, setHeatmapRetry] = useState(0);
   const [heatmapControlsVisible, setHeatmapControlsVisible] = useState(true);
+  const [mapViewportHeight, setMapViewportHeight] = useState(0);
   const heatmapRequestGate = useRef(createHeatmapRequestGate()).current;
   useEffect(() => {
     if (!session) { setFriendHotspots([]); return; }
@@ -287,7 +288,13 @@ export function MapScreen() {
       {friendHotspots.length ? <View style={commonStyles.wrap}><Chip label="Moja rastišča" selected={ownerFilter === 'mine'} onPress={() => setOwnerFilter('mine')} /><Chip label="Rastišča prijateljev" selected={ownerFilter === 'friends'} onPress={() => setOwnerFilter('friends')} /></View> : null}
       {locationMessage ? <Notice tone="warning">{locationMessage}</Notice> : null}
     </View>
-    {mode === 'map' ? <View style={styles.mapWrap}>
+    {mode === 'map' ? <View
+      style={styles.mapWrap}
+      onLayout={({ nativeEvent }) => {
+        const nextHeight = nativeEvent.layout.height;
+        setMapViewportHeight((currentHeight) => Math.abs(currentHeight - nextHeight) > 1 ? nextHeight : currentHeight);
+      }}
+    >
       <Map
         style={StyleSheet.absoluteFill}
         mapStyle={MAP_STYLE_URL}
@@ -386,6 +393,7 @@ export function MapScreen() {
       {!selected && heatmapEnabled && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
         assessment={selectedHeatmapArea}
         targetDay={heatmapTargetDay}
+        maxHeight={mapViewportHeight > 0 ? Math.floor(mapViewportHeight * 0.8) : undefined}
         areaLabel={heatmapAreaLocality?.location.name ?? 'Izbrano območje'}
         areaDetails={heatmapAreaLocality?.location.admin1 && heatmapAreaLocality?.location.country
           ? `${heatmapAreaLocality.location.admin1}, ${heatmapAreaLocality.location.country}`
@@ -446,7 +454,7 @@ function heatmapInfluences(assessment: HeatmapAreaAssessment): Array<{ label: st
   ];
 }
 
-function HeatmapAreaCard({ assessment, targetDay, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; targetDay: HeatmapTargetDay; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
+function HeatmapAreaCard({ assessment, targetDay, maxHeight, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; targetDay: HeatmapTargetDay; maxHeight?: number; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
   const profile = MUSHROOM_WEATHER_PROFILES[assessment.speciesId];
   const quality = assessment.dataQuality === 'complete' ? 'Popolni podatki' : assessment.dataQuality === 'limited' ? 'Omejeni podatki' : 'Ni dovolj podatkov';
   const habitat = assessment.habitatState === 'candidate'
@@ -455,8 +463,8 @@ function HeatmapAreaCard({ assessment, targetDay, areaLabel, areaDetails, onClos
       ? assessment.speciesId === 'lactariusDeliciosus' ? 'Bor ni dovolj potrjen'
         : assessment.speciesId === 'boletusEdulis' ? 'Gostiteljska drevesa niso dovolj potrjena' : 'Habitat ni potrjen'
       : 'Zunaj habitatnega modela';
-  return <Card style={styles.heatmapPreview}>
-    <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{areaLabel}</Text>{areaDetails ? <Text style={commonStyles.muted}>{areaDetails}</Text> : null}<Text style={commonStyles.muted}>{profile.label}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
+  return <Card style={StyleSheet.flatten([styles.heatmapPreview, maxHeight ? { maxHeight } : undefined])}>
+    <View style={styles.heatmapPreviewHeader}><View style={styles.grow}><Text style={commonStyles.heading}>{areaLabel}</Text>{areaDetails ? <Text style={commonStyles.muted}>{areaDetails}</Text> : null}<Text style={commonStyles.muted}>{profile.label}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
     <View style={styles.heatmapCardDateSwitch} accessibilityRole="tablist">
       {([['today', 'Danes'], ['tomorrow', 'Jutri']] as const).map(([day, label]) => <Pressable
         key={day}
@@ -469,8 +477,13 @@ function HeatmapAreaCard({ assessment, targetDay, areaLabel, areaDetails, onClos
         <Text style={[styles.heatmapCardDateText, targetDay === day && styles.heatmapCardDateTextActive]}>{label}</Text>
       </Pressable>)}
     </View>
-    <ScrollView style={styles.heatmapDetailsScroll} contentContainerStyle={styles.heatmapDetailsContent} nestedScrollEnabled>
-      <View style={styles.heatmapScoreLine}><Text style={styles.heatmapAreaScore}>{assessment.score == null ? '—' : `${assessment.score} / 100`}</Text><Text style={commonStyles.body}>{assessment.classLabel}</Text></View>
+    <View style={styles.heatmapScoreLine}><Text style={styles.heatmapAreaScore}>{assessment.score == null ? '—' : `${assessment.score} / 100`}</Text><Text style={styles.heatmapClassLabel}>{assessment.classLabel}</Text></View>
+    <ScrollView
+      style={styles.heatmapDetailsScroll}
+      contentContainerStyle={styles.heatmapDetailsContent}
+      nestedScrollEnabled
+      showsVerticalScrollIndicator
+    >
       <Text style={styles.heatmapDetailTitle}>HABITAT</Text><Text style={commonStyles.body}>{habitat}</Text>
       {assessment.treeCompositionSource ? <Text style={commonStyles.muted}>Vir drevesne sestave: {assessment.treeCompositionSource}</Text> : null}
       <Text style={styles.heatmapDetailTitle}>KAKOVOST PODATKOV</Text><Text style={commonStyles.body}>{quality}</Text>
@@ -524,18 +537,20 @@ const styles = StyleSheet.create({
   heatmapStatus: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   heatmapErrorText: { flex: 1, color: colors.danger, fontSize: 12 },
   retryText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
-  heatmapPreview: { position: 'absolute', left: spacing.sm, right: spacing.sm, bottom: spacing.sm, maxHeight: '58%' },
-  heatmapCardDateSwitch: { flexDirection: 'row', alignSelf: 'flex-start', marginTop: spacing.xs, marginBottom: spacing.xs, padding: 3, gap: 3, borderRadius: radii.round, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border },
+  heatmapPreview: { position: 'absolute', left: spacing.sm, right: spacing.sm, bottom: spacing.sm, maxHeight: '80%', minHeight: 0, padding: spacing.md, gap: spacing.sm, elevation: 6, zIndex: 5 },
+  heatmapPreviewHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  heatmapCardDateSwitch: { flexDirection: 'row', alignSelf: 'flex-start', padding: 3, gap: 3, borderRadius: radii.round, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border },
   heatmapCardDateOption: { minWidth: 82, minHeight: 36, paddingHorizontal: spacing.md, alignItems: 'center', justifyContent: 'center', borderRadius: radii.round },
   heatmapCardDateOptionActive: { backgroundColor: colors.primary },
   heatmapCardDateText: { color: colors.primary, fontSize: 13, fontWeight: '800' },
   heatmapCardDateTextActive: { color: colors.white },
-  heatmapDetailsScroll: { flexGrow: 0 },
-  heatmapDetailsContent: { gap: spacing.xs, paddingBottom: spacing.xs },
-  heatmapScoreLine: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
-  heatmapAreaScore: { color: colors.primary, fontSize: 28, fontWeight: '900' },
+  heatmapDetailsScroll: { flexGrow: 0, flexShrink: 1, minHeight: 0, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  heatmapDetailsContent: { gap: spacing.sm, paddingTop: spacing.sm, paddingBottom: spacing.lg },
+  heatmapScoreLine: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: spacing.sm },
+  heatmapAreaScore: { color: colors.primary, fontSize: 27, fontWeight: '900' },
+  heatmapClassLabel: { flexShrink: 1, color: colors.text, fontSize: 15, lineHeight: 21, fontWeight: '700' },
   heatmapDetailTitle: { marginTop: spacing.xs, color: colors.primary, fontSize: 11, fontWeight: '900', letterSpacing: 0.7 },
-  heatmapInfluence: { paddingVertical: 3, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  heatmapInfluence: { paddingVertical: spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   heatmapInfluenceLabel: { color: colors.muted, fontSize: 11, fontWeight: '700' },
   heatmapInfluenceValue: { color: colors.text, fontSize: 12, fontWeight: '700' },
   list: { flex: 1, minHeight: 0, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.md },
