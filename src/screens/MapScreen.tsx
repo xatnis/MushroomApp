@@ -385,11 +385,13 @@ export function MapScreen() {
       </Card> : null}
       {!selected && heatmapEnabled && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
         assessment={selectedHeatmapArea}
+        targetDay={heatmapTargetDay}
         areaLabel={heatmapAreaLocality?.location.name ?? 'Izbrano območje'}
         areaDetails={heatmapAreaLocality?.location.admin1 && heatmapAreaLocality?.location.country
           ? `${heatmapAreaLocality.location.admin1}, ${heatmapAreaLocality.location.country}`
           : undefined}
         onClose={() => updateHeatmapNavigation({ selectedAreaId: undefined })}
+        onTargetDayChange={(targetDay) => updateHeatmapNavigation({ targetDay })}
         onOpenConditions={() => {
           const areaLocation = heatmapAreaLocality?.location ?? {
             name: 'Izbrano območje',
@@ -444,7 +446,7 @@ function heatmapInfluences(assessment: HeatmapAreaAssessment): Array<{ label: st
   ];
 }
 
-function HeatmapAreaCard({ assessment, areaLabel, areaDetails, onClose, onOpenConditions }: { assessment: HeatmapAreaAssessment; areaLabel: string; areaDetails?: string; onClose: () => void; onOpenConditions: () => void }) {
+function HeatmapAreaCard({ assessment, targetDay, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; targetDay: HeatmapTargetDay; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
   const profile = MUSHROOM_WEATHER_PROFILES[assessment.speciesId];
   const quality = assessment.dataQuality === 'complete' ? 'Popolni podatki' : assessment.dataQuality === 'limited' ? 'Omejeni podatki' : 'Ni dovolj podatkov';
   const habitat = assessment.habitatState === 'candidate'
@@ -454,7 +456,19 @@ function HeatmapAreaCard({ assessment, areaLabel, areaDetails, onClose, onOpenCo
         : assessment.speciesId === 'boletusEdulis' ? 'Gostiteljska drevesa niso dovolj potrjena' : 'Habitat ni potrjen'
       : 'Zunaj habitatnega modela';
   return <Card style={styles.heatmapPreview}>
-    <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{areaLabel}</Text>{areaDetails ? <Text style={commonStyles.muted}>{areaDetails}</Text> : null}<Text style={commonStyles.muted}>{profile.label} · {assessment.targetDay === 'today' ? 'Danes' : 'Jutri'}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
+    <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{areaLabel}</Text>{areaDetails ? <Text style={commonStyles.muted}>{areaDetails}</Text> : null}<Text style={commonStyles.muted}>{profile.label}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
+    <View style={styles.heatmapCardDateSwitch} accessibilityRole="tablist">
+      {([['today', 'Danes'], ['tomorrow', 'Jutri']] as const).map(([day, label]) => <Pressable
+        key={day}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: targetDay === day }}
+        accessibilityLabel={`Prikaži razmere za ${label.toLocaleLowerCase('sl')}`}
+        onPress={() => onTargetDayChange(day)}
+        style={({ pressed }) => [styles.heatmapCardDateOption, targetDay === day && styles.heatmapCardDateOptionActive, pressed && styles.mapModeOptionPressed]}
+      >
+        <Text style={[styles.heatmapCardDateText, targetDay === day && styles.heatmapCardDateTextActive]}>{label}</Text>
+      </Pressable>)}
+    </View>
     <ScrollView style={styles.heatmapDetailsScroll} contentContainerStyle={styles.heatmapDetailsContent} nestedScrollEnabled>
       <View style={styles.heatmapScoreLine}><Text style={styles.heatmapAreaScore}>{assessment.score == null ? '—' : `${assessment.score} / 100`}</Text><Text style={commonStyles.body}>{assessment.classLabel}</Text></View>
       <Text style={styles.heatmapDetailTitle}>HABITAT</Text><Text style={commonStyles.body}>{habitat}</Text>
@@ -511,6 +525,11 @@ const styles = StyleSheet.create({
   heatmapErrorText: { flex: 1, color: colors.danger, fontSize: 12 },
   retryText: { color: colors.primary, fontSize: 13, fontWeight: '900' },
   heatmapPreview: { position: 'absolute', left: spacing.sm, right: spacing.sm, bottom: spacing.sm, maxHeight: '58%' },
+  heatmapCardDateSwitch: { flexDirection: 'row', alignSelf: 'flex-start', marginTop: spacing.xs, marginBottom: spacing.xs, padding: 3, gap: 3, borderRadius: radii.round, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border },
+  heatmapCardDateOption: { minWidth: 82, minHeight: 36, paddingHorizontal: spacing.md, alignItems: 'center', justifyContent: 'center', borderRadius: radii.round },
+  heatmapCardDateOptionActive: { backgroundColor: colors.primary },
+  heatmapCardDateText: { color: colors.primary, fontSize: 13, fontWeight: '800' },
+  heatmapCardDateTextActive: { color: colors.white },
   heatmapDetailsScroll: { flexGrow: 0 },
   heatmapDetailsContent: { gap: spacing.xs, paddingBottom: spacing.xs },
   heatmapScoreLine: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },

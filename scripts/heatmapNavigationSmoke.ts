@@ -24,7 +24,14 @@ assert(returnedFromConditions.targetDay === 'today', 'Target date must survive n
 assert(returnedFromConditions.selectedAreaId === selectedAreaId, 'Selected area must survive navigation.');
 assert(returnedFromConditions.viewport?.zoom === 11.5, 'Heatmap viewport must survive a MapScreen remount.');
 
-const chanterelleTomorrow = patchHeatmapNavigationState(returnedFromConditions, {
+// The date control inside the selected-area card writes to the same shared state.
+const tomorrowFromAreaCard = patchHeatmapNavigationState(returnedFromConditions, { targetDay: 'tomorrow' });
+assert(tomorrowFromAreaCard.targetDay === 'tomorrow', 'Area-card date switch must update the shared heatmap date.');
+assert(tomorrowFromAreaCard.selectedAreaId === selectedAreaId, 'Area-card date switch must keep the selected area open.');
+assert(tomorrowFromAreaCard.profileId === 'boletusEdulis', 'Area-card date switch must preserve the selected species.');
+assert(tomorrowFromAreaCard.viewport?.zoom === 11.5, 'Area-card date switch must preserve the map viewport.');
+
+const chanterelleTomorrow = patchHeatmapNavigationState(tomorrowFromAreaCard, {
   profileId: 'cantharellusCibarius',
   targetDay: 'tomorrow',
 });
