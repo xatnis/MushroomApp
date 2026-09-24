@@ -119,6 +119,7 @@ export function MapScreen() {
   const selectedHeatmapFeature = selectedHeatmapAreaId
     ? HEATMAP_HABITAT.features.find((feature) => feature.properties.id === selectedHeatmapAreaId)
     : undefined;
+  const heatmapAreaCardOpen = !selected && heatmapEnabled && Boolean(selectedHeatmapArea && selectedHeatmapFeature);
   const heatmapAreaLocality = useMemo<HeatmapAreaLocalityResolution | undefined>(() => {
     if (!selectedHeatmapFeature) return undefined;
     const { id, centerLatitude, centerLongitude } = selectedHeatmapFeature.properties;
@@ -359,7 +360,7 @@ export function MapScreen() {
         </Marker>)}
       </Map>
       <Pressable accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
-      {heatmapEnabled && heatmapControlsVisible ? <View style={styles.heatmapControls}>
+      {heatmapEnabled && heatmapControlsVisible && !heatmapAreaCardOpen ? <View style={styles.heatmapControls}>
         <View style={styles.heatmapControlsHeader}>
           <Text style={styles.heatmapControlLabel}>VRSTA</Text>
           <Pressable
