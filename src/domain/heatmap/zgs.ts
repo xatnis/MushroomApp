@@ -1,5 +1,31 @@
 import type { HeatmapHabitatState, ZgsHabitatEnrichment } from './types';
 
+// Spruce, pine, beech and oak: positive habitat evidence only. Birch cannot be
+// isolated in ZGS; fir is deliberately excluded. Cartographic V1 tuning, not biology.
+export const ZGS_CHANTERELLE_POLICY = {
+  minimumDataCoverageFraction: 0.30,
+  minimumGrowingStockSharePct: 10,
+  minimumEvidenceAreaFraction: 0.20,
+  maximumOverlapAreaFraction: 0.001,
+  maximumRoundedSharePct: 100.5,
+} as const;
+
+export function chanterelleHabitatState(wooded: boolean, zgs?: ZgsHabitatEnrichment): HeatmapHabitatState {
+  if (!wooded) return 'outside-model';
+  if (!zgs?.zgsAvailable || zgs.chanterelleHostIncompleteStandCount !== 0
+    || zgs.chanterelleHostInvalidStandCount !== 0) return 'unknown';
+  const share = zgs.chanterelleKnownHostShareAreaWeightedPct;
+  const evidence = zgs.chanterelleHostEvidenceAreaFraction;
+  const coverage = zgs.zgsDataCoverageFraction;
+  if (share == null || !Number.isFinite(share) || share < 0 || share > ZGS_CHANTERELLE_POLICY.maximumRoundedSharePct
+    || evidence == null || !Number.isFinite(evidence) || evidence < 0 || evidence > 1
+    || !Number.isFinite(coverage) || coverage < ZGS_CHANTERELLE_POLICY.minimumDataCoverageFraction || coverage > 1
+    || !Number.isFinite(zgs.overlapAreaFraction) || zgs.overlapAreaFraction < 0
+    || zgs.overlapAreaFraction > ZGS_CHANTERELLE_POLICY.maximumOverlapAreaFraction) return 'unknown';
+  return share >= ZGS_CHANTERELLE_POLICY.minimumGrowingStockSharePct
+    || evidence >= ZGS_CHANTERELLE_POLICY.minimumEvidenceAreaFraction ? 'candidate' : 'unknown';
+}
+
 // Equal evidence from spruce, fir, pine, beech and oak. Engineering heuristics,
 // not biological thresholds or bonuses to the weather score.
 export const ZGS_BOLETUS_POLICY = {

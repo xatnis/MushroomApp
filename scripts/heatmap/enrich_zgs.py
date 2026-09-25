@@ -26,6 +26,17 @@ FIELDS = dict(zip(['lzskdv11', 'lzskdv21', 'lzskdv30', 'lzskdv34', 'lzskdv39',
                    'nobleBroadleaves', 'hardBroadleaves', 'softBroadleaves']))
 BASE = {'service': 'WFS', 'version': '2.0.0'}
 BOLETUS_HOSTS = ('spruce', 'fir', 'pine', 'beech', 'oak')
+CHANTERELLE_HOSTS = ('spruce', 'pine', 'beech', 'oak')
+
+
+def chanterelle_host_share(shares):
+    """Positive evidence only; no fir extrapolation or birch from broadleaf groups."""
+    values = [parse_share(shares.get(name)) for name in CHANTERELLE_HOSTS]
+    known = [value for value in values if value is not None]
+    total = sum(known) if known else None
+    if total is not None and total > 100.5:
+        raise ValueError('Impossible Chanterelle host sum')
+    return total, len(known) == len(CHANTERELLE_HOSTS)
 
 
 def boletus_host_share(shares):
@@ -123,6 +134,28 @@ def aggregate(cell, intersections):
         'boletusHostPositiveStandCount': len(host_evidence),
         'boletusHostIncompleteStandCount': incomplete,
         'boletusHostInvalidStandCount': invalid,
+    })
+    host_values, host_evidence = [], []
+    incomplete, invalid = 0, 0
+    for geometry, shares in intersections:
+        try:
+            if shares.get('_invalidChanterelle'):
+                raise ValueError('Invalid source host field')
+            share, complete = chanterelle_host_share(shares)
+            incomplete += not complete
+            if share is not None:
+                host_values.append((geometry.area, share))
+                if share > 0:
+                    host_evidence.append(geometry)
+        except ValueError:
+            invalid += 1
+    result.update({
+        'chanterelleKnownHostShareAreaWeightedPct': round(sum(a * v for a, v in host_values) / sum(a for a, _ in host_values), 4) if host_values else None,
+        'chanterelleHostEvidenceAreaFraction': round(unary_union(host_evidence).area / cell.area, 6) if host_evidence else 0,
+        'chanterelleHostStandCount': len(host_values),
+        'chanterelleHostPositiveStandCount': len(host_evidence),
+        'chanterelleHostIncompleteStandCount': incomplete,
+        'chanterelleHostInvalidStandCount': invalid,
     })
     return result
 
@@ -227,12 +260,14 @@ def main():
                     shares[name] = None
                     if name in BOLETUS_HOSTS:
                         shares['_invalidBoletus'] = True
+                    if name in CHANTERELLE_HOSTS:
+                        shares['_invalidChanterelle'] = True
                     if name == 'pine':
                         shares['_invalidPine'] = True
             known_sum = sum(v for k, v in shares.items() if not k.startswith('_') and v is not None)
             if known_sum > 100.5:
                 warnings['impossibleShareSum'] += 1
-                shares = {name: None for name in FIELDS.values()} | {'_invalidPine': True, '_invalidBoletus': True}
+                shares = {name: None for name in FIELDS.values()} | {'_invalidPine': True, '_invalidBoletus': True, '_invalidChanterelle': True}
             elif abs(known_sum - 100) > 0.5:
                 warnings['shareSumNotNear100'] += 1
                 if known_sum == 0:

@@ -36,7 +36,7 @@ Pravila:
 
 - Splošno: `candidate`, če je vsota drevesnega pokrova in travinja vsaj 0,20.
 - Jesenski goban: drevesni pokrov vsaj 0,30 in zadostna preverjena ZGS evidence petih gostiteljskih skupin po spodnji politiki; brez nje gozdna celica ostane `unknown`.
-- Navadna lisička: `candidate`, če je drevesni pokrov vsaj 0,30.
+- Navadna lisička: drevesni pokrov vsaj 0,30 in zadostna ZGS evidence smreke, bora, bukve ali hrasta; brez nje gozdna celica ostane `unknown` (metoda spodaj).
 - Užitna sirovka: brez zadostnih preverjenih ZGS dokazov pri drevesnem pokrovu ostane `unknown`; zadostni dokazi po spodnji politiki omogočijo `candidate`. Negozdna celica ostane `outside-model`.
 
 ## Vremenska mreža in zahtevki
@@ -151,6 +151,57 @@ Povprečna coverage celice je 0,469943, razpon 0–1. Lactarius pred: candidate 
 ### Omejitve ZGS
 
 Datum zajema ni datum terenskega popisa; schema ne podaja vintage za posamezni sestoj. Pozitivni bor velja za sestoj, ne za vsak njegov del. Pilot sega tudi v Avstrijo, ki je ZGS ne pokriva. Podatek ne potrjuje vrst bora, mikrolokacije, prisotnosti sirovk ali dostopa. Mobile bere le agregacije brez izvornih sestojnih geometrij. Za širitev so potrebni regionalna preverjanja pokritosti, časovnosti in pravil straničenja ter testiranje na telefonu.
+
+## Cantharellus cibarius – ZGS habitatna evidence V1
+
+Preverjeno 24. 9. 2026. V1 uporablja smreko/Picea (`lzskdv11`), bor/Pinus (`lzskdv30`), bukev/Fagus (`lzskdv41`) in hrast/Quercus (`lzskdv50`). Vse so skupine **lesne zaloge sestoja**, ne canopy coverage. Breza ni izpeljana iz mehkih ali drugih širokih listavcev. Jelka je izpuščena: V1 ne ekstrapolira povezave z drugimi iglavci na vso družino Pinaceae. Macesen, ostali iglavci in agregirane skupine listavcev niso vključeni.
+
+### Raziskave in moč dokazov
+
+- Moore, Jansen & van Griensven (1989), *Pure culture synthesis of ectomycorrhizas with Cantharellus cibarius*, Acta Botanica Neerlandica 38:273–278, [izvirni članek in povzetek](https://natuurtijdschriften.nl/pub/540739). Neposreden eksperiment potrjuje mikorizo z **Pinus sylvestris in Betula pubescens**; identifikacija iz časa pred sodobno molekularno razmejitvijo ostaja omejitev.
+- Olariaga et al. (2016 online / 2017), *Cantharellus (Cantharellales, Basidiomycota) revisited in Europe through a multigene phylogeny*, [institucionalni zapis](https://ira.agroscope.ch/de-CH/publication/36209), [besedilo raziskave](https://www.fungipedia.org/media/kunena/attachments/2683/CantharellusmonografiaEuropa.pdf). Raziskava molekularno razmeji evropske vrste. Razdelek C. cibarius (strani PDF 16–18) navaja epitype pod Picea z Betula/Pinus in vzorce pod Quercus robur, Fagus sylvatica in Pinus. To je **terenska povezava**, ne eksperimentalna potrditev vsakega drevesa v mešanem sestoju. Razprava (stran PDF 10) ugotavlja nizko gostiteljsko specifičnost in pojavljanje v sestojih listavcev ter iglavcev.
+
+Zgodovinsko ime C. cibarius je zajemalo širši kompleks. Ne prenašamo rezultatov drugih vrst ali celotnega rodu na specifične ZGS kategorije. Splošna ugotovitev širokega gostiteljstva upravičuje konservativni unknown, ne vključitve vseh drevesnih skupin. Breza je neposredno podprt gostitelj, vendar je ZGS ne loči dovolj čisto; zato odsotnost naših štirih signalov ni dokaz odsotnosti ustreznega habitata.
+
+### Agregacija in politika
+
+Isti offline `enrich_zgs.py` iz prvotnega zajema izračuna `chanterelleKnownHostShareAreaWeightedPct`, `chanterelleHostEvidenceAreaFraction`, `chanterelleHostStandCount`, `chanterelleHostPositiveStandCount` in incomplete/invalid števca. Sešteje samo veljavne osnovne štiri deleže; vsi manjkajoči ostanejo null. Delna vsota je znana spodnja meja, ne normalizacija na 100. Katerikoli nepopoln/invaliden gostiteljski presek prepreči candidate. `*_m` se ne uporablja.
+
+Delež je Σ(površina preseka × znana gostiteljska vsota) / Σ(površina preseka z znanimi podatki). Evidence fraction je površina **unije** presekov s pozitivno vsoto / površina celice. Prekrivanja se ne štejejo dvakrat. Posamezni drevesni agregati se ponovno uporabijo.
+
+`ZGS_CHANTERELLE_POLICY`: WorldCover tree ≥0,30 AND obstoječi `zgsDataCoverageFraction` ≥0,30 AND (host share ≥10 % OR evidence fraction ≥0,20), incomplete=0, invalid=0, overlap ≤0,001. Toleranca vsote zaradi zaokroževanja je 100,5 %. To so inženirske/kartografske V1 hevristike, ne raziskovalno validirane biološke meje. Coverage ostaja vezan na veljaven pine field; pri candidate so vsi štirje zahtevani gostiteljski fieldi popolni. Wooded brez zadostne evidence → unknown (tudi znane ničle). Outside-model samo za premalo WorldCover drevesnega pokrova.
+
+Vreme ostane ločeno: R30 40 %, R7 10 %, T14 25 %, soil 20 %, drying 5 %. Habitat nima bonusa ali množitelja in ne spreminja dataQuality. Danes/Jutri uporabljata isto statično habitatno evidenco. Mobile ima **0 novih WFS zahtevkov**. Artefakt ohrani originalni datum zajema; dodane so samo majhne per-cell agregacije brez raw geometrij. Reuse/attribution pogoji ZGS iz zgornjega razdelka ostajajo enaki.
+
+Regeneracija in preverjanje iz korena projekta:
+
+```powershell
+scripts/heatmap/.cache/zgs-venv/Scripts/python.exe scripts/heatmap/enrich_zgs.py
+scripts/heatmap/.cache/zgs-venv/Scripts/python.exe scripts/heatmap/test_zgs.py
+npm run typecheck
+npx tsc scripts/chanterelleHabitatSmoke.ts scripts/boletusHabitatSmoke.ts scripts/zgsEnrichmentSmoke.ts scripts/heatmapPilotSmoke.ts scripts/heatmapNavigationSmoke.ts --outDir output/chanterelle-habitat-tests --module node16 --target es2022 --esModuleInterop --skipLibCheck --moduleResolution node16 --resolveJsonModule --ignoreConfig
+node output/chanterelle-habitat-tests/scripts/chanterelleHabitatSmoke.js
+```
+
+Focused regression uporablja baseline `5567ee8`, vse realne celice in nadzorovan vremenski fixture za oba datuma. Primerja vse prejšnje ZGS fielde, Generic/Boletus/Lactarius habitat ter score/components/dataQuality vseh štirih profilov. Preveri tudi identičnost source datotek vremenskih scorerjev, builderja in fetchinga. To ni live weather niti fizični Android test. Pred širjenjem so potrebni regionalna presoja coverage, preverjanje terenskega vintage in primerjava z lokalnimi podatki; 1 km pozitivna evidence ne potrjuje gob, dostopa ali točne mikrolokacije gostitelja.
+
+### Realni rezultati Cantharellus
+
+Vseh 1.961 celic: prej **1.826 candidate / 0 unknown / 135 outside-model**; potem **1.235 / 591 / 135**. Candidate 62,9781 %, unknown 30,1377 % vseh celic. Povprečna ZGS coverage 0,469943 (razpon 0–1). Pragovi ostajajo prvotno predlagani; niso prilagojeni za vizualno razlikovanje kart. Habitat stanja so v tem zajemu pri vseh celicah enaka Boletus, čeprav je host share brez jelke drugačen. Boletus ostaja 1.235 / 591 / 135, Lactarius 808 / 1.018 / 135, Generic je nespremenjen po vsaki celici.
+
+Host-share distribucija: null 571; 0 % 5; (0,10) 5; [10,50) 66; [50,90) 1.112; ≥90 202. Evidence area: 0 je 576 (vključuje 571 celic brez znanega host share, zato nič ni dokaz odsotnosti gostiteljev); (0,0,20) 106; [0,20,0,50) 250; [0,50,0,90) 856; [0,90,1] 173. Pozitiven posamezen agregat med **gozdnimi** celicami: smreka 1.334, bor 1.141, bukev 1.320, hrasti 779. Skupine se prekrivajo in se ne seštevajo.
+
+| Primer / celica | Tree | Coverage | Smreka % | Bor % | Bukev % | Hrasti % | Host % | Evidence | Stanje |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| smreka / area-19-27 | 0,9319 | 0,862645 | 96,0105 | 0 | 2,3138 | 0 | 98,3243 | 0,854224 | candidate |
+| bor / area-27-29 | 0,9877 | 0,962914 | 11,1228 | 77,9556 | 7,4666 | 0 | 96,5449 | 0,962914 | candidate |
+| bukev / area-02-25 | 0,7925 | 0,704941 | 17,5554 | 0 | 76,7819 | 0 | 94,3374 | 0,700168 | candidate |
+| hrast / area-08-35 | 0,7356 | 0,611360 | 32,5428 | 10,7776 | 14,0508 | 30,8239 | 88,1951 | 0,608950 | candidate |
+| mešan / area-00-25 | 0,7328 | 0,597316 | 46,0570 | 0 | 49,8390 | 0 | 95,8960 | 0,572803 | candidate |
+| nizka coverage / area-05-10 | 0,3388 | 0,074326 | 27,8034 | 0 | 59,6466 | 0 | 87,4500 | 0,074326 | unknown |
+| nič izbranih skupin / area-10-10 | 0,6767 | 0,027577 | 0 | 0 | 0 | 0 | 0 | 0 | unknown |
+
+Hrastov primer je najmočnejši hrastov signal med celicami z coverage ≥0,30, ne čist hrastov gozd. Na Android telefonu preverite candidate in unknown kartico, ZGS attribution, visok weather score skupaj z unknown habitatom ter Danes/Jutri: habitat ostaja isti, vreme se lahko spremeni. Fizična naprava ni bila uporabljena za potrditev teh interakcij.
 
 ## Boletus edulis – ZGS habitatna evidence V1
 

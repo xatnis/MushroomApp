@@ -43,7 +43,7 @@ for (const feature of HEATMAP_HABITAT.features) {
   beforeCounts[oldState] = (beforeCounts[oldState] ?? 0) + 1;
   afterCounts[newState] = (afterCounts[newState] ?? 0) + 1;
   for (const profile of HEATMAP_PROFILE_IDS) {
-    if (profile === 'generic' || profile === 'cantharellusCibarius') assert(habitatStateFor(feature, profile) === habitatStateFor(before, profile), `${profile}: habitat changed`);
+    if (profile === 'generic') assert(habitatStateFor(feature, profile) === habitatStateFor(before, profile), `${profile}: habitat changed`);
     for (const day of HEATMAP_TARGET_DAYS) {
       const weather = assessHeatmapWeather(source, profile, day);
       const old = areaAssessmentFor(before, weather), next = areaAssessmentFor(feature, weather);

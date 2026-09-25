@@ -72,6 +72,12 @@ export interface ZgsHabitatEnrichment {
   boletusHostPositiveStandCount?: number;
   boletusHostIncompleteStandCount?: number;
   boletusHostInvalidStandCount?: number;
+  chanterelleKnownHostShareAreaWeightedPct?: number | null;
+  chanterelleHostEvidenceAreaFraction?: number;
+  chanterelleHostStandCount?: number;
+  chanterelleHostPositiveStandCount?: number;
+  chanterelleHostIncompleteStandCount?: number;
+  chanterelleHostInvalidStandCount?: number;
   zgsStandCount: number;
   zgsPinePositiveStandCount: number;
   overlapAreaFraction: number;

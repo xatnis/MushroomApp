@@ -75,8 +75,25 @@
       "A positive pine share applies to a whole stand and does not locate pine within that stand.",
       "Data cover Slovenian stands; the pilot also crosses the national border.",
       "Valid zero shares, missing values, low coverage and lack of stand coverage remain distinguishable.",
-      "Weather scores remain unchanged. ZGS evidence is used only by Lactarius and Boletus habitat policies."
+      "Weather scores remain unchanged. ZGS evidence is used by Lactarius, Boletus and Cantharellus habitat policies."
     ]
+  },
+  "chanterelleHabitatMethod": {
+    "version": "v1",
+    "checkedDate": "2026-09-24",
+    "hostFields": ["lzskdv11", "lzskdv30", "lzskdv41", "lzskdv50"],
+    "hostGroups": ["Picea", "Pinus", "Fagus", "Quercus"],
+    "excluded": "Abies: no family-level extrapolation in V1. Betula: directly supported but cannot be separated from broad ZGS categories. Other conifer/broadleaf groups and *_m fields excluded.",
+    "semantics": "Area-weighted stand growing-stock shares, not canopy cover. Positive habitat evidence only; no weather multiplier.",
+    "aggregation": "Sum valid four-group fields without normalization; null if all missing; union positive intersections for evidence fraction. Incomplete/invalid intersecting host stands block candidate.",
+    "coverage": "Reuse existing pine-valid zgsDataCoverageFraction with complete four-group requirement.",
+    "heuristic": "wooded >=0.30 AND coverage >=0.30 AND (host share >=10 OR union evidence >=0.20), incomplete=0, invalid=0, overlap <=0.001; engineering thresholds",
+    "unknownPolicy": "Wooded with absent, incomplete, invalid, overlapping or insufficient evidence stays unknown, including known zero shares. Outside-model only if not wooded.",
+    "references": [
+      {"title": "Pure culture synthesis of ectomycorrhizas with Cantharellus cibarius", "authors": "Moore, Jansen & van Griensven", "year": 1989, "url": "https://natuurtijdschriften.nl/pub/540739", "evidence": "Direct experimental synthesis with Pinus sylvestris and Betula pubescens; predates modern molecular species delimitation."},
+      {"title": "Cantharellus (Cantharellales, Basidiomycota) revisited in Europe through a multigene phylogeny", "authors": "Olariaga et al.", "year": 2017, "url": "https://ira.agroscope.ch/de-CH/publication/36209", "fullText": "https://www.fungipedia.org/media/kunena/attachments/2683/CantharellusmonografiaEuropa.pdf", "evidence": "Modern C. cibarius taxon account includes Picea/Pinus, Fagus and Quercus collections. Field association, not synthesis for every host. Discussion supports low host specificity."}
+    ],
+    "speciesComplexCaveat": "Historical C. cibarius sensu lato records can concern other species. Broader genus/complex observations are not treated as direct host proof; no indiscriminate tree-group mapping."
   },
   "boletusHabitatMethod": {
     "version": "v1",

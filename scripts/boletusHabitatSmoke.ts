@@ -55,7 +55,7 @@ for (const f of HEATMAP_HABITAT.features) {
   before[wooded ? 'candidate' : 'outside-model']++;
   after[habitatStateFor(f, 'boletusEdulis')]++;
   strictEqual(habitatStateFor(f, 'generic'), f.properties.treeCoverFraction + f.properties.grasslandFraction >= .2 ? 'candidate' : 'outside-model');
-  strictEqual(habitatStateFor(f, 'cantharellusCibarius'), wooded ? 'candidate' : 'outside-model');
+  // Chanterelle now has its own host policy, covered by chanterelleHabitatSmoke.
   for (const day of ['today', 'tomorrow'] as const) for (const profile of profiles) {
     const weather = assessHeatmapWeather(source, profile, day);
     const previous = areaAssessmentFor({ ...f, properties: { ...f.properties, zgs: oldZgs } }, weather);
