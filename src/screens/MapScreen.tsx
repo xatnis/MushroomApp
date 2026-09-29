@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Keyboard, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Keyboard, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker, UserLocation, type CameraRef, type FillLayerSpecification, type LineLayerSpecification } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -21,6 +21,7 @@ import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
 import { slNumber } from '../domain/format';
 import { createHeatmapRequestGate, loadHeatmapPilot, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
 import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '../services/heatmap/areaLocality';
+import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const SLOVENIA_CENTER: [number, number] = [14.82, 46.12];
@@ -72,6 +73,7 @@ export function MapScreen() {
     heatmapNavigation, updateHeatmapNavigation,
   } = useApp();
   const camera = useRef<CameraRef>(null);
+  const locationRequestGate = useRef(createLocationRequestGate()).current;
   const suppressMapPressUntil = useRef(0);
   const [mode, setMode] = useState<'map' | 'list'>('map');
   const [query, setQuery] = useState('');
@@ -103,6 +105,7 @@ export function MapScreen() {
   useEffect(() => {
     void Location.getForegroundPermissionsAsync().then(({ granted }) => setLocationGranted(granted));
   }, []);
+  useEffect(() => () => locationRequestGate.cancel(), [locationRequestGate]);
   const filtered = useMemo(() => {
     const q = normalizeSearch(query);
     return hotspots.filter((hotspot) => {
@@ -204,11 +207,13 @@ export function MapScreen() {
   }, [exploreLocation, route.params?.focusExploreLocationAt, updateHeatmapNavigation]);
 
   const focusHotspot = (hotspot: (typeof hotspots)[number]) => {
+    locationRequestGate.cancel(); setLocating(false);
     setSelectedId(hotspot.id); setOwnerFilter('mine'); setMode('map');
     setCameraTarget({ center: [hotspot.longitude, hotspot.latitude], zoom: 15 });
   };
 
   const selectPlace = (place: PlaceSearchResult) => {
+    locationRequestGate.cancel(); setLocating(false);
     Keyboard.dismiss(); setSelectedId(undefined); setMode('map'); setQuery('');
     setPlaceResults([]); setPlaceSearchError(undefined);
     setExploreLocation({ name: place.name, latitude: place.latitude, longitude: place.longitude, admin1: place.admin1, admin2: place.admin2, country: place.country, source: 'place' });
@@ -221,25 +226,36 @@ export function MapScreen() {
   };
 
   const recenter = async () => {
+    const controller = locationRequestGate.begin();
+    if (!controller) return;
     setLocating(true); setLocationMessage(undefined);
     try {
-      const servicesEnabled = await Location.hasServicesEnabledAsync();
-      if (!servicesEnabled && Platform.OS === 'android') await Location.enableNetworkProviderAsync();
-      else if (!servicesEnabled) { setLocationMessage('Vključite lokacijske storitve in poskusite znova.'); return; }
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) { setLocationMessage('Lokacija ni dovoljena. Rastišča lahko še vedno izberete na seznamu ali ročno.'); return; }
+      const result = await acquireForegroundPosition(
+        Location,
+        Location.Accuracy.Highest,
+        undefined,
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
       setLocationGranted(true);
-      const last = await Location.getLastKnownPositionAsync({ maxAge: 120_000, requiredAccuracy: 250 });
-      const current = last ?? await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Lokacije ni bilo mogoče hitro pridobiti.')), 12_000)),
-      ]);
+      const current = result.location;
       setSelectedId(undefined);
       camera.current?.easeTo({ center: [current.coords.longitude, current.coords.latitude], zoom: 15, duration: 700 });
       setExploreLocation({ name: 'Moja lokacija', latitude: current.coords.latitude, longitude: current.coords.longitude, source: 'gps' });
-      if ((current.coords.accuracy ?? 0) > 100) setLocationMessage(`Lokacija je manj natančna (±${Math.round(current.coords.accuracy ?? 0)} m).`);
-    } catch (error) { setLocationMessage(error instanceof Error ? error.message : 'Lokacija ni na voljo.'); }
-    finally { setLocating(false); }
+      const accuracy = accuracyMeters(current);
+      if (accuracy != null && accuracy > 100) {
+        setLocationMessage(`Lokacija je manj natančna (±${Math.round(accuracy)} m).`);
+      } else if (result.source === 'lastKnown') {
+        const ageMinutes = Math.max(0, Math.round((Date.now() - current.timestamp) / 60_000));
+        const ageLabel = ageMinutes < 1 ? 'stara manj kot minuto' : `stara približno ${ageMinutes} min`;
+        setLocationMessage(`Uporabljena je zadnja znana lokacija (±${Math.round(accuracy ?? 0)} m, ${ageLabel}).`);
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) setLocationMessage(error instanceof Error ? error.message : 'Lokacija ni na voljo.');
+    } finally {
+      locationRequestGate.finish(controller);
+      if (!controller.signal.aborted) setLocating(false);
+    }
   };
 
   return <Screen scroll={false} style={styles.screen}>
@@ -424,7 +440,7 @@ export function MapScreen() {
           navigation.navigate('Tabs', { screen: 'Conditions' });
         }}
       /> : null}
-      {locating ? <View style={styles.locating}><Text style={commonStyles.muted}>Pridobivam lokacijo …</Text></View> : null}
+      {locating ? <View style={styles.locating}><Text style={commonStyles.muted}>Določam natančno lokacijo …</Text></View> : null}
     </View> : <View style={styles.list}>{ownerFilter === 'friends' ? friendHotspots.map((hotspot) => <Pressable key={hotspot.id} onPress={() => void Linking.openURL(`geo:${hotspot.latitude},${hotspot.longitude}?q=${hotspot.latitude},${hotspot.longitude}`)}><Card><Text style={commonStyles.heading}>{hotspot.title || 'Deljeno rastišče'}</Text><Text style={commonStyles.muted}>@{hotspot.owner_username} · točna lokacija, izrecno deljena s prijatelji</Text></Card></Pressable>) : filtered.length ? filtered.map((hotspot) => <Pressable key={hotspot.id} onPress={() => navigation.navigate('HotspotDetail', { hotspotId: hotspot.id })}><Card><View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{hotspot.title || 'Rastišče brez naslova'}</Text><Text style={commonStyles.muted}>{hotspot.latitude.toFixed(4)}, {hotspot.longitude.toFixed(4)} · {finds.filter((find) => find.hotspotId === hotspot.id).length} obiskov</Text></View><StatusPill state={hotspot.syncState} /></View></Card></Pressable>) : <EmptyState title={query.trim() ? 'Ni zadetkov med rastišči' : 'Še ni rastišč'} message={query.trim() ? 'Poskusite z drugim nazivom ali vrsto.' : 'Dodajte prvo rastišče z gumbom + ali z dolgim pritiskom na zemljevid.'} />}</View>}
   </Screen>;
 }

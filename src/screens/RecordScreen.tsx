@@ -14,6 +14,7 @@ import { normalizeSearch, speciesName } from '../domain/species';
 import { haversineKm, parseQuantity } from '../domain/format';
 import { choosePhotos, removeLocalPhoto, takePhoto } from '../services/media';
 import { getHistoricalWeather, searchLocations, type PlaceSearchResult } from '../services/weather';
+import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
 import { colors, radii, spacing } from '../theme';
 
 const blankItem = (): DraftItem => ({ id: Crypto.randomUUID(), speciesId: 'unknown', quantityText: '', searchedFor: false });
@@ -39,6 +40,7 @@ export function RecordScreen() {
   const [draft, setDraft] = useState<RecordingDraft>(() => ({ ...newDraft(), hotspotId: route.params?.hotspotId, latitude: route.params?.latitude, longitude: route.params?.longitude, locationSource: route.params?.latitude != null ? 'manual' : undefined }));
   const [photos, setPhotos] = useState<FindPhoto[]>(existing?.photos ?? []);
   const speciesInputRefs = useRef(new Map<string, TextInput>());
+  const locationRequestGate = useRef(createLocationRequestGate()).current;
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [showDate, setShowDate] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -61,6 +63,8 @@ export function RecordScreen() {
       }
     })();
   }, []);
+
+  useEffect(() => () => locationRequestGate.cancel(), [locationRequestGate]);
 
   useEffect(() => {
     if (existing) return;
@@ -95,23 +99,38 @@ export function RecordScreen() {
     .filter(({ km }) => km <= 0.15).sort((a, b) => a.km - b.km)[0], [draft.latitude, draft.longitude, hotspots]);
 
   async function acquireLocation() {
+    const controller = locationRequestGate.begin();
+    if (!controller) return;
     setLocating(true); setMessage(undefined);
     try {
-      const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted) { setMessage('Lokacija ni dovoljena. Izberite obstoječe rastišče ali ročno vnesite koordinate.'); return; }
-      const last = await Location.getLastKnownPositionAsync({ maxAge: 120_000, requiredAccuracy: 200 });
-      const location = last ?? await Promise.race([
-        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Lokacije ni bilo mogoče pridobiti v 12 sekundah. Osnutek je shranjen.')), 12_000)),
-      ]);
+      const result = await acquireForegroundPosition(
+        Location,
+        Location.Accuracy.Highest,
+        undefined,
+        controller.signal,
+      );
+      if (controller.signal.aborted) return;
+      const { location } = result;
       setDraft((current) => ({ ...current, hotspotId: undefined, latitude: location.coords.latitude, longitude: location.coords.longitude, accuracyM: location.coords.accuracy ?? undefined, locationSource: 'gps', locationName: undefined, locationAdmin1: undefined, locationAdmin2: undefined, locationCountry: undefined }));
       setPlaceSearchOpen(false); setPlaceQuery(''); setPlaceResults([]);
-      if ((location.coords.accuracy ?? 0) > 100) setMessage(`Lokacija je manj natančna (±${Math.round(location.coords.accuracy ?? 0)} m). Po potrebi jo popravite.`);
-    } catch (error) { setMessage(error instanceof Error ? error.message : 'Lokacija ni dosegljiva. Osnutek je shranjen.'); }
-    finally { setLocating(false); }
+      const accuracy = accuracyMeters(location);
+      if (accuracy != null && accuracy > 100) {
+        setMessage(`Lokacija je manj natančna (±${Math.round(accuracy)} m). Po potrebi jo popravite.`);
+      } else if (result.source === 'lastKnown') {
+        const ageMinutes = Math.max(0, Math.round((Date.now() - location.timestamp) / 60_000));
+        const ageLabel = ageMinutes < 1 ? 'stara manj kot minuto' : `stara približno ${ageMinutes} min`;
+        setMessage(`Uporabljena je zadnja znana lokacija (±${Math.round(accuracy ?? 0)} m, ${ageLabel}).`);
+      }
+    } catch (error) {
+      if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : 'Lokacija ni dosegljiva. Osnutek je shranjen.');
+    } finally {
+      locationRequestGate.finish(controller);
+      if (!controller.signal.aborted) setLocating(false);
+    }
   }
 
   const selectPlace = (place: PlaceSearchResult) => {
+    locationRequestGate.cancel(); setLocating(false);
     setDraft((current) => ({
       ...current,
       hotspotId: undefined,
@@ -125,6 +144,11 @@ export function RecordScreen() {
       locationCountry: place.country,
     }));
     setPlaceSearchOpen(false); setPlaceQuery(''); setPlaceResults([]); setPlaceSearchError(undefined); setMessage(undefined);
+  };
+
+  const selectExistingHotspot = (hotspotId: string) => {
+    locationRequestGate.cancel(); setLocating(false); setMessage(undefined);
+    setDraft((current) => ({ ...current, hotspotId }));
   };
 
   const updateItem = (id: string, changes: Partial<DraftItem>) => setDraft((current) => ({ ...current, items: current.items.map((item) => item.id === id ? { ...item, ...changes } : item) }));
@@ -196,13 +220,13 @@ export function RecordScreen() {
 
   return <Screen style={{ paddingBottom: insets.bottom + spacing.xl }}>
     <Text style={commonStyles.title}>{existing ? 'Uredi obisk' : 'Zabeleži obisk'}</Text>
-    {message ? <Notice tone={message.includes('ni ') || message.includes('Izberite') ? 'warning' : 'success'}>{message}</Notice> : null}
+    {message ? <Notice tone={message.includes('ni ') || message.includes('Izberite') || message.includes('manj natančna') || message.includes('zadnja znana') ? 'warning' : 'success'}>{message}</Notice> : null}
     <Card><SectionTitle>Rastišče</SectionTitle>
       {selectedHotspot ? <><Text style={commonStyles.heading}>{selectedHotspot.title || 'Rastišče brez naslova'}</Text>{selectedHotspot.locationName ? <Text style={commonStyles.body}>{selectedHotspot.locationName}</Text> : null}<Text style={commonStyles.muted}>{selectedHotspot.latitude.toFixed(5)}, {selectedHotspot.longitude.toFixed(5)}</Text><AppButton title="Izberi drugo" variant="ghost" onPress={() => setDraft((current) => ({ ...current, hotspotId: undefined }))} /></>
       : <><Field label="Naslov novega rastišča (neobvezno)" value={draft.hotspotTitle ?? ''} onChangeText={(hotspotTitle) => setDraft((current) => ({ ...current, hotspotTitle }))} placeholder="npr. Smrekov gozd" />
         {draft.locationName ? <View style={styles.locationSummary}><Text style={commonStyles.muted}>Izbrana lokacija</Text><Text style={commonStyles.heading}>{draft.locationName}</Text>{placeDetails({ name: draft.locationName, admin1: draft.locationAdmin1, admin2: draft.locationAdmin2, country: draft.locationCountry }) ? <Text style={commonStyles.muted}>{placeDetails({ name: draft.locationName, admin1: draft.locationAdmin1, admin2: draft.locationAdmin2, country: draft.locationCountry })}</Text> : null}<Text style={commonStyles.muted}>{draft.latitude?.toFixed(5)}, {draft.longitude?.toFixed(5)}</Text><AppButton title="Spremeni lokacijo" variant="ghost" onPress={() => setPlaceSearchOpen(true)} /></View>
         : <Text style={commonStyles.muted}>{draft.latitude != null ? `${draft.latitude.toFixed(5)}, ${draft.longitude?.toFixed(5)}${draft.accuracyM ? ` · ±${Math.round(draft.accuracyM)} m` : ''}` : 'Lokacija še ni določena.'}</Text>}
-        <AppButton title={locating ? 'Pridobivam lokacijo …' : 'Uporabi trenutno lokacijo'} variant="secondary" loading={locating} onPress={() => void acquireLocation()} />
+        <AppButton title={locating ? 'Določam natančno lokacijo …' : 'Uporabi trenutno lokacijo'} variant="secondary" loading={locating} onPress={() => void acquireLocation()} />
         {!draft.locationName ? <AppButton title="Izberi lokacijo" variant="secondary" onPress={() => setPlaceSearchOpen((open) => !open)} /> : null}
         {placeSearchOpen ? <View style={styles.locationSearch}>
           <Field label="Poišči mesto ali kraj" placeholder="Npr. Maribor" value={placeQuery} onChangeText={setPlaceQuery} autoCapitalize="words" autoCorrect={false} />
@@ -212,8 +236,8 @@ export function RecordScreen() {
           {placeQuery.trim().length >= 2 && !placeSearchLoading && !placeSearchError && !placeResults.length ? <Text style={commonStyles.muted}>Ni najdenih lokacij.</Text> : null}
           <Text style={commonStyles.muted}>Iskanje lokacij: Open‑Meteo / GeoNames</Text>
         </View> : null}
-        {nearby ? <Notice tone="info">V bližini je »{nearby.hotspot.title || 'rastišče brez naslova'}« ({Math.round(nearby.km * 1000)} m). <Text onPress={() => setDraft((current) => ({ ...current, hotspotId: nearby.hotspot.id }))} style={styles.link}>Dodaj obisk tja.</Text></Notice> : null}
-        <Text style={commonStyles.muted}>Ali izberite obstoječe:</Text><View style={commonStyles.wrap}>{hotspots.slice(0, 8).map((hotspot) => <Chip key={hotspot.id} label={hotspot.title || 'Brez naslova'} onPress={() => setDraft((current) => ({ ...current, hotspotId: hotspot.id }))} />)}</View></>}
+        {nearby ? <Notice tone="info">V bližini je »{nearby.hotspot.title || 'rastišče brez naslova'}« ({Math.round(nearby.km * 1000)} m). <Text onPress={() => selectExistingHotspot(nearby.hotspot.id)} style={styles.link}>Dodaj obisk tja.</Text></Notice> : null}
+        <Text style={commonStyles.muted}>Ali izberite obstoječe:</Text><View style={commonStyles.wrap}>{hotspots.slice(0, 8).map((hotspot) => <Chip key={hotspot.id} label={hotspot.title || 'Brez naslova'} onPress={() => selectExistingHotspot(hotspot.id)} />)}</View></>}
     </Card>
     <Card><SectionTitle>Izid obiska</SectionTitle><View style={commonStyles.wrap}>{([['found', 'Našel sem gobe'], ['nothing', 'Nič nisem našel'], ['unspecified', 'Brez izida']] as Array<[Outcome, string]>).map(([value, label]) => <Chip key={value} label={label} selected={draft.outcome === value} onPress={() => setDraft((current) => ({ ...current, outcome: value }))} />)}</View></Card>
     <Card><SectionTitle>{draft.outcome === 'nothing' ? 'Kaj ste iskali? (neobvezno)' : 'Vrste'}</SectionTitle>
