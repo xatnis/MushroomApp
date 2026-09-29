@@ -15,7 +15,8 @@ import { listFriendHotspots, type FriendHotspot } from '../services/friends';
 import { searchLocations, type PlaceSearchResult } from '../services/weather';
 import type { MushroomWeatherProfileId } from '../domain/types';
 import type { HeatmapAreaAssessment, HeatmapTargetDay } from '../domain/heatmap/types';
-import { buildHeatmapRenderCollection, HEATMAP_HABITAT, HEATMAP_PILOT_METADATA } from '../domain/heatmap/pilot';
+import { buildHeatmapRenderCollection, HEATMAP_HABITAT, HEATMAP_PILOT_METADATA, REGIONAL_INDEX, isRegionalPoint } from '../domain/heatmap/regional';
+import type { Bounds } from '../domain/heatmap/spatial';
 import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
 import { slNumber } from '../domain/format';
 import { createHeatmapRequestGate, loadHeatmapPilot, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
@@ -92,6 +93,8 @@ export function MapScreen() {
   const [heatmapRetry, setHeatmapRetry] = useState(0);
   const [heatmapControlsVisible, setHeatmapControlsVisible] = useState(true);
   const [mapViewportHeight, setMapViewportHeight] = useState(0);
+  const [visibleBounds, setVisibleBounds] = useState<Bounds>();
+  const [mapCenter, setMapCenter] = useState<[number, number]>(heatmapNavigation.viewport?.center ?? SLOVENIA_CENTER);
   const heatmapRequestGate = useRef(createHeatmapRequestGate()).current;
   useEffect(() => {
     if (!session) { setFriendHotspots([]); return; }
@@ -115,6 +118,11 @@ export function MapScreen() {
       weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay),
     );
   }, [heatmapBundle, heatmapProfileId, heatmapTargetDay]);
+  const visibleHeatmap = useMemo(() => {
+    if (!heatmapView || !visibleBounds) return heatmapView?.collection;
+    const visibleIds = new Set(REGIONAL_INDEX.visible(visibleBounds, selectedHeatmapAreaId).map(f => f.properties.id));
+    return { ...heatmapView.collection, features: heatmapView.collection.features.filter(f => visibleIds.has(f.properties.id)) };
+  }, [heatmapView, visibleBounds, selectedHeatmapAreaId]);
   const selectedHeatmapArea = selectedHeatmapAreaId ? heatmapView?.assessments[selectedHeatmapAreaId] : undefined;
   const selectedHeatmapFeature = selectedHeatmapAreaId
     ? HEATMAP_HABITAT.features.find((feature) => feature.properties.id === selectedHeatmapAreaId)
@@ -306,9 +314,12 @@ export function MapScreen() {
         scaleBar={false}
         onDidFinishLoadingMap={() => setMapReady(true)}
         onRegionDidChange={(event) => {
-          if (!heatmapEnabled) return;
           const [longitude, latitude] = event.nativeEvent.center;
           const { zoom } = event.nativeEvent;
+          const bounds = event.nativeEvent.bounds;
+          if (bounds?.length === 4 && bounds.every(Number.isFinite)) setVisibleBounds([...bounds] as Bounds);
+          if (Number.isFinite(latitude) && Number.isFinite(longitude)) setMapCenter([longitude, latitude]);
+          if (!heatmapEnabled) return;
           if (Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(zoom)) {
             updateHeatmapNavigation({ viewport: { center: [longitude, latitude], zoom } });
           }
@@ -326,7 +337,7 @@ export function MapScreen() {
         <Camera ref={camera} initialViewState={heatmapNavigation.viewport ?? { center: SLOVENIA_CENTER, zoom: 7 }} />
         {heatmapEnabled && heatmapView ? <GeoJSONSource
           id="mushroom-heatmap-pilot"
-          data={heatmapView.collection}
+          data={visibleHeatmap ?? heatmapView.collection}
           onPress={(event) => {
             event.stopPropagation();
             const areaId = event.nativeEvent.features[0]?.properties?.id;
@@ -378,10 +389,11 @@ export function MapScreen() {
         </ScrollView>
         <View style={styles.heatmapDateRow}><Text style={styles.heatmapControlLabel}>DATUM</Text><Chip label="Danes" selected={heatmapTargetDay === 'today'} onPress={() => updateHeatmapNavigation({ targetDay: 'today' })} /><Chip label="Jutri" selected={heatmapTargetDay === 'tomorrow'} onPress={() => updateHeatmapNavigation({ targetDay: 'tomorrow' })} /></View>
         <View style={styles.heatmapLegend}><View style={[styles.legendDot, { backgroundColor: '#A96B50' }]} /><Text style={styles.legendText}>slabe</Text><View style={[styles.legendDot, { backgroundColor: '#C7A85A' }]} /><View style={[styles.legendDot, { backgroundColor: '#7EA46E' }]} /><View style={[styles.legendDot, { backgroundColor: '#3F7C57' }]} /><View style={[styles.legendDot, { backgroundColor: '#174E3D' }]} /><Text style={styles.legendText}>odlične</Text><View style={[styles.legendDot, { backgroundColor: '#8B9190' }]} /><Text style={styles.legendText}>omejeno/neznano</Text></View>
-        <Text style={styles.heatmapAttribution}>Habitat: ESA WorldCover 2021 + Zavod za gozdove Slovenije – podatki o sestojih · Vreme: Open-Meteo</Text>
+        <Text style={styles.heatmapAttribution}>Habitat: ESA WorldCover 2021 + Zavod za gozdove Slovenije – podatki o sestojih · Vreme: Open-Meteo · Meja: geoBoundaries</Text>
         {heatmapLoading ? <View style={styles.heatmapStatus}><ActivityIndicator size="small" color={colors.primary} /><Text style={commonStyles.muted}>Nalagam realne habitatne in vremenske podatke …</Text></View> : null}
         {heatmapError ? <View style={styles.heatmapStatus}><Text style={styles.heatmapErrorText}>{heatmapError}</Text><Pressable accessibilityRole="button" onPress={() => { setHeatmapBundle(undefined); setHeatmapRetry((value) => value + 1); }}><Text style={styles.retryText}>Poskusi znova</Text></Pressable></View> : null}
       </View> : null}
+      {heatmapEnabled && !heatmapAreaCardOpen && !isRegionalPoint(mapCenter) ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>Podatki o pogojih za to območje še niso pripravljeni.</Text></View> : null}
       {exploreLocation && !selected && !heatmapEnabled ? <Pressable accessibilityRole="button" accessibilityLabel={`Poglej razmere za ${exploreLocation.name}`} onPress={() => navigation.navigate('Tabs', { screen: 'Conditions' })} style={({ pressed }) => [styles.conditionsAction, pressed && styles.searchResultPressed]}>
         <Ionicons name="cloud-outline" size={21} color={colors.primary} />
         <View style={styles.grow}><Text numberOfLines={1} style={styles.conditionsLocation}>{exploreLocation.name}</Text><Text style={styles.conditionsActionText}>Poglej razmere</Text></View>
@@ -526,6 +538,7 @@ const styles = StyleSheet.create({
   conditionsActionText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
   preview: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.lg }, previewTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, closeButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSoft }, closeButtonPressed: { opacity: 0.65 }, grow: { flex: 1 }, locating: { position: 'absolute', alignSelf: 'center', top: spacing.lg, backgroundColor: colors.surface, padding: spacing.sm, borderRadius: radii.round },
   heatmapControls: { position: 'absolute', left: spacing.sm, right: spacing.sm, top: 66, gap: spacing.xs, padding: spacing.sm, borderRadius: radii.md, backgroundColor: 'rgba(255,253,247,0.96)', borderWidth: 1, borderColor: colors.border, elevation: 4 },
+  coverageNotice: { position: 'absolute', left: spacing.sm, right: 60, bottom: spacing.xl, padding: spacing.sm, borderRadius: radii.md, backgroundColor: 'rgba(255,253,247,0.96)' },
   heatmapControlsHeader: { minHeight: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   heatmapControlsClose: { width: 34, height: 34 },
   heatmapControlLabel: { color: colors.primary, fontSize: 11, fontWeight: '900', letterSpacing: 0.7 },

@@ -1,4 +1,20 @@
 {
+  "regionalV2": {
+    "id": "slovenia-regional-v2",
+    "radiusM": 75000,
+    "boundary": {
+      "dataset": "geoBoundaries gbOpen SVN ADM0",
+      "boundaryID": "SVN-ADM0-8885693",
+      "representedYear": 2009,
+      "license": "Public Domain according to provider metadata",
+      "attribution": "geoBoundaries (William & Mary), source Wikipedia",
+      "url": "https://media.githubusercontent.com/media/wmgeolab/geoBoundaries/9469f09/releaseData/gbOpen/SVN/ADM0/geoBoundaries-SVN-ADM0.geojson",
+      "metadataUrl": "https://www.geoboundaries.org/api/current/gbOpen/SVN/ADM0/",
+      "limitation": "Generalized historical boundary; not cadastral precision or proof of access."
+    },
+    "documentation": "docs/heatmap/REGIONAL_V2.md",
+    "artifactDirectory": "src/data/heatmapRegional"
+  },
   "pilot": {
     "id": "crna-koroska-v1",
     "center": {

@@ -12,7 +12,8 @@ const baselineRef = '5567ee8';
 const previousFile = (path: string) => execFileSync('git', ['show', `${baselineRef}:${path}`], { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
 const baseline = JSON.parse(previousFile('src/data/heatmapPilot/zgs-enrichment.json')) as ZgsEnrichmentArtifact;
 // Exact source regression plus assessment comparison below: no new weather formula.
-for (const path of ['src/domain/mushroomWeather.ts', 'src/services/weather.ts', 'src/domain/heatmap/assessment.ts', 'src/domain/heatmap/config.ts', 'src/services/heatmap/pilotHeatmap.ts']) {
+// Regional V2 changes orchestration/batching, not these numerical sources.
+for (const path of ['src/domain/mushroomWeather.ts', 'src/services/weather.ts', 'src/domain/heatmap/assessment.ts', 'src/domain/heatmap/config.ts']) {
   strictEqual(readFileSync(path, 'utf8').replace(/\r\n/g, '\n'), previousFile(path).replace(/\r\n/g, '\n'), path);
 }
 const fixture: ZgsHabitatEnrichment = {

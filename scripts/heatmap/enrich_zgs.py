@@ -180,13 +180,17 @@ def main():
     parser.add_argument('--data-dir', default='src/data/heatmapPilot')
     parser.add_argument('--cache-dir', default='scripts/heatmap/.cache/zgs')
     parser.add_argument('--refresh', action='store_true')
+    parser.add_argument('--regional', action='store_true', help='Allow only the documented 75 km Slovenia Regional V2 dataset')
     args = parser.parse_args()
     directory = Path(args.data_dir)
     metadata = json.loads((directory / 'metadata.json').read_text(encoding='utf-8'))
     habitat_bytes = (directory / 'habitat.geojson.json').read_bytes()
     habitat = json.loads(habitat_bytes)
-    if metadata['radiusM'] > 25000 or metadata['habitatPolygonCount'] != len(habitat['features']):
-        raise ValueError('This importer is limited to the existing 25 km pilot')
+    max_radius = 75000 if args.regional else 25000
+    if args.regional and metadata['pilotId'] != 'slovenia-regional-v2':
+        raise ValueError('Regional import requires the prepared Slovenia Regional V2 AOI')
+    if metadata['radiusM'] > max_radius or metadata['habitatPolygonCount'] != len(habitat['features']):
+        raise ValueError('Prepared AOI exceeds the requested bounded scope')
     capabilities, schema, elements = validate_schema()
     project = Transformer.from_crs(4326, 3794, always_xy=True)
     inverse = Transformer.from_crs(3794, 4326, always_xy=True)
@@ -198,7 +202,7 @@ def main():
               'srsName': 'EPSG:3794', 'outputFormat': 'application/json', 'sortBy': 'ggo,odsek,sestoj'}
     hits = ET.fromstring(request({**params, 'resultType': 'hits'}))
     total = int(hits.attrib['numberMatched'])
-    if total > 100000:
+    if total > (300000 if args.regional else 100000):
         raise ValueError('Bounded pilot safety limit exceeded')
     # Cache is pinned to one acquisition session and AOI/schema, never mixed across refreshes.
     signature = hashlib.sha256((bbox + hashlib.sha256(schema).hexdigest()).encode()).hexdigest()[:16]
@@ -244,7 +248,12 @@ def main():
                 # Do not silently repair geometries and fabricate reliable coverage.
                 raise ValueError(f'Invalid geometry: {feature["id"]}')
             if not geometry.intersects(box(*bounds)):
-                raise ValueError('Feature outside requested BBOX / axis-order error')
+                # WFS BBOX can return envelope intersections rather than exact
+                # polygon intersections (verified sestoji.324118, 16.37 m away).
+                if not box(*geometry.bounds).intersects(box(*bounds)):
+                    raise ValueError('Feature envelope outside requested BBOX / axis-order error')
+                warnings['bboxEnvelopeOnly'] += 1
+                continue
             if not geometry.intersects(aoi):
                 continue
             point = geometry.representative_point()
@@ -282,13 +291,29 @@ def main():
         raise ValueError('WFS changed while importing')
     tree = STRtree(geometries)
     by_area = {}
-    for feature, cell in zip(habitat['features'], cells):
+    legacy = json.loads(Path('src/data/heatmapPilot/zgs-enrichment.json').read_bytes()) if args.regional else None
+    geometry_hash = hashlib.sha256(habitat_bytes).hexdigest()
+    aggregate_path = cache / ('aggregate-' + geometry_hash + '.json')
+    completed = json.loads(aggregate_path.read_bytes()) if aggregate_path.exists() else {}
+    for index_cell, (feature, cell) in enumerate(zip(habitat['features'], cells)):
+        area_id = feature['properties']['id']
+        if legacy and area_id.startswith('area-'):
+            by_area[area_id] = legacy['areas'][area_id]
+            continue
+        if area_id in completed:
+            by_area[area_id] = completed[area_id]
+            continue
         intersections = []
         for index in tree.query(cell, predicate='intersects'):
             clipped = cell.intersection(geometries[index])
             if clipped.area > 0:
                 intersections.append((clipped, properties[index]))
-        by_area[feature['properties']['id']] = aggregate(cell, intersections)
+        by_area[area_id] = aggregate(cell, intersections)
+        if (index_cell + 1) % 250 == 0:
+            checkpoint = aggregate_path.with_suffix('.tmp')
+            checkpoint.write_text(json.dumps(by_area, separators=(',', ':'), allow_nan=False), encoding='utf-8')
+            checkpoint.replace(aggregate_path)
+            print(f'Aggregate {index_cell+1}/{len(cells)}', flush=True)
     distribution = {label: sum(lo <= v < hi for v in pine_values) for label, lo, hi in
                     [('zero', 0, 0.000001), ('0to10', 0.000001, 10), ('10to25', 10, 25), ('25to50', 25, 50), ('50to100', 50, 101)]}
     artifact = {
@@ -302,7 +327,9 @@ def main():
         'reuse': {'status': 'source attribution required; no named open license asserted',
                   'termsUrl': 'https://www.zgs.si/informacije/informacije-javnega-znacaja/',
                   'attribution': 'Zavod za gozdove Slovenije – podatki o sestojih; prostorska agregacija MushroomApp'},
-        'stats': {'bboxStandCount': downloaded, 'aoiStandCount': len(geometries), 'validPineStandCount': len(pine_values),
+        'legacyFetchedAt': legacy['fetchedAt'] if legacy else None,
+        'stats': {'requestedCount': total, 'receivedCount': downloaded, 'uniqueFeatureCount': len(ids), 'pagingComplete': downloaded == total == len(ids),
+                  'bboxStandCount': downloaded, 'aoiStandCount': len(geometries), 'validPineStandCount': len(pine_values),
                   'pinePositiveStandCount': sum(v > 0 for v in pine_values), 'pineDistribution': distribution, 'warnings': dict(warnings)},
         'areas': by_area,
     }

@@ -122,9 +122,10 @@ export function areaAssessmentFor(
 export function buildHeatmapRenderCollection(
   weatherByCell: Record<string, HeatmapWeatherAssessment>,
   selectedAreaId?: string,
+  habitatFeatures = HEATMAP_HABITAT.features,
 ): { collection: HeatmapRenderFeatureCollection; assessments: Record<string, HeatmapAreaAssessment> } {
   const assessments: Record<string, HeatmapAreaAssessment> = {};
-  const features = HEATMAP_HABITAT.features.map((feature) => {
+  const features = habitatFeatures.map((feature) => {
     const weather = weatherByCell[feature.properties.weatherCellId];
     if (!weather) throw new Error(`Manjka vremenska celica ${feature.properties.weatherCellId}.`);
     const assessment = areaAssessmentFor(feature, weather);

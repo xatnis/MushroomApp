@@ -1,10 +1,11 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { MushroomWeatherProfileId } from '../../domain/types';
 import { assessHeatmapWeather, localDateFor } from '../../domain/heatmap/assessment';
-import { HEATMAP_PILOT_METADATA, HEATMAP_PROFILE_IDS, HEATMAP_TARGET_DAYS } from '../../domain/heatmap/pilot';
+import { HEATMAP_PROFILE_IDS, HEATMAP_TARGET_DAYS } from '../../domain/heatmap/pilot';
+import metadata from '../../data/heatmapRegional/metadata.json';
 import { HEATMAP_WEATHER_POLICY_VERSION } from '../../domain/heatmap/config';
 import type { HeatmapTargetDay, HeatmapWeatherAssessment, HeatmapWeatherBatch } from '../../domain/heatmap/types';
-import { getHeatmapWeatherBatch } from '../weather';
+import { getRegionalWeather, regionalWeatherKey } from './regionalWeather';
 
 const MEMORY_TTL_MS = 30 * 60 * 1000;
 
@@ -41,10 +42,10 @@ export async function loadHeatmapPilot(
   options: { force?: boolean; reference?: Date } = {},
 ): Promise<HeatmapPilotBundle> {
   const baseLocalDate = localDateFor(options.reference);
-  const key = `${HEATMAP_WEATHER_POLICY_VERSION}:${baseLocalDate}`;
+  const key = regionalWeatherKey(metadata.weatherCells, baseLocalDate);
   if (!options.force && memoryCache?.key === key && memoryCache.expiresAt > Date.now()) return memoryCache.value;
   if (!options.force && inFlight?.key === key) return inFlight.promise;
-  const promise = getHeatmapWeatherBatch(db, HEATMAP_PILOT_METADATA.weatherCells, baseLocalDate)
+  const promise = getRegionalWeather(db, metadata.weatherCells, baseLocalDate)
     .then(buildBundle)
     .then((value) => {
       memoryCache = { key, expiresAt: Date.now() + MEMORY_TTL_MS, value };

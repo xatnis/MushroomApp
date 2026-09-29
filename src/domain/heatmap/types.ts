@@ -98,11 +98,16 @@ export interface HeatmapPolygonGeometry {
   coordinates: number[][][];
 }
 
+export interface HeatmapMultiPolygonGeometry {
+  type: 'MultiPolygon';
+  coordinates: number[][][][];
+}
+
 export interface HeatmapHabitatFeature {
   type: 'Feature';
   id: string;
   properties: HeatmapHabitatProperties;
-  geometry: HeatmapPolygonGeometry;
+  geometry: HeatmapPolygonGeometry | HeatmapMultiPolygonGeometry;
 }
 
 export interface HeatmapHabitatFeatureCollection {
