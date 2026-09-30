@@ -5,9 +5,7 @@ import { HEATMAP_PROFILE_IDS, HEATMAP_TARGET_DAYS } from '../../domain/heatmap/p
 import metadata from '../../data/heatmapRegional/metadata.json';
 import { HEATMAP_WEATHER_POLICY_VERSION } from '../../domain/heatmap/config';
 import type { HeatmapTargetDay, HeatmapWeatherAssessment, HeatmapWeatherBatch } from '../../domain/heatmap/types';
-import { getRegionalWeather, regionalWeatherKey } from './regionalWeather';
-
-const MEMORY_TTL_MS = 30 * 60 * 1000;
+import { getRegionalWeather } from './regionalWeather';
 
 export interface HeatmapPilotBundle {
   policyVersion: string;
@@ -16,8 +14,6 @@ export interface HeatmapPilotBundle {
   assessments: Record<HeatmapTargetDay, Record<MushroomWeatherProfileId, Record<string, HeatmapWeatherAssessment>>>;
 }
 
-let memoryCache: { key: string; expiresAt: number; value: HeatmapPilotBundle } | undefined;
-let inFlight: { key: string; promise: Promise<HeatmapPilotBundle> } | undefined;
 
 const buildBundle = (weather: HeatmapWeatherBatch): HeatmapPilotBundle => {
   const assessments = {} as HeatmapPilotBundle['assessments'];
@@ -39,23 +35,19 @@ const buildBundle = (weather: HeatmapWeatherBatch): HeatmapPilotBundle => {
 
 export async function loadHeatmapPilot(
   db: SQLiteDatabase,
-  options: { force?: boolean; reference?: Date } = {},
+  options: { reference?: Date; pointIds: string[]; onProgress?: (bundle: HeatmapPilotBundle) => void },
 ): Promise<HeatmapPilotBundle> {
   const baseLocalDate = localDateFor(options.reference);
-  const key = regionalWeatherKey(metadata.weatherCells, baseLocalDate);
-  if (!options.force && memoryCache?.key === key && memoryCache.expiresAt > Date.now()) return memoryCache.value;
-  if (!options.force && inFlight?.key === key) return inFlight.promise;
-  const promise = getRegionalWeather(db, metadata.weatherCells, baseLocalDate)
-    .then(buildBundle)
-    .then((value) => {
-      memoryCache = { key, expiresAt: Date.now() + MEMORY_TTL_MS, value };
-      return value;
-    })
-    .finally(() => {
-      if (inFlight?.promise === promise) inFlight = undefined;
-    });
-  inFlight = { key, promise };
-  return promise;
+  const ids = new Set(options.pointIds);
+  const points = metadata.weatherCells.filter(point => ids.has(point.id));
+  return buildBundle(await getRegionalWeather(db, points, baseLocalDate,
+    options.onProgress ? weather => options.onProgress?.(buildBundle(weather)) : undefined));
+}
+
+/** Keep already useful cells during a pan or retry; date rollover starts a new snapshot. */
+export function mergeHeatmapBundles(previous: HeatmapPilotBundle | undefined, next: HeatmapPilotBundle): HeatmapPilotBundle {
+  if (!previous || previous.baseLocalDate !== next.baseLocalDate) return next;
+  return buildBundle({ ...next.weather, cells: { ...previous.weather.cells, ...next.weather.cells } });
 }
 
 export function weatherAssessmentsFor(

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Keyboard, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Camera, GeoJSONSource, Layer, Map, Marker, UserLocation, type CameraRef, type FillLayerSpecification, type LineLayerSpecification } from '@maplibre/maplibre-react-native';
+import { Camera, GeoJSONSource, Layer, Map, Marker, UserLocation, type MapRef, type CameraRef, type FillLayerSpecification, type LineLayerSpecification } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,11 +15,11 @@ import { listFriendHotspots, type FriendHotspot } from '../services/friends';
 import { searchLocations, type PlaceSearchResult } from '../services/weather';
 import type { MushroomWeatherProfileId } from '../domain/types';
 import type { HeatmapAreaAssessment, HeatmapTargetDay } from '../domain/heatmap/types';
-import { buildHeatmapRenderCollection, HEATMAP_HABITAT, HEATMAP_PILOT_METADATA, REGIONAL_INDEX, isRegionalPoint } from '../domain/heatmap/regional';
-import type { Bounds } from '../domain/heatmap/spatial';
+import { buildHeatmapRenderCollection, HEATMAP_HABITAT, HEATMAP_PILOT_METADATA, REGIONAL_INDEX } from '../domain/heatmap/regional';
+import { heatmapViewportStatus, viewportWeatherPointIds, type Bounds } from '../domain/heatmap/spatial';
 import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
 import { slNumber } from '../domain/format';
-import { createHeatmapRequestGate, loadHeatmapPilot, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
+import { createHeatmapRequestGate, loadHeatmapPilot, mergeHeatmapBundles, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
 import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '../services/heatmap/areaLocality';
 import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
 
@@ -72,7 +72,9 @@ export function MapScreen() {
     hotspots, finds, session, exploreLocation, setExploreLocation, pendingHotspotFocus, clearHotspotFocus,
     heatmapNavigation, updateHeatmapNavigation,
   } = useApp();
+  const map = useRef<MapRef>(null);
   const camera = useRef<CameraRef>(null);
+  const mapWasMoved = useRef(false);
   const locationRequestGate = useRef(createLocationRequestGate()).current;
   const suppressMapPressUntil = useRef(0);
   const [mode, setMode] = useState<'map' | 'list'>('map');
@@ -92,11 +94,12 @@ export function MapScreen() {
   const [heatmapBundle, setHeatmapBundle] = useState<HeatmapPilotBundle>();
   const [heatmapLoading, setHeatmapLoading] = useState(false);
   const [heatmapError, setHeatmapError] = useState<string>();
+  const [completedPointsKey, setCompletedPointsKey] = useState<string>();
   const [heatmapRetry, setHeatmapRetry] = useState(0);
   const [heatmapControlsVisible, setHeatmapControlsVisible] = useState(true);
   const [mapViewportHeight, setMapViewportHeight] = useState(0);
   const [visibleBounds, setVisibleBounds] = useState<Bounds>();
-  const [mapCenter, setMapCenter] = useState<[number, number]>(heatmapNavigation.viewport?.center ?? SLOVENIA_CENTER);
+  const [cameraMoving, setCameraMoving] = useState(false);
   const heatmapRequestGate = useRef(createHeatmapRequestGate()).current;
   useEffect(() => {
     if (!session) { setFriendHotspots([]); return; }
@@ -115,17 +118,17 @@ export function MapScreen() {
   }, [finds, hotspots, query]);
   const selected = hotspots.find((item) => item.id === selectedId);
   const searchOpen = query.trim().length >= 2;
-  const heatmapView = useMemo(() => {
-    if (!heatmapBundle) return undefined;
-    return buildHeatmapRenderCollection(
-      weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay),
-    );
-  }, [heatmapBundle, heatmapProfileId, heatmapTargetDay]);
-  const visibleHeatmap = useMemo(() => {
-    if (!heatmapView || !visibleBounds) return heatmapView?.collection;
-    const visibleIds = new Set(REGIONAL_INDEX.visible(visibleBounds, selectedHeatmapAreaId).map(f => f.properties.id));
-    return { ...heatmapView.collection, features: heatmapView.collection.features.filter(f => visibleIds.has(f.properties.id)) };
-  }, [heatmapView, visibleBounds, selectedHeatmapAreaId]);
+  const viewportFeatures = useMemo(() => visibleBounds
+    ? REGIONAL_INDEX.visible(visibleBounds, selectedHeatmapAreaId) : [], [visibleBounds, selectedHeatmapAreaId]);
+  const visibleViewportFeatures = useMemo(() => visibleBounds ? REGIONAL_INDEX.visible(visibleBounds, undefined, 0) : [], [visibleBounds]);
+  const viewportCovered = visibleViewportFeatures.length > 0;
+  const requiredPointsKey = viewportWeatherPointIds(viewportFeatures).join('|');
+  const heatmapView = useMemo(() => buildHeatmapRenderCollection(
+    heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {},
+    viewportFeatures, heatmapProfileId, heatmapTargetDay,
+  ), [heatmapBundle, heatmapProfileId, heatmapTargetDay, viewportFeatures]);
+  const visibleHeatmap = heatmapView.collection;
+  const heatmapStatus = heatmapViewportStatus(Boolean(visibleBounds), viewportCovered, heatmapLoading || completedPointsKey !== requiredPointsKey, Boolean(heatmapError));
   const selectedHeatmapArea = selectedHeatmapAreaId ? heatmapView?.assessments[selectedHeatmapAreaId] : undefined;
   const selectedHeatmapFeature = selectedHeatmapAreaId
     ? HEATMAP_HABITAT.features.find((feature) => feature.properties.id === selectedHeatmapAreaId)
@@ -140,13 +143,30 @@ export function MapScreen() {
   useEffect(() => () => heatmapRequestGate.invalidate(), [heatmapRequestGate]);
 
   useEffect(() => {
-    if (!heatmapEnabled || heatmapBundle) return;
+    // Only replace the untouched national overview; preserve a viewport the user chose.
+    if (!heatmapEnabled || heatmapNavigation.viewport || mapWasMoved.current) return;
+    setCameraTarget({ center: exploreLocation ? [exploreLocation.longitude, exploreLocation.latitude]
+      : [HEATMAP_PILOT_METADATA.center.longitude, HEATMAP_PILOT_METADATA.center.latitude], zoom: 11.5 });
+  }, [heatmapEnabled]);
+
+  useEffect(() => {
+    if (!heatmapEnabled || cameraMoving || cameraTarget || !requiredPointsKey || !viewportCovered) return;
     const requestId = heatmapRequestGate.next();
     setHeatmapLoading(true);
     setHeatmapError(undefined);
-    void loadHeatmapPilot(db, { force: heatmapRetry > 0 })
+    const timer = setTimeout(() => { void loadHeatmapPilot(db, {
+      pointIds: requiredPointsKey.split('|'),
+      onProgress: bundle => {
+        if (heatmapRequestGate.isCurrent(requestId)) setHeatmapBundle(previous => mergeHeatmapBundles(previous, bundle));
+      },
+    })
       .then((bundle) => {
-        if (heatmapRequestGate.isCurrent(requestId)) setHeatmapBundle(bundle);
+        if (heatmapRequestGate.isCurrent(requestId)) {
+          setHeatmapBundle(bundle);
+          if (Object.values(bundle.weather.cells).some(c => c.errors.historical || c.errors.forecast || c.stale || !c.days.length)) {
+            setHeatmapError('Del vremenskih podatkov ni na voljo. Pripravljena območja ostajajo vidna.');
+          }
+        }
       })
       .catch((error) => {
         if (heatmapRequestGate.isCurrent(requestId)) {
@@ -154,9 +174,11 @@ export function MapScreen() {
         }
       })
       .finally(() => {
-        if (heatmapRequestGate.isCurrent(requestId)) setHeatmapLoading(false);
-      });
-  }, [db, heatmapBundle, heatmapEnabled, heatmapRequestGate, heatmapRetry]);
+        if (heatmapRequestGate.isCurrent(requestId)) { setCompletedPointsKey(requiredPointsKey); setHeatmapLoading(false); }
+      }); }, 250);
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.info('[Heatmap viewport]', { visibleCellCount: visibleViewportFeatures.length, bufferedCellCount: viewportFeatures.length, requiredPointCount: requiredPointsKey.split('|').length });
+    return () => { clearTimeout(timer); heatmapRequestGate.invalidate(); };
+  }, [db, requiredPointsKey, viewportCovered, cameraMoving, cameraTarget, heatmapEnabled, heatmapRequestGate, heatmapRetry]);
 
   useEffect(() => {
     if (!searchOpen) {
@@ -184,6 +206,7 @@ export function MapScreen() {
 
   useEffect(() => {
     if (mode !== 'map' || !mapReady || !cameraTarget || !camera.current) return;
+    setCameraMoving(true);
     camera.current.easeTo({ center: cameraTarget.center, zoom: cameraTarget.zoom, duration: 700 });
     if (cameraTarget.focusRequestId) clearHotspotFocus(cameraTarget.focusRequestId);
     setCameraTarget(undefined);
@@ -321,6 +344,7 @@ export function MapScreen() {
       }}
     >
       <Map
+        ref={map}
         style={StyleSheet.absoluteFill}
         mapStyle={MAP_STYLE_URL}
         androidView="texture"
@@ -328,13 +352,20 @@ export function MapScreen() {
         attributionPosition={{ bottom: spacing.sm, left: spacing.sm }}
         logo={false}
         scaleBar={false}
-        onDidFinishLoadingMap={() => setMapReady(true)}
+        onDidFinishLoadingMap={() => {
+          setMapReady(true);
+          void map.current?.getBounds().then(bounds => {
+            if (bounds?.length === 4 && bounds.every(Number.isFinite)) setVisibleBounds([...bounds] as Bounds);
+          }).catch(() => { /* The region event supplies bounds if the native map is not ready yet. */ });
+        }}
+        onRegionWillChange={() => setCameraMoving(true)}
         onRegionDidChange={(event) => {
+          setCameraMoving(false);
+          if (event.nativeEvent.userInteraction) mapWasMoved.current = true;
           const [longitude, latitude] = event.nativeEvent.center;
           const { zoom } = event.nativeEvent;
           const bounds = event.nativeEvent.bounds;
           if (bounds?.length === 4 && bounds.every(Number.isFinite)) setVisibleBounds([...bounds] as Bounds);
-          if (Number.isFinite(latitude) && Number.isFinite(longitude)) setMapCenter([longitude, latitude]);
           if (!heatmapEnabled) return;
           if (Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(zoom)) {
             updateHeatmapNavigation({ viewport: { center: [longitude, latitude], zoom } });
@@ -406,10 +437,10 @@ export function MapScreen() {
         <View style={styles.heatmapDateRow}><Text style={styles.heatmapControlLabel}>DATUM</Text><Chip label="Danes" selected={heatmapTargetDay === 'today'} onPress={() => updateHeatmapNavigation({ targetDay: 'today' })} /><Chip label="Jutri" selected={heatmapTargetDay === 'tomorrow'} onPress={() => updateHeatmapNavigation({ targetDay: 'tomorrow' })} /></View>
         <View style={styles.heatmapLegend}><View style={[styles.legendDot, { backgroundColor: '#A96B50' }]} /><Text style={styles.legendText}>slabe</Text><View style={[styles.legendDot, { backgroundColor: '#C7A85A' }]} /><View style={[styles.legendDot, { backgroundColor: '#7EA46E' }]} /><View style={[styles.legendDot, { backgroundColor: '#3F7C57' }]} /><View style={[styles.legendDot, { backgroundColor: '#174E3D' }]} /><Text style={styles.legendText}>odlične</Text><View style={[styles.legendDot, { backgroundColor: '#8B9190' }]} /><Text style={styles.legendText}>omejeno/neznano</Text></View>
         <Text style={styles.heatmapAttribution}>Habitat: ESA WorldCover 2021 + Zavod za gozdove Slovenije – podatki o sestojih · Vreme: Open-Meteo · Meja: geoBoundaries</Text>
-        {heatmapLoading ? <View style={styles.heatmapStatus}><ActivityIndicator size="small" color={colors.primary} /><Text style={commonStyles.muted}>Nalagam realne habitatne in vremenske podatke …</Text></View> : null}
-        {heatmapError ? <View style={styles.heatmapStatus}><Text style={styles.heatmapErrorText}>{heatmapError}</Text><Pressable accessibilityRole="button" onPress={() => { setHeatmapBundle(undefined); setHeatmapRetry((value) => value + 1); }}><Text style={styles.retryText}>Poskusi znova</Text></Pressable></View> : null}
+        {heatmapStatus === 'loading' ? <View style={styles.heatmapStatus}><ActivityIndicator size="small" color={colors.primary} /><Text style={commonStyles.muted}>Nalagam vreme za prikazano območje …</Text></View> : null}
+        {heatmapStatus === 'error' ? <View style={styles.heatmapStatus}><Text style={styles.heatmapErrorText}>{heatmapError}</Text><Pressable accessibilityRole="button" onPress={() => setHeatmapRetry((value) => value + 1)}><Text style={styles.retryText}>Poskusi znova</Text></Pressable></View> : null}
       </View> : null}
-      {heatmapEnabled && !heatmapAreaCardOpen && !isRegionalPoint(mapCenter) ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>Podatki o pogojih za to območje še niso pripravljeni.</Text></View> : null}
+      {heatmapEnabled && !heatmapAreaCardOpen && heatmapStatus === 'out-of-coverage' ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>Podatki o pogojih za to območje še niso pripravljeni.</Text></View> : null}
       {exploreLocation && !selected && !heatmapEnabled ? <Pressable accessibilityRole="button" accessibilityLabel={`Poglej razmere za ${exploreLocation.name}`} onPress={() => navigation.navigate('Tabs', { screen: 'Conditions' })} style={({ pressed }) => [styles.conditionsAction, pressed && styles.searchResultPressed]}>
         <Ionicons name="cloud-outline" size={21} color={colors.primary} />
         <View style={styles.grow}><Text numberOfLines={1} style={styles.conditionsLocation}>{exploreLocation.name}</Text><Text style={styles.conditionsActionText}>Poglej razmere</Text></View>

@@ -1,0 +1,4 @@
+{"name":"Velenje","requiredPoints":12,"requests":2,"firstMs":347.9611,"completeMs":348.05330000000004,"failedPoints":0}
+{"name":"Celje","requiredPoints":14,"requests":2,"firstMs":0.1492000000000644,"completeMs":14887.186399999999,"failedPoints":0}
+{"name":"Velenje return","requiredPoints":12,"requests":0,"firstMs":0.26300000000082946,"completeMs":0.3831000000009226,"failedPoints":0}
+{"speciesAndDateRequests":0}

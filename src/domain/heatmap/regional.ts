@@ -4,7 +4,9 @@ import coverage from '../../data/heatmapRegional/coverage.geojson.json';
 import zgs from '../../data/heatmapRegional/zgs-enrichment.json';
 import { buildHeatmapRenderCollection as buildCollection } from './pilot';
 import { containsPoint, createHabitatSpatialIndex } from './spatial';
-import type { HeatmapHabitatFeatureCollection, HeatmapPilotMetadata, HeatmapPolygonGeometry, HeatmapMultiPolygonGeometry, ZgsEnrichmentArtifact, HeatmapWeatherAssessment } from './types';
+import type { HeatmapHabitatFeatureCollection, HeatmapPilotMetadata, HeatmapPolygonGeometry, HeatmapMultiPolygonGeometry, ZgsEnrichmentArtifact, HeatmapWeatherAssessment, HeatmapTargetDay } from './types';
+import type { MushroomWeatherProfileId } from '../types';
+import { assessHeatmapWeather, localDateFor } from './assessment';
 
 export const HEATMAP_PILOT_METADATA: HeatmapPilotMetadata = {
   ...metadata,
@@ -23,8 +25,18 @@ export const isRegionalPoint = (point: [number, number]) => containsPoint(
   coverage.geometry as HeatmapPolygonGeometry | HeatmapMultiPolygonGeometry, point,
 );
 
-export function buildHeatmapRenderCollection(weather: Record<string, HeatmapWeatherAssessment>) {
-  const result = buildCollection(weather, undefined, HEATMAP_HABITAT.features);
+export function buildHeatmapRenderCollection(weather: Record<string, HeatmapWeatherAssessment>,
+  features = HEATMAP_HABITAT.features, profileId: MushroomWeatherProfileId = 'generic', targetDay: HeatmapTargetDay = 'today') {
+  // Missing weather has an explicit insufficient assessment; static habitat is immediately renderable.
+  const available = { ...weather };
+  for (const feature of features) {
+    const id = feature.properties.weatherCellId;
+    if (!available[id]) available[id] = assessHeatmapWeather({ id,
+      latitude: feature.properties.centerLatitude, longitude: feature.properties.centerLongitude,
+      baseLocalDate: localDateFor(), days: [], errors: { historical: 'Vremenski podatki še niso na voljo.', forecast: 'Vremenski podatki še niso na voljo.' },
+      fetchedAt: new Date().toISOString(), stale: false }, profileId, targetDay);
+  }
+  const result = buildCollection(available, undefined, features);
   for (const assessment of Object.values(result.assessments)) {
     if (assessment.treeCompositionSource) {
       assessment.treeCompositionFetchedAt = assessment.areaId.startsWith('area-')
