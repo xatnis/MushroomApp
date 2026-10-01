@@ -69,6 +69,27 @@ export function viewportWeatherPointIds(features: HeatmapHabitatFeature[]): stri
   return [...new Set(features.map(f => f.properties.weatherCellId))].sort();
 }
 
+/** Selected point, central visible points, then overscan. No coordinate changes/interpolation. */
+export function prioritizedWeatherPointIds(features: HeatmapHabitatFeature[], visible: HeatmapHabitatFeature[],
+  bounds: Bounds, points: Array<{ id: string; latitude: number; longitude: number }>, selectedId?: string): string[] {
+  const visibleIds = new Set(viewportWeatherPointIds(visible));
+  const selected = features.find(f => f.properties.id === selectedId)?.properties.weatherCellId;
+  const lookup = new Map(points.map(p => [p.id, p]));
+  const x = (bounds[0] + bounds[2]) / 2, y = (bounds[1] + bounds[3]) / 2;
+  const distance = (id: string) => {
+    const p = lookup.get(id);
+    return p ? ((p.longitude - x) * Math.cos(y * Math.PI / 180)) ** 2 + (p.latitude - y) ** 2 : Infinity;
+  };
+  const tier = (id: string) => id === selected ? 0 : visibleIds.has(id) ? 1 : 2;
+  return viewportWeatherPointIds(features).sort((a, b) => tier(a) - tier(b) || distance(a) - distance(b) || a.localeCompare(b));
+}
+
+export function heatmapReadiness(required: string[], ready: Set<string>, completed: boolean) {
+  const readyCount = required.filter(id => ready.has(id)).length;
+  return { firstUsefulReady: readyCount > 0, viewportFullyLoaded: required.length > 0 && readyCount === required.length,
+    backgroundLoading: readyCount > 0 && !completed, readyCount };
+}
+
 export function heatmapViewportStatus(hasBounds: boolean, covered: boolean, loading: boolean, failed: boolean) {
   if (!hasBounds) return 'loading';
   if (!covered) return 'out-of-coverage';

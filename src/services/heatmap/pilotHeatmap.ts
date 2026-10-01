@@ -4,7 +4,7 @@ import { assessHeatmapWeather, localDateFor } from '../../domain/heatmap/assessm
 import { HEATMAP_PROFILE_IDS, HEATMAP_TARGET_DAYS } from '../../domain/heatmap/pilot';
 import metadata from '../../data/heatmapRegional/metadata.json';
 import { HEATMAP_WEATHER_POLICY_VERSION } from '../../domain/heatmap/config';
-import type { HeatmapTargetDay, HeatmapWeatherAssessment, HeatmapWeatherBatch } from '../../domain/heatmap/types';
+import type { HeatmapTargetDay, HeatmapWeatherAssessment, HeatmapWeatherBatch, HeatmapWeatherCellSource } from '../../domain/heatmap/types';
 import { getRegionalWeather } from './regionalWeather';
 
 export interface HeatmapPilotBundle {
@@ -15,13 +15,21 @@ export interface HeatmapPilotBundle {
 }
 
 
+// Immutable snapshots: score each point/profile/day once, not again on every progress event.
+const scored = new WeakMap<HeatmapWeatherCellSource, Map<string, HeatmapWeatherAssessment>>();
 const buildBundle = (weather: HeatmapWeatherBatch): HeatmapPilotBundle => {
   const assessments = {} as HeatmapPilotBundle['assessments'];
   HEATMAP_TARGET_DAYS.forEach((targetDay) => {
     assessments[targetDay] = {} as HeatmapPilotBundle['assessments'][HeatmapTargetDay];
     HEATMAP_PROFILE_IDS.forEach((profileId) => {
       assessments[targetDay][profileId] = Object.fromEntries(
-        Object.values(weather.cells).map((cell) => [cell.id, assessHeatmapWeather(cell, profileId, targetDay)]),
+        Object.values(weather.cells).map((cell) => {
+          let cache = scored.get(cell);
+          if (!cache) { cache = new Map(); scored.set(cell, cache); }
+          const key = `${profileId}:${targetDay}`;
+          if (!cache.has(key)) cache.set(key, assessHeatmapWeather(cell, profileId, targetDay));
+          return [cell.id, cache.get(key)!];
+        }),
       );
     });
   });
@@ -35,18 +43,19 @@ const buildBundle = (weather: HeatmapWeatherBatch): HeatmapPilotBundle => {
 
 export async function loadHeatmapPilot(
   db: SQLiteDatabase,
-  options: { reference?: Date; pointIds: string[]; onProgress?: (bundle: HeatmapPilotBundle) => void },
+  options: { reference?: Date; pointIds: string[]; signal?: AbortSignal; onProgress?: (bundle: HeatmapPilotBundle) => void },
 ): Promise<HeatmapPilotBundle> {
   const baseLocalDate = localDateFor(options.reference);
-  const ids = new Set(options.pointIds);
-  const points = metadata.weatherCells.filter(point => ids.has(point.id));
+  const byId = new Map(metadata.weatherCells.map(point => [point.id, point]));
+  const points = [...new Set(options.pointIds)].flatMap(id => byId.has(id) ? [byId.get(id)!] : []);
   return buildBundle(await getRegionalWeather(db, points, baseLocalDate,
-    options.onProgress ? weather => options.onProgress?.(buildBundle(weather)) : undefined));
+    options.onProgress ? weather => options.onProgress?.(buildBundle(weather)) : undefined, options.signal));
 }
 
 /** Keep already useful cells during a pan or retry; date rollover starts a new snapshot. */
 export function mergeHeatmapBundles(previous: HeatmapPilotBundle | undefined, next: HeatmapPilotBundle): HeatmapPilotBundle {
   if (!previous || previous.baseLocalDate !== next.baseLocalDate) return next;
+  if (Object.entries(next.weather.cells).every(([id, cell]) => previous.weather.cells[id] === cell)) return previous;
   return buildBundle({ ...next.weather, cells: { ...previous.weather.cells, ...next.weather.cells } });
 }
 
@@ -62,6 +71,11 @@ export interface HeatmapRequestGate {
   next: () => number;
   isCurrent: (requestId: number) => boolean;
   invalidate: () => void;
+}
+
+export function scheduleSettledHeatmapLoad(callback: () => void, delayMs = 250): () => void {
+  const timer = setTimeout(callback, delayMs);
+  return () => clearTimeout(timer);
 }
 
 export function createHeatmapRequestGate(): HeatmapRequestGate {

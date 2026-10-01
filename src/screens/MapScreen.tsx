@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Keyboard, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker, UserLocation, type MapRef, type CameraRef, type FillLayerSpecification, type LineLayerSpecification } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
@@ -16,10 +16,10 @@ import { searchLocations, type PlaceSearchResult } from '../services/weather';
 import type { MushroomWeatherProfileId } from '../domain/types';
 import type { HeatmapAreaAssessment, HeatmapTargetDay } from '../domain/heatmap/types';
 import { buildHeatmapRenderCollection, HEATMAP_HABITAT, HEATMAP_PILOT_METADATA, REGIONAL_INDEX } from '../domain/heatmap/regional';
-import { heatmapViewportStatus, viewportWeatherPointIds, type Bounds } from '../domain/heatmap/spatial';
+import { heatmapViewportStatus, prioritizedWeatherPointIds, heatmapReadiness, type Bounds } from '../domain/heatmap/spatial';
 import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
 import { slNumber } from '../domain/format';
-import { createHeatmapRequestGate, loadHeatmapPilot, mergeHeatmapBundles, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
+import { createHeatmapRequestGate, scheduleSettledHeatmapLoad, loadHeatmapPilot, mergeHeatmapBundles, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
 import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '../services/heatmap/areaLocality';
 import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
 
@@ -122,13 +122,19 @@ export function MapScreen() {
     ? REGIONAL_INDEX.visible(visibleBounds, selectedHeatmapAreaId) : [], [visibleBounds, selectedHeatmapAreaId]);
   const visibleViewportFeatures = useMemo(() => visibleBounds ? REGIONAL_INDEX.visible(visibleBounds, undefined, 0) : [], [visibleBounds]);
   const viewportCovered = visibleViewportFeatures.length > 0;
-  const requiredPointsKey = viewportWeatherPointIds(viewportFeatures).join('|');
+  const requiredPointsKey = useMemo(() => visibleBounds ? prioritizedWeatherPointIds(viewportFeatures,
+    visibleViewportFeatures, visibleBounds, HEATMAP_PILOT_METADATA.weatherCells, selectedHeatmapAreaId).join('|') : '',
+    [viewportFeatures, visibleViewportFeatures, visibleBounds, selectedHeatmapAreaId]);
   const heatmapView = useMemo(() => buildHeatmapRenderCollection(
     heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {},
     viewportFeatures, heatmapProfileId, heatmapTargetDay,
   ), [heatmapBundle, heatmapProfileId, heatmapTargetDay, viewportFeatures]);
   const visibleHeatmap = heatmapView.collection;
   const heatmapStatus = heatmapViewportStatus(Boolean(visibleBounds), viewportCovered, heatmapLoading || completedPointsKey !== requiredPointsKey, Boolean(heatmapError));
+  const readiness = heatmapReadiness(requiredPointsKey ? requiredPointsKey.split('|') : [], new Set(
+    Object.entries(heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {})
+      .filter(([, value]) => value.score.score !== null && value.dataQuality !== 'insufficient').map(([id]) => id)),
+    !heatmapLoading && completedPointsKey === requiredPointsKey);
   const selectedHeatmapArea = selectedHeatmapAreaId ? heatmapView?.assessments[selectedHeatmapAreaId] : undefined;
   const selectedHeatmapFeature = selectedHeatmapAreaId
     ? HEATMAP_HABITAT.features.find((feature) => feature.properties.id === selectedHeatmapAreaId)
@@ -152,17 +158,19 @@ export function MapScreen() {
   useEffect(() => {
     if (!heatmapEnabled || cameraMoving || cameraTarget || !requiredPointsKey || !viewportCovered) return;
     const requestId = heatmapRequestGate.next();
+    const controller = new AbortController();
     setHeatmapLoading(true);
     setHeatmapError(undefined);
-    const timer = setTimeout(() => { void loadHeatmapPilot(db, {
+    const cancelSettledLoad = scheduleSettledHeatmapLoad(() => { void loadHeatmapPilot(db, {
       pointIds: requiredPointsKey.split('|'),
+      signal: controller.signal,
       onProgress: bundle => {
-        if (heatmapRequestGate.isCurrent(requestId)) setHeatmapBundle(previous => mergeHeatmapBundles(previous, bundle));
+        if (heatmapRequestGate.isCurrent(requestId)) startTransition(() => setHeatmapBundle(previous => mergeHeatmapBundles(previous, bundle)));
       },
     })
       .then((bundle) => {
         if (heatmapRequestGate.isCurrent(requestId)) {
-          setHeatmapBundle(bundle);
+          startTransition(() => setHeatmapBundle(previous => mergeHeatmapBundles(previous, bundle)));
           if (Object.values(bundle.weather.cells).some(c => c.errors.historical || c.errors.forecast || c.stale || !c.days.length)) {
             setHeatmapError('Del vremenskih podatkov ni na voljo. Pripravljena območja ostajajo vidna.');
           }
@@ -177,7 +185,7 @@ export function MapScreen() {
         if (heatmapRequestGate.isCurrent(requestId)) { setCompletedPointsKey(requiredPointsKey); setHeatmapLoading(false); }
       }); }, 250);
     if (typeof __DEV__ !== 'undefined' && __DEV__) console.info('[Heatmap viewport]', { visibleCellCount: visibleViewportFeatures.length, bufferedCellCount: viewportFeatures.length, requiredPointCount: requiredPointsKey.split('|').length });
-    return () => { clearTimeout(timer); heatmapRequestGate.invalidate(); };
+    return () => { cancelSettledLoad(); heatmapRequestGate.invalidate(); controller.abort(); };
   }, [db, requiredPointsKey, viewportCovered, cameraMoving, cameraTarget, heatmapEnabled, heatmapRequestGate, heatmapRetry]);
 
   useEffect(() => {
@@ -437,7 +445,7 @@ export function MapScreen() {
         <View style={styles.heatmapDateRow}><Text style={styles.heatmapControlLabel}>DATUM</Text><Chip label="Danes" selected={heatmapTargetDay === 'today'} onPress={() => updateHeatmapNavigation({ targetDay: 'today' })} /><Chip label="Jutri" selected={heatmapTargetDay === 'tomorrow'} onPress={() => updateHeatmapNavigation({ targetDay: 'tomorrow' })} /></View>
         <View style={styles.heatmapLegend}><View style={[styles.legendDot, { backgroundColor: '#A96B50' }]} /><Text style={styles.legendText}>slabe</Text><View style={[styles.legendDot, { backgroundColor: '#C7A85A' }]} /><View style={[styles.legendDot, { backgroundColor: '#7EA46E' }]} /><View style={[styles.legendDot, { backgroundColor: '#3F7C57' }]} /><View style={[styles.legendDot, { backgroundColor: '#174E3D' }]} /><Text style={styles.legendText}>odlične</Text><View style={[styles.legendDot, { backgroundColor: '#8B9190' }]} /><Text style={styles.legendText}>omejeno/neznano</Text></View>
         <Text style={styles.heatmapAttribution}>Habitat: ESA WorldCover 2021 + Zavod za gozdove Slovenije – podatki o sestojih · Vreme: Open-Meteo · Meja: geoBoundaries</Text>
-        {heatmapStatus === 'loading' ? <View style={styles.heatmapStatus}><ActivityIndicator size="small" color={colors.primary} /><Text style={commonStyles.muted}>Nalagam vreme za prikazano območje …</Text></View> : null}
+        {heatmapStatus === 'loading' ? <View pointerEvents="none" style={styles.heatmapStatus}><ActivityIndicator size="small" color={colors.primary} /><Text style={commonStyles.muted}>{readiness.firstUsefulReady ? 'Dopolnjujem podatke za prikazano območje …' : 'Nalagam vreme za prikazano območje …'}</Text></View> : null}
         {heatmapStatus === 'error' ? <View style={styles.heatmapStatus}><Text style={styles.heatmapErrorText}>{heatmapError}</Text><Pressable accessibilityRole="button" onPress={() => setHeatmapRetry((value) => value + 1)}><Text style={styles.retryText}>Poskusi znova</Text></Pressable></View> : null}
       </View> : null}
       {heatmapEnabled && !heatmapAreaCardOpen && heatmapStatus === 'out-of-coverage' ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>Podatki o pogojih za to območje še niso pripravljeni.</Text></View> : null}
@@ -452,6 +460,7 @@ export function MapScreen() {
       </Card> : null}
       {!selected && heatmapEnabled && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
         assessment={selectedHeatmapArea}
+        weatherPending={!heatmapBundle?.weather.cells[selectedHeatmapFeature.properties.weatherCellId] && heatmapStatus === 'loading'}
         targetDay={heatmapTargetDay}
         maxHeight={mapViewportHeight > 0 ? Math.floor(mapViewportHeight * 0.8) : undefined}
         areaLabel={heatmapAreaLocality?.location.name ?? 'Izbrano območje'}
@@ -514,7 +523,7 @@ function heatmapInfluences(assessment: HeatmapAreaAssessment): Array<{ label: st
   ];
 }
 
-function HeatmapAreaCard({ assessment, targetDay, maxHeight, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; targetDay: HeatmapTargetDay; maxHeight?: number; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
+function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; weatherPending?: boolean; targetDay: HeatmapTargetDay; maxHeight?: number; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
   const profile = MUSHROOM_WEATHER_PROFILES[assessment.speciesId];
   const quality = assessment.dataQuality === 'complete' ? 'Popolni podatki' : assessment.dataQuality === 'limited' ? 'Omejeni podatki' : 'Ni dovolj podatkov';
   const habitat = assessment.habitatState === 'candidate'
@@ -538,6 +547,7 @@ function HeatmapAreaCard({ assessment, targetDay, maxHeight, areaLabel, areaDeta
       </Pressable>)}
     </View>
     <View style={styles.heatmapScoreLine}><Text style={styles.heatmapAreaScore}>{assessment.score == null ? '—' : `${assessment.score} / 100`}</Text><Text style={styles.heatmapClassLabel}>{assessment.classLabel}</Text></View>
+    {weatherPending ? <Text style={commonStyles.muted}>Vremenski podatki za to območje se še nalagajo.</Text> : null}
     <ScrollView
       style={styles.heatmapDetailsScroll}
       contentContainerStyle={styles.heatmapDetailsContent}

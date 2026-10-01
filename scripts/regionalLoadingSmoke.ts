@@ -1,9 +1,9 @@
-import { loadHeatmapPilot, mergeHeatmapBundles, weatherAssessmentsFor } from '../src/services/heatmap/pilotHeatmap';
+import { loadHeatmapPilot, mergeHeatmapBundles, weatherAssessmentsFor, scheduleSettledHeatmapLoad } from '../src/services/heatmap/pilotHeatmap';
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
 import type { SQLiteDatabase } from 'expo-sqlite';
-import { createRegionalWeatherLoader, regionalWeatherKey } from '../src/services/heatmap/regionalWeather';
+import { createRegionalWeatherLoader, regionalWeatherKey, REGIONAL_WEATHER_BATCH_INTERVAL_MS } from '../src/services/heatmap/regionalWeather';
 import { REGIONAL_INDEX, isRegionalPoint, HEATMAP_PILOT_METADATA, buildHeatmapRenderCollection } from '../src/domain/heatmap/regional';
-import { viewportWeatherPointIds, heatmapViewportStatus, intersectsBounds, type Bounds } from '../src/domain/heatmap/spatial';
+import { viewportWeatherPointIds, prioritizedWeatherPointIds, heatmapReadiness, heatmapViewportStatus, intersectsBounds, type Bounds } from '../src/domain/heatmap/spatial';
 import { assessHeatmapWeather, localDateFor } from '../src/domain/heatmap/assessment';
 import { HEATMAP_PROFILE_IDS } from '../src/domain/heatmap/pilot';
 import { getHeatmapWeatherBatch, searchLocations, shiftLocalDate } from '../src/services/weather';
@@ -24,6 +24,11 @@ const batch = (group: HeatmapWeatherCellDefinition[]): HeatmapWeatherBatch => ({
   }])),
 });
 async function tests() {
+  let settledCalls = 0;
+  for (let i = 0; i < 4; i++) scheduleSettledHeatmapLoad(() => { settledCalls++; }, 5)();
+  scheduleSettledHeatmapLoad(() => { settledCalls++; }, 5);
+  await new Promise(resolve => setTimeout(resolve, 15));
+  strictEqual(settledCalls, 1, 'rapid camera updates schedule only the settled viewport');
   let calls = 0;
   const requested: string[] = [];
   const loader = createRegionalWeatherLoader(async (_db, group) => {
@@ -162,6 +167,70 @@ async function tests() {
   const recovered = await createRegionalWeatherLoader(async (_db, group) => batch(group), 0)(brokenDisk, [points[0]], date);
   strictEqual(recovered.cells[points[0].id].days.length, 62, 'disk failure preserves usable weather');
   console.log('PASS: viewport/buffer/border, static habitat, cache/dedupe, partial failure/retry, pan, species/date, exclusive UI states');
+  rows.clear();
+  let releaseOld!: () => void;
+  let oldStarted!: () => void;
+  const firstStarted = new Promise<void>(resolve => { oldStarted = resolve; });
+  const scheduled: string[][] = [];
+  const progressive = createRegionalWeatherLoader(async (_db, group) => {
+    scheduled.push(group.map(p => p.id));
+    if (scheduled.length === 1) { oldStarted(); await new Promise<void>(resolve => { releaseOld = resolve; }); }
+    return batch(group);
+  }, 0);
+  const controller = new AbortController();
+  const oldLoad = progressive(db, points, date, undefined, controller.signal);
+  await firstStarted;
+  controller.abort();
+  const newest = progressive(db, points.slice(-8), date);
+  releaseOld();
+  await Promise.all([oldLoad, newest]);
+  strictEqual(scheduled.length, 2, 'old viewport queued batches dropped');
+  deepStrictEqual(scheduled[1], points.slice(-8).map(p => p.id), 'new viewport goes next');
+  await progressive(db, points.slice(0, 25), date);
+  strictEqual(scheduled.length, 2, 'old in-flight results still cached');
+  rows.clear();
+  for (const [name, bounds] of [
+    ['SMALL', [14.75, 46.37, 14.95, 46.57]],
+    ['MEDIUM', [14.58, 46.24, 15.12, 46.69]],
+    ['LARGE', [13.2, 45.8, 16.3, 48.5]],
+  ] as Array<[string, Bounds]>) {
+    rows.clear();
+    const visible = REGIONAL_INDEX.visible(bounds, undefined, 0), buffered = REGIONAL_INDEX.visible(bounds);
+    const ordered = prioritizedWeatherPointIds(buffered, visible, bounds, points);
+    const lookup = new Map(points.map(p => [p.id, p]));
+    const orderedPoints = ordered.map(id => lookup.get(id)!);
+    const selected = visible.at(-1)!;
+    strictEqual(prioritizedWeatherPointIds(buffered, visible, bounds, points, selected.properties.id)[0], selected.properties.weatherCellId);
+    let batches = 0, firstMs: number | undefined, switchCount = 0;
+    const start = performance.now();
+    const simulation = createRegionalWeatherLoader(async (_db, group) => {
+      batches++; await new Promise(resolve => setTimeout(resolve, 20)); return batch(group);
+    }, process.argv.includes('--paced') ? REGIONAL_WEATHER_BATCH_INTERVAL_MS : 0);
+    const result = await simulation(db, orderedPoints, date, progress => {
+      const ready = new Set(Object.keys(progress.cells));
+      const state = heatmapReadiness(ordered, ready, false);
+      if (!state.firstUsefulReady) return;
+      if (firstMs == null) firstMs = performance.now() - start;
+      if (ready.size < ordered.length) {
+        ok(!state.viewportFullyLoaded && state.backgroundLoading);
+        const before = batches;
+        for (const profile of HEATMAP_PROFILE_IDS) for (const day of ['today', 'tomorrow'] as const) {
+          const cell = Object.values(progress.cells)[0];
+          ok(assessHeatmapWeather(cell, profile, day).dataQuality !== 'insufficient');
+          switchCount++;
+        }
+        strictEqual(batches, before, 'profile/date switching during partial load never fetches');
+      }
+    });
+    ok(heatmapReadiness(ordered, new Set(Object.keys(result.cells)), true).viewportFullyLoaded);
+    const fullMs = performance.now() - start;
+    if (ordered.length > 25) { ok(firstMs! < fullMs); ok(switchCount > 0); }
+    const before = batches;
+    await simulation(db, orderedPoints, date); strictEqual(batches, before, 'return to large cached viewport');
+    console.log('PROGRESSIVE SIMULATION (20ms mocked transport)', { pacing: process.argv.includes('--paced'), name, bounds, visibleCells: visible.length,
+      points: ordered.length, immediatePoints: Math.min(25, ordered.length), batches, plannedHttp: batches * 2, firstMs, fullMs,
+      oldPacingFloorMs: (batches - 1) * 15000, partialSwitches: switchCount });
+  }
 }
 
 async function benchmark(live: boolean) {
