@@ -4,7 +4,7 @@ import { assessHeatmapWeather, localDateFor } from '../../domain/heatmap/assessm
 import { HEATMAP_PROFILE_IDS, HEATMAP_TARGET_DAYS } from '../../domain/heatmap/pilot';
 import metadata from '../../data/heatmapRegional/metadata.json';
 import { HEATMAP_WEATHER_POLICY_VERSION } from '../../domain/heatmap/config';
-import type { HeatmapTargetDay, HeatmapWeatherAssessment, HeatmapWeatherBatch, HeatmapWeatherCellSource } from '../../domain/heatmap/types';
+import type { HeatmapTargetDay, HeatmapWeatherAssessment, HeatmapWeatherBatch, HeatmapWeatherCellSource, HeatmapWeatherCellDefinition } from '../../domain/heatmap/types';
 import { getRegionalWeather } from './regionalWeather';
 
 export interface HeatmapPilotBundle {
@@ -43,10 +43,10 @@ const buildBundle = (weather: HeatmapWeatherBatch): HeatmapPilotBundle => {
 
 export async function loadHeatmapPilot(
   db: SQLiteDatabase,
-  options: { reference?: Date; pointIds: string[]; signal?: AbortSignal; onProgress?: (bundle: HeatmapPilotBundle) => void },
+  options: { reference?: Date; pointIds: string[]; pointDefinitions?: HeatmapWeatherCellDefinition[]; signal?: AbortSignal; onProgress?: (bundle: HeatmapPilotBundle) => void },
 ): Promise<HeatmapPilotBundle> {
   const baseLocalDate = localDateFor(options.reference);
-  const byId = new Map(metadata.weatherCells.map(point => [point.id, point]));
+  const byId = new Map((options.pointDefinitions ?? metadata.weatherCells).map(point => [point.id, point]));
   const points = [...new Set(options.pointIds)].flatMap(id => byId.has(id) ? [byId.get(id)!] : []);
   return buildBundle(await getRegionalWeather(db, points, baseLocalDate,
     options.onProgress ? weather => options.onProgress?.(buildBundle(weather)) : undefined, options.signal));

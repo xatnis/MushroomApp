@@ -17,6 +17,7 @@ import type { MushroomWeatherProfileId } from '../domain/types';
 import type { HeatmapAreaAssessment, HeatmapTargetDay } from '../domain/heatmap/types';
 import { buildHeatmapRenderCollection, HEATMAP_HABITAT, HEATMAP_PILOT_METADATA, REGIONAL_INDEX } from '../domain/heatmap/regional';
 import { heatmapViewportStatus, prioritizedWeatherPointIds, heatmapReadiness, type Bounds } from '../domain/heatmap/spatial';
+import { HEATMAP_LOD, OVERVIEW_INDEX, OVERVIEW_WEATHER_POINTS, buildOverviewCollection, selectHeatmapLod, type HeatmapLod } from '../domain/heatmap/lod';
 import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
 import { slNumber } from '../domain/format';
 import { createHeatmapRequestGate, scheduleSettledHeatmapLoad, loadHeatmapPilot, mergeHeatmapBundles, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
@@ -100,6 +101,8 @@ export function MapScreen() {
   const [mapViewportHeight, setMapViewportHeight] = useState(0);
   const [visibleBounds, setVisibleBounds] = useState<Bounds>();
   const [cameraMoving, setCameraMoving] = useState(false);
+  const [heatmapLod, setHeatmapLod] = useState<HeatmapLod>(() => selectHeatmapLod(heatmapNavigation.viewport?.zoom ?? 7, 'overview'));
+  const [overviewTapped, setOverviewTapped] = useState(false);
   const heatmapRequestGate = useRef(createHeatmapRequestGate()).current;
   useEffect(() => {
     if (!session) { setFriendHotspots([]); return; }
@@ -118,17 +121,24 @@ export function MapScreen() {
   }, [finds, hotspots, query]);
   const selected = hotspots.find((item) => item.id === selectedId);
   const searchOpen = query.trim().length >= 2;
+  const activeIndex = heatmapLod === 'overview' ? OVERVIEW_INDEX : REGIONAL_INDEX;
+  const activeWeatherPoints = heatmapLod === 'overview' ? OVERVIEW_WEATHER_POINTS : HEATMAP_PILOT_METADATA.weatherCells;
   const viewportFeatures = useMemo(() => visibleBounds
-    ? REGIONAL_INDEX.visible(visibleBounds, selectedHeatmapAreaId) : [], [visibleBounds, selectedHeatmapAreaId]);
-  const visibleViewportFeatures = useMemo(() => visibleBounds ? REGIONAL_INDEX.visible(visibleBounds, undefined, 0) : [], [visibleBounds]);
+    ? activeIndex.visible(visibleBounds, heatmapLod === 'detail' ? selectedHeatmapAreaId : undefined) : [], [visibleBounds, selectedHeatmapAreaId, activeIndex, heatmapLod]);
+  const visibleViewportFeatures = useMemo(() => visibleBounds ? activeIndex.visible(visibleBounds, undefined, 0) : [], [visibleBounds, activeIndex]);
   const viewportCovered = visibleViewportFeatures.length > 0;
   const requiredPointsKey = useMemo(() => visibleBounds ? prioritizedWeatherPointIds(viewportFeatures,
-    visibleViewportFeatures, visibleBounds, HEATMAP_PILOT_METADATA.weatherCells, selectedHeatmapAreaId).join('|') : '',
-    [viewportFeatures, visibleViewportFeatures, visibleBounds, selectedHeatmapAreaId]);
-  const heatmapView = useMemo(() => buildHeatmapRenderCollection(
+    visibleViewportFeatures, visibleBounds, activeWeatherPoints, selectedHeatmapAreaId).join('|') : '',
+    [viewportFeatures, visibleViewportFeatures, visibleBounds, selectedHeatmapAreaId, activeWeatherPoints]);
+  const overviewFeatures = useMemo(() => visibleBounds ? OVERVIEW_INDEX.visible(visibleBounds) : [], [visibleBounds]);
+  const overviewView = useMemo(() => buildOverviewCollection(
+    heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {},
+    overviewFeatures, heatmapProfileId, heatmapTargetDay,
+  ), [heatmapBundle, heatmapProfileId, heatmapTargetDay, overviewFeatures]);
+  const heatmapView = useMemo(() => heatmapLod === 'overview' ? overviewView : buildHeatmapRenderCollection(
     heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {},
     viewportFeatures, heatmapProfileId, heatmapTargetDay,
-  ), [heatmapBundle, heatmapProfileId, heatmapTargetDay, viewportFeatures]);
+  ), [heatmapBundle, heatmapProfileId, heatmapTargetDay, viewportFeatures, heatmapLod, overviewView]);
   const visibleHeatmap = heatmapView.collection;
   const heatmapStatus = heatmapViewportStatus(Boolean(visibleBounds), viewportCovered, heatmapLoading || completedPointsKey !== requiredPointsKey, Boolean(heatmapError));
   const readiness = heatmapReadiness(requiredPointsKey ? requiredPointsKey.split('|') : [], new Set(
@@ -139,7 +149,13 @@ export function MapScreen() {
   const selectedHeatmapFeature = selectedHeatmapAreaId
     ? HEATMAP_HABITAT.features.find((feature) => feature.properties.id === selectedHeatmapAreaId)
     : undefined;
-  const heatmapAreaCardOpen = !selected && heatmapEnabled && Boolean(selectedHeatmapArea && selectedHeatmapFeature);
+  const detailWeather = heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {};
+  // An old selected area outside the view must not remove the overview fallback.
+  const detailReady = heatmapLod === 'detail' && visibleViewportFeatures.some(feature => {
+    const value = detailWeather[feature.properties.weatherCellId];
+    return value && value.dataQuality !== 'insufficient' && value.score.score != null;
+  });
+  const heatmapAreaCardOpen = heatmapLod === 'detail' && !selected && heatmapEnabled && Boolean(selectedHeatmapArea && selectedHeatmapFeature);
   const heatmapAreaLocality = useMemo<HeatmapAreaLocalityResolution | undefined>(() => {
     if (!selectedHeatmapFeature) return undefined;
     const { id, centerLatitude, centerLongitude } = selectedHeatmapFeature.properties;
@@ -163,6 +179,7 @@ export function MapScreen() {
     setHeatmapError(undefined);
     const cancelSettledLoad = scheduleSettledHeatmapLoad(() => { void loadHeatmapPilot(db, {
       pointIds: requiredPointsKey.split('|'),
+      pointDefinitions: activeWeatherPoints,
       signal: controller.signal,
       onProgress: bundle => {
         if (heatmapRequestGate.isCurrent(requestId)) startTransition(() => setHeatmapBundle(previous => mergeHeatmapBundles(previous, bundle)));
@@ -186,7 +203,7 @@ export function MapScreen() {
       }); }, 250);
     if (typeof __DEV__ !== 'undefined' && __DEV__) console.info('[Heatmap viewport]', { visibleCellCount: visibleViewportFeatures.length, bufferedCellCount: viewportFeatures.length, requiredPointCount: requiredPointsKey.split('|').length });
     return () => { cancelSettledLoad(); heatmapRequestGate.invalidate(); controller.abort(); };
-  }, [db, requiredPointsKey, viewportCovered, cameraMoving, cameraTarget, heatmapEnabled, heatmapRequestGate, heatmapRetry]);
+  }, [db, requiredPointsKey, viewportCovered, cameraMoving, cameraTarget, heatmapEnabled, heatmapRequestGate, heatmapRetry, activeWeatherPoints]);
 
   useEffect(() => {
     if (!searchOpen) {
@@ -372,6 +389,8 @@ export function MapScreen() {
           if (event.nativeEvent.userInteraction) mapWasMoved.current = true;
           const [longitude, latitude] = event.nativeEvent.center;
           const { zoom } = event.nativeEvent;
+          setHeatmapLod(previous => selectHeatmapLod(zoom, previous));
+          setOverviewTapped(false);
           const bounds = event.nativeEvent.bounds;
           if (bounds?.length === 4 && bounds.every(Number.isFinite)) setVisibleBounds([...bounds] as Bounds);
           if (!heatmapEnabled) return;
@@ -390,7 +409,17 @@ export function MapScreen() {
         }}
       >
         <Camera ref={camera} initialViewState={heatmapNavigation.viewport ?? { center: SLOVENIA_CENTER, zoom: 7 }} />
-        {heatmapEnabled && heatmapView ? <GeoJSONSource
+        {heatmapEnabled ? <GeoJSONSource id="regional-overview-source" data={overviewView.collection}
+          onPress={(event) => {
+            event.stopPropagation();
+            suppressMapPressUntil.current = Date.now() + 300;
+            setOverviewTapped(true);
+          }}>
+          <Layer id="regional-overview-fill" type="fill" minzoom={0} maxzoom={detailReady ? HEATMAP_LOD.overviewEnterZoom : 24} paint={HEATMAP_FILL_PAINT} />
+          <Layer id="regional-overview-border" type="line" minzoom={0} maxzoom={detailReady ? HEATMAP_LOD.overviewEnterZoom : 24}
+            paint={{ ...HEATMAP_BORDER_PAINT, 'line-opacity': 0.2, 'line-width': 0.4 }} />
+        </GeoJSONSource> : null}
+        {heatmapEnabled && heatmapLod === 'detail' && heatmapView ? <GeoJSONSource
           id="mushroom-heatmap-pilot"
           data={visibleHeatmap ?? heatmapView.collection}
           onPress={(event) => {
@@ -402,11 +431,13 @@ export function MapScreen() {
             }
           }}
         >
-          <Layer id="mushroom-heatmap-fill" type="fill" paint={HEATMAP_FILL_PAINT} />
-          <Layer id="mushroom-heatmap-borders" type="line" paint={HEATMAP_BORDER_PAINT} />
+          <Layer id="mushroom-heatmap-fill" type="fill" minzoom={HEATMAP_LOD.overviewEnterZoom} layout={{ visibility: detailReady ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
+          <Layer id="mushroom-heatmap-borders" type="line" minzoom={HEATMAP_LOD.overviewEnterZoom} layout={{ visibility: detailReady ? 'visible' : 'none' }} paint={HEATMAP_BORDER_PAINT} />
           {selectedHeatmapAreaId ? <Layer
             id="mushroom-heatmap-selected"
             type="line"
+            minzoom={HEATMAP_LOD.overviewEnterZoom}
+            layout={{ visibility: detailReady ? 'visible' : 'none' }}
             filter={['==', ['get', 'id'], selectedHeatmapAreaId]}
             paint={HEATMAP_SELECTED_PAINT}
           /> : null}
@@ -427,6 +458,7 @@ export function MapScreen() {
       </Map>
       <Pressable accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
       {heatmapEnabled && heatmapControlsVisible && !heatmapAreaCardOpen ? <View style={styles.heatmapControls}>
+        {heatmapLod === 'overview' ? <Text style={commonStyles.muted}>{overviewTapped ? 'Približaj zemljevid za podrobnejše pogoje.' : 'Regionalni pregled · Približaj za podrobnejši prikaz'}</Text> : null}
         <View style={styles.heatmapControlsHeader}>
           <Text style={styles.heatmapControlLabel}>VRSTA</Text>
           <Pressable
@@ -449,6 +481,7 @@ export function MapScreen() {
         {heatmapStatus === 'error' ? <View style={styles.heatmapStatus}><Text style={styles.heatmapErrorText}>{heatmapError}</Text><Pressable accessibilityRole="button" onPress={() => setHeatmapRetry((value) => value + 1)}><Text style={styles.retryText}>Poskusi znova</Text></Pressable></View> : null}
       </View> : null}
       {heatmapEnabled && !heatmapAreaCardOpen && heatmapStatus === 'out-of-coverage' ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>Podatki o pogojih za to območje še niso pripravljeni.</Text></View> : null}
+      {heatmapEnabled && heatmapLod === 'overview' && !heatmapControlsVisible && heatmapStatus !== 'out-of-coverage' ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>{overviewTapped ? 'Približaj zemljevid za podrobnejše pogoje.' : 'Regionalni pregled · Približaj za podrobnejši prikaz'}</Text></View> : null}
       {exploreLocation && !selected && !heatmapEnabled ? <Pressable accessibilityRole="button" accessibilityLabel={`Poglej razmere za ${exploreLocation.name}`} onPress={() => navigation.navigate('Tabs', { screen: 'Conditions' })} style={({ pressed }) => [styles.conditionsAction, pressed && styles.searchResultPressed]}>
         <Ionicons name="cloud-outline" size={21} color={colors.primary} />
         <View style={styles.grow}><Text numberOfLines={1} style={styles.conditionsLocation}>{exploreLocation.name}</Text><Text style={styles.conditionsActionText}>Poglej razmere</Text></View>
@@ -458,7 +491,7 @@ export function MapScreen() {
         <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{selected.title || 'Rastišče brez naslova'}</Text><Text style={commonStyles.muted}>{finds.filter((find) => find.hotspotId === selected.id).length} obiskov</Text></View><StatusPill state={selected.syncState} /><Pressable accessibilityRole="button" accessibilityLabel="Zapri kartico rastišča" hitSlop={8} onPress={() => setSelectedId(undefined)} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
         <AppButton title="Podrobnosti" variant="secondary" onPress={() => navigation.navigate('HotspotDetail', { hotspotId: selected.id })} />
       </Card> : null}
-      {!selected && heatmapEnabled && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
+      {!selected && heatmapEnabled && heatmapLod === 'detail' && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
         assessment={selectedHeatmapArea}
         weatherPending={!heatmapBundle?.weather.cells[selectedHeatmapFeature.properties.weatherCellId] && heatmapStatus === 'loading'}
         targetDay={heatmapTargetDay}

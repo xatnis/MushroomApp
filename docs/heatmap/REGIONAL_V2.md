@@ -124,6 +124,9 @@ No town coordinates are hardcoded in the app's search.
 
 ## Limits / next validation
 
+Low-zoom rendering/loading now has a separate overview LOD. See [LOD_V1.md](LOD_V1.md)
+for thresholds, offline aggregation, grid/cache separation, measurements and limitations.
+
 ## Release verification
 
 TypeScript passed. Android `assembleRelease` succeeded in 6m48s; `apksigner verify`
