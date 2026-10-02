@@ -41,6 +41,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
+    "apk": "node scripts/buildAndroidRelease.mjs",
     "export:android": "expo export --platform android --output-dir dist/android",
     "prebuild:android": "expo prebuild --platform android --clean"
   },

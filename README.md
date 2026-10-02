@@ -17,6 +17,8 @@ Za razvojni Android odjemalec uporabite `npm run android`. Expo Go lahko uporabi
 Uporabni skripti:
 
 - `npm run typecheck` — TypeScript brez izhoda;
+- `npm run apk` — zgradi svež Android release APK in ga kopira v `output/MushroomApp-preview-latest.apk`;
+- `npm run apk -- --name MushroomApp-preview-example.apk` — enako, z izbranim imenom APK-ja v `output/`;
 - `npm run export:android` — ustvari Android JS/asset export v `dist/android`;
 - `npm run prebuild:android` — regenerira native Android projekt;
 - `npx expo run:android --variant release` — lokalna release gradnja, ko sta JDK in Android SDK nastavljena;
