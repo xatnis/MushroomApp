@@ -24,8 +24,10 @@ strictEqual(overviewHabitatState({ candidate: .1, unknown: .9, 'outside-model': 
 strictEqual(overviewHabitatState({ candidate: .6, unknown: .4, 'outside-model': 0 }), 'candidate');
 strictEqual(overviewHabitatState({ candidate: .1, unknown: .1, 'outside-model': .8 }), 'outside-model');
 const mapSource = readFileSync('src/screens/MapScreen.tsx', 'utf8');
-ok(mapSource.includes('minzoom={HEATMAP_LOD.overviewEnterZoom}'));
-ok(mapSource.includes('maxzoom={detailReady ? HEATMAP_LOD.overviewEnterZoom : 24}'));
+ok(mapSource.includes('onDidFinishRenderingFrameFully={visual.onFullyRendered}'));
+ok(mapSource.includes('layout={{ visibility: visual.detailVisible'));
+ok(mapSource.includes('layout={{ visibility: visual.overviewVisible'));
+ok(!mapSource.includes("heatmapEnabled && heatmapLod === 'detail' && heatmapView"), 'sources are no longer conditionally remounted');
 ok(mapSource.includes('setOverviewTapped(true)'));
 const rows = new Map<string, { payload: string }>();
 const db = { getFirstAsync: async (_: string, key: string) => rows.get(key), runAsync: async (_: string, key: string, payload: string) => rows.set(key, { payload }) } as unknown as SQLiteDatabase;

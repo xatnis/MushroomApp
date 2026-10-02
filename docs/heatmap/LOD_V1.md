@@ -65,16 +65,23 @@ ZGS fractions retain their existing meanings; this adds no canopy/host inference
 ## Sources, transitions and interaction
 
 `regional-overview-source` / `regional-overview-fill` plus the existing separate
-detail source. Native layer minzoom/maxzoom are supported by the installed MapLibre
-React Native 11.3.10 `Layer` declarations/source. Detail uses minzoom 9.0; overview
-maxzoom is 9.0 once visible detail has publishable weather. Until then maxzoom is 24,
-keeping coarse data/static geometry as a fallback. Detail layers remain hidden until
-at least one **visible** weather point is usable (an old offscreen selection cannot
-trigger the handoff). Remaining detail cells use existing no-data styling.
+detail source. Both sources and all their layers stay mounted while the native map
+is mounted. Native layers have a stable 0–24 zoom range; the unchanged 9.5/9.0
+React hysteresis requests a readiness-aware visibility handoff. Competing immediate
+native zoom cutoffs have been removed: they could hide a source during a gesture
+before the settled-camera React state caught up.
 
-Sources update in place; no camera reset. Hysteresis prevents rapid source/request
-changes around the threshold. Overview remains available from static data/cache on
-zoom-out. This is a readiness-gated handoff, not a tested native crossfade animation.
+Overview remains visible until detail has usable **visible** weather, prepared GeoJSON
+and an incoming visible layer has received `onDidFinishRenderingFrameFully`. Both
+layers overlap for that acknowledged native frame. The outgoing layer then hides;
+no timer can hide it early. Stale callbacks cannot promote a superseded LOD. There is
+no crossfade: installed Android code supports fill-opacity transition, but its
+data-driven expression behaviour has not been verified on a physical device; the
+short overlap avoids depending on it. Remaining cells use existing no-data styling.
+
+Full coarse geometry stays prewarmed. Detail geometry/available in-memory weather
+prewarm starts near 9.2 without extra requests. See [render polish](RENDER_POLISH.md)
+for visual coalescing, bounded serialization cache and measured desktop results.
 Physical-device flicker and touch responsiveness still need acceptance testing.
 
 Overview taps only show “Približaj zemljevid za podrobnejše pogoje.” and do not mutate
@@ -87,7 +94,9 @@ micro-location finding probability.
 ## Loading and cache
 
 The active LOD determines spatial index, required points and weather definitions.
-At overview no detail viewport selection/render preparation or detail requests run.
+Below the cached-only prewarm band at 9.2, overview does not prepare new detail
+geometry or request detail weather. In the band, preparation uses only in-memory
+snapshots; network work still exclusively follows the requested, settled LOD.
 Existing detail modules/static data still initialize in memory: this is not lazy file
 loading, and nationwide static memory is a separate future concern.
 

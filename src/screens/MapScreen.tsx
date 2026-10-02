@@ -17,11 +17,12 @@ import type { MushroomWeatherProfileId } from '../domain/types';
 import type { HeatmapAreaAssessment, HeatmapTargetDay } from '../domain/heatmap/types';
 import { buildHeatmapRenderCollection, HEATMAP_HABITAT, HEATMAP_PILOT_METADATA, REGIONAL_INDEX } from '../domain/heatmap/regional';
 import { heatmapViewportStatus, prioritizedWeatherPointIds, heatmapReadiness, type Bounds } from '../domain/heatmap/spatial';
-import { HEATMAP_LOD, OVERVIEW_INDEX, OVERVIEW_WEATHER_POINTS, buildOverviewCollection, selectHeatmapLod, type HeatmapLod } from '../domain/heatmap/lod';
+import { OVERVIEW_INDEX, OVERVIEW_WEATHER_POINTS, selectHeatmapLod, type HeatmapLod } from '../domain/heatmap/lod';
 import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
 import { slNumber } from '../domain/format';
 import { createHeatmapRequestGate, scheduleSettledHeatmapLoad, loadHeatmapPilot, mergeHeatmapBundles, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
 import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '../services/heatmap/areaLocality';
+import { useHeatmapVisuals } from '../services/heatmap/useHeatmapVisuals';
 import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
@@ -130,31 +131,23 @@ export function MapScreen() {
   const requiredPointsKey = useMemo(() => visibleBounds ? prioritizedWeatherPointIds(viewportFeatures,
     visibleViewportFeatures, visibleBounds, activeWeatherPoints, selectedHeatmapAreaId).join('|') : '',
     [viewportFeatures, visibleViewportFeatures, visibleBounds, selectedHeatmapAreaId, activeWeatherPoints]);
-  const overviewFeatures = useMemo(() => visibleBounds ? OVERVIEW_INDEX.visible(visibleBounds) : [], [visibleBounds]);
-  const overviewView = useMemo(() => buildOverviewCollection(
-    heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {},
-    overviewFeatures, heatmapProfileId, heatmapTargetDay,
-  ), [heatmapBundle, heatmapProfileId, heatmapTargetDay, overviewFeatures]);
-  const heatmapView = useMemo(() => heatmapLod === 'overview' ? overviewView : buildHeatmapRenderCollection(
-    heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {},
-    viewportFeatures, heatmapProfileId, heatmapTargetDay,
-  ), [heatmapBundle, heatmapProfileId, heatmapTargetDay, viewportFeatures, heatmapLod, overviewView]);
-  const visibleHeatmap = heatmapView.collection;
+  const visual = useHeatmapVisuals({ enabled: heatmapEnabled, bounds: visibleBounds, moving: cameraMoving,
+    lod: heatmapLod, zoom: heatmapNavigation.viewport?.zoom ?? 7, bundle: heatmapBundle,
+    profile: heatmapProfileId, day: heatmapTargetDay });
   const heatmapStatus = heatmapViewportStatus(Boolean(visibleBounds), viewportCovered, heatmapLoading || completedPointsKey !== requiredPointsKey, Boolean(heatmapError));
   const readiness = heatmapReadiness(requiredPointsKey ? requiredPointsKey.split('|') : [], new Set(
     Object.entries(heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {})
       .filter(([, value]) => value.score.score !== null && value.dataQuality !== 'insufficient').map(([id]) => id)),
     !heatmapLoading && completedPointsKey === requiredPointsKey);
-  const selectedHeatmapArea = selectedHeatmapAreaId ? heatmapView?.assessments[selectedHeatmapAreaId] : undefined;
   const selectedHeatmapFeature = selectedHeatmapAreaId
     ? HEATMAP_HABITAT.features.find((feature) => feature.properties.id === selectedHeatmapAreaId)
     : undefined;
-  const detailWeather = heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {};
-  // An old selected area outside the view must not remove the overview fallback.
-  const detailReady = heatmapLod === 'detail' && visibleViewportFeatures.some(feature => {
-    const value = detailWeather[feature.properties.weatherCellId];
-    return value && value.dataQuality !== 'insufficient' && value.score.score != null;
-  });
+  // Card selection is independent of native source geometry and cannot rebuild the grid.
+  const selectedHeatmapArea = useMemo(() => selectedHeatmapFeature ? buildHeatmapRenderCollection(
+    heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {},
+    [selectedHeatmapFeature], heatmapProfileId, heatmapTargetDay,
+  ).assessments[selectedHeatmapFeature.properties.id] : undefined,
+  [selectedHeatmapFeature, heatmapBundle, heatmapProfileId, heatmapTargetDay]);
   const heatmapAreaCardOpen = heatmapLod === 'detail' && !selected && heatmapEnabled && Boolean(selectedHeatmapArea && selectedHeatmapFeature);
   const heatmapAreaLocality = useMemo<HeatmapAreaLocalityResolution | undefined>(() => {
     if (!selectedHeatmapFeature) return undefined;
@@ -384,6 +377,7 @@ export function MapScreen() {
           }).catch(() => { /* The region event supplies bounds if the native map is not ready yet. */ });
         }}
         onRegionWillChange={() => setCameraMoving(true)}
+        onDidFinishRenderingFrameFully={visual.onFullyRendered}
         onRegionDidChange={(event) => {
           setCameraMoving(false);
           if (event.nativeEvent.userInteraction) mapWasMoved.current = true;
@@ -409,19 +403,21 @@ export function MapScreen() {
         }}
       >
         <Camera ref={camera} initialViewState={heatmapNavigation.viewport ?? { center: SLOVENIA_CENTER, zoom: 7 }} />
-        {heatmapEnabled ? <GeoJSONSource id="regional-overview-source" data={overviewView.collection}
+        <GeoJSONSource id="regional-overview-source" data={visual.overviewData}
           onPress={(event) => {
             event.stopPropagation();
             suppressMapPressUntil.current = Date.now() + 300;
             setOverviewTapped(true);
           }}>
-          <Layer id="regional-overview-fill" type="fill" minzoom={0} maxzoom={detailReady ? HEATMAP_LOD.overviewEnterZoom : 24} paint={HEATMAP_FILL_PAINT} />
-          <Layer id="regional-overview-border" type="line" minzoom={0} maxzoom={detailReady ? HEATMAP_LOD.overviewEnterZoom : 24}
+          <Layer id="regional-overview-fill" type="fill" minzoom={0} maxzoom={24}
+            layout={{ visibility: visual.overviewVisible ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
+          <Layer id="regional-overview-border" type="line" minzoom={0} maxzoom={24}
+            layout={{ visibility: visual.overviewVisible ? 'visible' : 'none' }}
             paint={{ ...HEATMAP_BORDER_PAINT, 'line-opacity': 0.2, 'line-width': 0.4 }} />
-        </GeoJSONSource> : null}
-        {heatmapEnabled && heatmapLod === 'detail' && heatmapView ? <GeoJSONSource
+        </GeoJSONSource>
+        <GeoJSONSource
           id="mushroom-heatmap-pilot"
-          data={visibleHeatmap ?? heatmapView.collection}
+          data={visual.detailData}
           onPress={(event) => {
             event.stopPropagation();
             const areaId = event.nativeEvent.features[0]?.properties?.id;
@@ -431,17 +427,18 @@ export function MapScreen() {
             }
           }}
         >
-          <Layer id="mushroom-heatmap-fill" type="fill" minzoom={HEATMAP_LOD.overviewEnterZoom} layout={{ visibility: detailReady ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
-          <Layer id="mushroom-heatmap-borders" type="line" minzoom={HEATMAP_LOD.overviewEnterZoom} layout={{ visibility: detailReady ? 'visible' : 'none' }} paint={HEATMAP_BORDER_PAINT} />
-          {selectedHeatmapAreaId ? <Layer
+          <Layer id="mushroom-heatmap-fill" type="fill" minzoom={0} maxzoom={24} layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
+          <Layer id="mushroom-heatmap-borders" type="line" minzoom={0} maxzoom={24} layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_BORDER_PAINT} />
+          <Layer
             id="mushroom-heatmap-selected"
             type="line"
-            minzoom={HEATMAP_LOD.overviewEnterZoom}
-            layout={{ visibility: detailReady ? 'visible' : 'none' }}
-            filter={['==', ['get', 'id'], selectedHeatmapAreaId]}
+            minzoom={0}
+            maxzoom={24}
+            layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }}
+            filter={['==', ['get', 'id'], selectedHeatmapAreaId ?? '']}
             paint={HEATMAP_SELECTED_PAINT}
-          /> : null}
-        </GeoJSONSource> : null}
+          />
+        </GeoJSONSource>
         {locationGranted ? <UserLocation animated accuracy minDisplacement={3} /> : null}
         {ownerFilter === 'mine' ? filtered.map((hotspot) => <Marker key={hotspot.id} id={hotspot.id} lngLat={[hotspot.longitude, hotspot.latitude]} anchor="bottom" onPress={(event) => {
           event.stopPropagation();
