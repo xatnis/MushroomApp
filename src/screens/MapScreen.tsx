@@ -23,6 +23,7 @@ import { slNumber } from '../domain/format';
 import { createHeatmapRequestGate, scheduleSettledHeatmapLoad, loadHeatmapPilot, mergeHeatmapBundles, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
 import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '../services/heatmap/areaLocality';
 import { useHeatmapVisuals } from '../services/heatmap/useHeatmapVisuals';
+import { HEATMAP_NATIVE_RANGES } from '../domain/heatmap/visual';
 import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
@@ -133,7 +134,7 @@ export function MapScreen() {
     [viewportFeatures, visibleViewportFeatures, visibleBounds, selectedHeatmapAreaId, activeWeatherPoints]);
   const visual = useHeatmapVisuals({ enabled: heatmapEnabled, bounds: visibleBounds, moving: cameraMoving,
     lod: heatmapLod, zoom: heatmapNavigation.viewport?.zoom ?? 7, bundle: heatmapBundle,
-    profile: heatmapProfileId, day: heatmapTargetDay });
+    profile: heatmapProfileId, day: heatmapTargetDay, mapRef: map });
   const heatmapStatus = heatmapViewportStatus(Boolean(visibleBounds), viewportCovered, heatmapLoading || completedPointsKey !== requiredPointsKey, Boolean(heatmapError));
   const readiness = heatmapReadiness(requiredPointsKey ? requiredPointsKey.split('|') : [], new Set(
     Object.entries(heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {})
@@ -409,9 +410,9 @@ export function MapScreen() {
             suppressMapPressUntil.current = Date.now() + 300;
             setOverviewTapped(true);
           }}>
-          <Layer id="regional-overview-fill" type="fill" minzoom={0} maxzoom={24}
+          <Layer id="regional-overview-fill" type="fill" minzoom={HEATMAP_NATIVE_RANGES.overview.min} maxzoom={HEATMAP_NATIVE_RANGES.overview.max}
             layout={{ visibility: visual.overviewVisible ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
-          <Layer id="regional-overview-border" type="line" minzoom={0} maxzoom={24}
+          <Layer id="regional-overview-border" type="line" minzoom={HEATMAP_NATIVE_RANGES.overview.min} maxzoom={HEATMAP_NATIVE_RANGES.overview.max}
             layout={{ visibility: visual.overviewVisible ? 'visible' : 'none' }}
             paint={{ ...HEATMAP_BORDER_PAINT, 'line-opacity': 0.2, 'line-width': 0.4 }} />
         </GeoJSONSource>
@@ -427,13 +428,13 @@ export function MapScreen() {
             }
           }}
         >
-          <Layer id="mushroom-heatmap-fill" type="fill" minzoom={0} maxzoom={24} layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
-          <Layer id="mushroom-heatmap-borders" type="line" minzoom={0} maxzoom={24} layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_BORDER_PAINT} />
+          <Layer id="mushroom-heatmap-fill" type="fill" minzoom={HEATMAP_NATIVE_RANGES.detail.min} maxzoom={HEATMAP_NATIVE_RANGES.detail.max} layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
+          <Layer id="mushroom-heatmap-borders" type="line" minzoom={HEATMAP_NATIVE_RANGES.detail.min} maxzoom={HEATMAP_NATIVE_RANGES.detail.max} layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_BORDER_PAINT} />
           <Layer
             id="mushroom-heatmap-selected"
             type="line"
-            minzoom={0}
-            maxzoom={24}
+            minzoom={HEATMAP_NATIVE_RANGES.detail.min}
+            maxzoom={HEATMAP_NATIVE_RANGES.detail.max}
             layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }}
             filter={['==', ['get', 'id'], selectedHeatmapAreaId ?? '']}
             paint={HEATMAP_SELECTED_PAINT}

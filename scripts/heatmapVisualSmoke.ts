@@ -1,7 +1,9 @@
 import { strictEqual, ok, deepStrictEqual } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { createHeatmapVisualCache, createHeatmapVisualCoalescer, finishHeatmapHandoff, heatmapLayerVisible, requestHeatmapHandoff,
-  retainHeatmapGrid, HEATMAP_VISUAL, type HeatmapHandoff } from '../src/domain/heatmap/visual';
+  retainHeatmapGrid, HEATMAP_VISUAL, HEATMAP_NATIVE_RANGES, createHeatmapRenderConfirmation, heatmapRenderProbes,
+  scheduleHeatmapVisualUpdate, type HeatmapHandoff } from '../src/domain/heatmap/visual';
+import { scheduleSettledHeatmapLoad } from '../src/services/heatmap/pilotHeatmap';
 import { OVERVIEW_FEATURES, OVERVIEW_INDEX, OVERVIEW_WEATHER_POINTS, selectHeatmapLod, buildOverviewCollection } from '../src/domain/heatmap/lod';
 import { REGIONAL_INDEX, HEATMAP_PILOT_METADATA, buildHeatmapRenderCollection } from '../src/domain/heatmap/regional';
 import { assessHeatmapWeather } from '../src/domain/heatmap/assessment';
@@ -30,6 +32,16 @@ for (const zoom of [8.8, 9.2, 9.6, 9.3, 9.7, 8.9]) {
 strictEqual(changes, 2); strictEqual(finishHeatmapHandoff(state).displayed, 'overview', 'stale detail completion cannot overwrite zoom-out');
 const stale = requestHeatmapHandoff({ displayed: 'overview' }, 'detail', true);
 strictEqual(finishHeatmapHandoff(stale, 'overview').displayed, 'overview', 'queued native callback cannot promote superseded detail');
+for (const zoom of [8.8, 9, 9.3, 9.5, 9.7, 10]) for (const range of Object.values(HEATMAP_NATIVE_RANGES)) {
+  ok(zoom >= range.min && zoom < range.max, 'both native layers remain renderable through the transition');
+}
+deepStrictEqual(HEATMAP_NATIVE_RANGES, { overview: { min: 0, max: 24 }, detail: { min: 0, max: 24 } }, 'native ranges unchanged, not blindly tuned');
+for (const zoom of [8.8, 9.6, 9.3, 9.7, 9.1, 9.6]) {
+  wanted = selectHeatmapLod(zoom, wanted);
+  state = requestHeatmapHandoff(state, wanted, true);
+  ok(heatmapLayerVisible(state, 'overview') || heatmapLayerVisible(state, 'detail'));
+}
+strictEqual(wanted, 'detail', '9.1 does not incorrectly return to overview');
 
 const date = '2026-10-02';
 const makeWeather = (profile: Parameters<typeof assessHeatmapWeather>[1], day: 'today' | 'tomorrow') =>
@@ -88,8 +100,9 @@ for (const [name, lod, box] of [
   const cacheMs = performance.now() - cacheStart;
   rows.push({ name, polygons: set.length, filterMs, oldPrepareMs, prepareMs, cacheMs,
     parts,
-    beforeRebuilds: lod === 'detail' ? 2 : 1, afterRebuilds: benchmarkCache.builds - buildCount,
-    beforeSourceDataChanges: lod === 'detail' ? 2 : 1, afterSourceDataChanges: benchmarkCache.builds - buildCount,
+    legacyPre4e3cb3dRebuilds: lod === 'detail' ? 2 : 1,
+    beforeRebuilds: lod === 'detail' ? 1 : 0, afterRebuilds: benchmarkCache.builds - buildCount,
+    beforeSourceDataChanges: lod === 'detail' ? 1 : 0, afterSourceDataChanges: benchmarkCache.builds - buildCount,
     visualSettlementMs: HEATMAP_VISUAL.viewportDelayMs, firstFrame: 'requires native render acknowledgement; not measured on desktop' });
 }
 for (const [name, lod, profile, day] of [
@@ -121,11 +134,111 @@ ok(map.includes('onDidFinishRenderingFrameFully={visual.onFullyRendered}'));
 ok(!hook.includes('selectedAreaId'), 'card selection cannot rebuild source');
 ok(hook.includes('coalescer.push(bundle)'), 'bounded coalescing window');
 ok(hook.includes('REGIONAL_INDEX.visible(visualBounds)'), 'visual filter independent of network scheduling');
-strictEqual(HEATMAP_VISUAL.viewportDelayMs, 100);
+strictEqual(HEATMAP_VISUAL.viewportDelayMs, 60);
 console.log('Heatmap visual smoke passed: handoff/rapid zoom/cache/retention/source lifetime; React/native timing not measured.');
 console.log(JSON.stringify(rows, null, 2));
 
+// Deterministic camera-settled burst. Test the production timer wrappers with a
+// virtual clock; actual filter/GeoJSON work still runs against the real grid.
+function panBurstBenchmark() {
+  const originalSet = globalThis.setTimeout, originalClear = globalThis.clearTimeout;
+  try {
+    for (const delay of [100, 60, 45]) {
+      let clock = 0, sequence = 0, visualUpdates = 0, sourceUpdates = 0, networkUpdates = 0;
+      let lastVisualAt = 0, filterMs = 0, prepareMs = 0;
+      const tasks = new Map<number, { at: number; run: () => void }>();
+      globalThis.setTimeout = ((run: () => void, ms: number = 0) => {
+        tasks.set(++sequence, { at: clock + ms, run }); return sequence;
+      }) as unknown as typeof setTimeout;
+      globalThis.clearTimeout = ((id: unknown) => { tasks.delete(Number(id)); }) as typeof clearTimeout;
+      const advance = (to: number) => {
+        while (true) {
+          const next = [...tasks.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+          if (!next || next[1].at > to) break;
+          clock = next[1].at; tasks.delete(next[0]); next[1].run();
+        }
+        clock = to;
+      };
+      let cancelVisual = () => {}, cancelNetwork = () => {}, grid = a;
+      const burstCache = createHeatmapVisualCache();
+      [0, 20, 70, 90, 140].forEach((at, index) => {
+        advance(at); cancelVisual(); cancelNetwork();
+        const viewport: typeof bounds = [bounds[0] + index * .02, bounds[1], bounds[2] + index * .02, bounds[3]];
+        cancelVisual = scheduleHeatmapVisualUpdate(() => {
+          const t = performance.now(), visible = REGIONAL_INDEX.visible(viewport);
+          filterMs += performance.now() - t;
+          const start = performance.now(), next = burstCache.prepare('detail', visible, weather, 'boletusEdulis', 'today', date);
+          prepareMs += performance.now() - start;
+          if (grid.serialized !== next.serialized) sourceUpdates++;
+          grid = retainHeatmapGrid(grid, next);
+          ok(grid.collection.features.length, 'old -> new atomic update; never empty');
+          visualUpdates++; lastVisualAt = clock;
+        }, delay);
+        cancelNetwork = scheduleSettledHeatmapLoad(() => { networkUpdates++; }); // unchanged default 250 ms
+      });
+      advance(500);
+      strictEqual(networkUpdates, 1, 'visual debounce changes cannot increase network scheduling');
+      strictEqual(visualUpdates, delay === 45 ? 3 : 1, '60 is the lowest tested window coalescing the burst');
+      console.log(JSON.stringify({ type: 'settled-pan-burst', visualDelayMs: delay, gestureSettledAtMs: 140,
+        softwareDelayAfterFinalMs: lastVisualAt - 140, visualUpdates, sourceUpdates, networkUpdates,
+        filterMs, prepareMs, networkDelayMs: 250, nativeTiming: 'not measured' }));
+    }
+  } finally { globalThis.setTimeout = originalSet; globalThis.clearTimeout = originalClear; }
+}
+panBurstBenchmark();
+
 async function timingTests() {
+  const expected = heatmapRenderProbes(a, new Set(features.map(f => f.properties.id)), 'detail');
+  ok(expected.length > 0 && expected.length <= 3, 'native query payload is bounded');
+  const frameQueue = new Set<() => void>();
+  const queuedQueries: Array<(features: Array<{ properties: Record<string, unknown> }>) => void> = [];
+  let committed: HeatmapLod | undefined, nativeQueries = 0;
+  let transition = requestHeatmapHandoff({ displayed: 'overview' }, 'detail', true);
+  const confirmation = createHeatmapRenderConfirmation({
+    query: async () => { nativeQueries++; return new Promise(resolve => queuedQueries.push(resolve)); },
+    nextFrame: callback => { frameQueue.add(callback); return () => { frameQueue.delete(callback); }; },
+    commit: lod => { committed = lod; transition = finishHeatmapHandoff(transition, lod); },
+  });
+  confirmation.arm('detail', expected);
+  const oldFrame = confirmation.onFullFrame();
+  await confirmation.onFullFrame(); strictEqual(nativeQueries, 1, 'no parallel probe storm');
+  queuedQueries.shift()!([]); await oldFrame;
+  strictEqual(committed, undefined, 'basemap-only full frame must not complete handoff');
+  ok(heatmapLayerVisible(transition, 'overview'), 'outgoing stays through native detail pending');
+  // A reply initiated for an earlier source/viewport revision cannot acknowledge the new one.
+  const staleQuery = confirmation.onFullFrame();
+  confirmation.arm('detail', expected);
+  queuedQueries.shift()!([{ properties: { ...expected[0] } }]); await staleQuery;
+  strictEqual(frameQueue.size, 0, 'stale generation cannot schedule hide');
+  const wrongData = confirmation.onFullFrame();
+  queuedQueries.shift()!([{ properties: { ...expected[0], score: -1 } }]); await wrongData;
+  strictEqual(frameQueue.size, 0, 'previous no-weather tiles are not current incoming evidence');
+  const incomingFrame = confirmation.onFullFrame();
+  queuedQueries.shift()!([{ properties: { ...expected[0] } }]); await incomingFrame;
+  ok(heatmapLayerVisible(transition, 'overview'), 'one extra RAF after verified native detail');
+  strictEqual(frameQueue.size, 1); strictEqual(committed, undefined);
+  for (const callback of frameQueue) { frameQueue.delete(callback); callback(); }
+  strictEqual(committed, 'detail'); ok(heatmapLayerVisible(transition, 'detail')); ok(!heatmapLayerVisible(transition, 'overview'));
+  transition = requestHeatmapHandoff(transition, 'overview', true);
+  confirmation.arm('overview', expected);
+  const returning = confirmation.onFullFrame();
+  queuedQueries.shift()!([{ properties: { ...expected[0] } }]); await returning;
+  confirmation.cancel(); strictEqual(frameQueue.size, 0, 'superseded/unmounted RAF is removed');
+  ok(heatmapLayerVisible(transition, 'detail'), 'cancelled return cannot hide outgoing detail');
+  confirmation.arm('overview', expected);
+  const queryError = confirmation.onFullFrame();
+  queuedQueries.shift()!([]); await queryError;
+  ok(heatmapLayerVisible(transition, 'detail'), 'missing native results retain prior layer');
+  confirmation.cancel();
+  const failingQuery = createHeatmapRenderConfirmation({
+    query: async () => { throw new Error('Native map/style unavailable'); },
+    nextFrame: () => { throw new Error('Must not hide outgoing on query failure'); },
+    commit: () => { throw new Error('Must not commit query failure'); },
+  });
+  failingQuery.arm('overview', expected); await failingQuery.onFullFrame(); failingQuery.cancel();
+  ok(heatmapLayerVisible(transition, 'detail'), 'native query failure leaves outgoing rendered layer');
+  console.log('Native confirmation mock: basemap-only/stale/wrong-data replies rejected; matching layer + one RAF; no blank handoff.');
+
   const commits: number[] = [];
   const coalescer = createHeatmapVisualCoalescer<number>(n => commits.push(n));
   coalescer.push(1); await new Promise(r => setTimeout(r, 10));
@@ -139,7 +252,7 @@ async function timingTests() {
   console.log('Weather visual coalescing: first immediate, 5 updates -> 1 within 80 ms, cleanup passed.');
   // Candidate local settlement windows, measured with the same lightweight filter/prepare.
   // This measures timers + JS, not touch/GPU latency, so it cannot choose an Android optimum.
-  for (const delay of [60, 100, 120]) {
+  for (const delay of [100, 60, 45]) {
     const start = performance.now();
     await new Promise(r => setTimeout(r, delay));
     const t = performance.now();
