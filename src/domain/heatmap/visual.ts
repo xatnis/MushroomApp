@@ -11,7 +11,7 @@ export function scheduleHeatmapVisualUpdate(callback: () => void, delayMs: numbe
   const timer = setTimeout(callback, delayMs);
   return () => clearTimeout(timer);
 }
-export type HeatmapRenderView = ReturnType<typeof buildHeatmapRenderCollection> & { serialized: string };
+export type HeatmapRenderView = ReturnType<typeof buildHeatmapRenderCollection> & { serialized: string; selectionKey: string };
 
 /** Bounded display cache: effective geometry + only relevant immutable weather objects.
  * Selection, panel state, bounds identity and unrelated progressive batches are NOT keys.
@@ -45,7 +45,8 @@ export function createHeatmapVisualCache(capacity = 12) {
       const result = lod === 'overview' ? buildOverviewCollection(weather, features, profile, day)
         : buildHeatmapRenderCollection(weather, features, profile, day);
       const built = performance.now();
-      const view = { ...result, serialized: JSON.stringify(result.collection) };
+      // Private visual revision identity, never serialized into native/model/data artifacts.
+      const view = { ...result, serialized: JSON.stringify(result.collection), selectionKey: `${profile}/${day}/${baseDate}` };
       lastTiming = { keyMs: keyed - start, buildMs: built - keyed, serializeMs: performance.now() - built, cacheHit: false };
       entries.set(key, view); builds++;
       while (entries.size > capacity) entries.delete(entries.keys().next().value!);
@@ -54,7 +55,7 @@ export function createHeatmapVisualCache(capacity = 12) {
   };
 }
 
-/** Keep an outgoing layer until an incoming useful source has rendered a FULL native frame.
+/** Keep an outgoing layer until current incoming geometry has native render evidence.
  * No time-based hide and no competing native zoom cutoff. A cancelled handoff cannot hide
  * the currently displayed layer. Both layers overlap for the acknowledged frame.
  */
@@ -67,53 +68,94 @@ export function finishHeatmapHandoff(state: HeatmapHandoff, expectedTarget = sta
   return state.incoming ? { displayed: state.incoming === expectedTarget ? state.incoming : state.displayed } : state;
 }
 export const heatmapLayerVisible = (state: HeatmapHandoff, lod: HeatmapLod) => state.displayed === lod || state.incoming === lod;
+export const heatmapInteractionLod = (target: HeatmapLod, detailSourceReady: boolean): HeatmapLod | undefined =>
+  target === 'overview' ? 'overview' : detailSourceReady ? 'detail' : undefined;
+
+/** Geometry readiness is independent of weather readiness (neutral/no-data cells are valid).
+ * A settled, genuinely empty viewport is also a valid detail source, not pending work.
+ */
+export function heatmapSourceReady(view: HeatmapRenderView | undefined, expected: HeatmapHabitatFeature[] | undefined,
+  profile: MushroomWeatherProfileId, day: HeatmapTargetDay, baseDate: string) {
+  if (!view || !expected || view.selectionKey !== `${profile}/${day}/${baseDate}`
+    || view.collection.features.length !== expected.length) return false;
+  return expected.every((f, i) => view.collection.features[i]?.properties.id === f.properties.id);
+}
 
 export interface HeatmapRenderProbe { id: string; score: number; renderState: string; dataQuality: string }
-export function heatmapRenderProbes(view: HeatmapRenderView, visibleIds: Set<string>, lod: HeatmapLod): HeatmapRenderProbe[] {
-  const usable = view.collection.features.filter(f => visibleIds.has(f.properties.id)
-    && (lod === 'overview' || f.properties.score >= 0 && f.properties.dataQuality !== 'insufficient'));
-  if (!usable.length) return [];
-  return [...new Set([0, Math.floor(usable.length / 2), usable.length - 1])].map(i => {
-    const { id, score, renderState, dataQuality } = usable[i].properties;
+export function heatmapRenderProbes(view: HeatmapRenderView, visibleIds: Set<string>, _lod: HeatmapLod): HeatmapRenderProbe[] {
+  return view.collection.features.filter(f => visibleIds.has(f.properties.id)).map(f => {
+    const { id, score, renderState, dataQuality } = f.properties;
     return { id, score, renderState, dataQuality };
   });
 }
 
-/** A map-wide full-frame notification is only a trigger, NOT incoming-layer evidence.
- * Query at most three actual rendered features on that layer. Reject stale replies,
- * then retain the outgoing layer for one additional RAF. No polling/network work.
+/** A map-wide render notification is only a trigger, NOT incoming-layer evidence.
+ * Query the whole viewport/layer, not three sampled IDs. Reject stale replies,
+ * retain events arriving during queries, then overlap one RAF. No polling/network work.
  */
 export function createHeatmapRenderConfirmation(options: {
   query: (lod: HeatmapLod, probes: HeatmapRenderProbe[]) => Promise<Array<{ properties?: Record<string, unknown> | null }>>;
   nextFrame: (callback: () => void) => () => void;
   commit: (lod: HeatmapLod) => void;
+  diagnostic?: (event: string, state: { generation: number; confirmedGeneration?: number; resultCount: number;
+    pendingRaf: boolean; frameSequence: number }) => void;
 }) {
   let generation = 0, target: HeatmapLod | undefined, probes: HeatmapRenderProbe[] = [];
   let querying: number | undefined, cancelFrame: (() => void) | undefined;
+  let frames = 0, submittedAfterFrame = 0, confirmedGeneration: number | undefined, resultCount = 0;
+  const diagnostic = (event: string) => options.diagnostic?.(event, { generation, confirmedGeneration, resultCount,
+    pendingRaf: Boolean(cancelFrame), frameSequence: frames });
   const cancel = () => { generation++; target = undefined; probes = []; cancelFrame?.(); cancelFrame = undefined; };
-  return {
-    arm(lod: HeatmapLod, expected: HeatmapRenderProbe[]) { cancel(); target = lod; probes = expected; },
+  const confirmation = {
+    arm(lod: HeatmapLod, expected: HeatmapRenderProbe[]) {
+      cancel(); target = lod; probes = expected; resultCount = 0; submittedAfterFrame = frames; diagnostic('source-submitted');
+    },
     cancel,
     async onFullFrame() {
-      if (!target || !probes.length || querying === generation || cancelFrame) return;
+      frames++;
+      return confirmation.verifyRenderedLayer();
+    },
+    async verifyRenderedLayer() {
+      if (!target || querying === generation || cancelFrame) return;
+      // An empty source cannot prove itself with a query: require a real new native frame.
+      if (!probes.length && frames <= submittedAfterFrame) return;
       const token = generation, incoming = target, expected = probes;
+      const frameAtQuery = frames;
       querying = token;
+      diagnostic('render-query');
       try {
-        const rendered = await options.query(incoming, expected);
+        // Zero expected features: a post-submission frame can confirm intentional no-data.
+        const rendered = expected.length ? await options.query(incoming, expected) : [];
         if (generation !== token) return;
-        const matches = rendered.some(f => expected.some(p => f.properties?.id === p.id && f.properties.score === p.score
-          && f.properties.renderState === p.renderState && f.properties.dataQuality === p.dataQuality));
+        resultCount = rendered.length;
+        const byId = new Map(expected.map(p => [p.id, p]));
+        const matches = !expected.length || rendered.some(f => {
+          const p = byId.get(f.properties?.id as string);
+          return p && f.properties?.score === p.score && f.properties.renderState === p.renderState
+            && f.properties.dataQuality === p.dataQuality;
+        });
+        if (matches) confirmedGeneration = token;
+        diagnostic(matches ? 'render-confirmed' : 'render-pending');
         if (!matches) return; // Old/basemap-only frame: outgoing stays visible until a later frame.
         cancelFrame = options.nextFrame(() => {
           if (generation !== token || target !== incoming) return;
           cancelFrame = undefined;
           target = undefined;
           options.commit(incoming);
+          diagnostic('handoff-complete');
         });
-      } catch { /* Native style/query not ready: keep the outgoing layer; next frame can retry. */ }
-      finally { if (querying === token) querying = undefined; }
+        diagnostic('overlap-raf');
+      } catch { if (generation === token) diagnostic('query-failed'); }
+      finally {
+        if (querying === token) {
+          querying = undefined;
+          // A newer frame received during a slow query is not lost. No timer retry loop.
+          if (generation === token && target && !cancelFrame && frames > frameAtQuery) void confirmation.verifyRenderedLayer();
+        }
+      }
     },
   };
+  return confirmation;
 }
 
 /** One fixed window per burst, newest value wins; unlike trailing debounce this cannot starve. */

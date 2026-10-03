@@ -104,6 +104,20 @@ export function MapScreen() {
   const [visibleBounds, setVisibleBounds] = useState<Bounds>();
   const [cameraMoving, setCameraMoving] = useState(false);
   const [heatmapLod, setHeatmapLod] = useState<HeatmapLod>(() => selectHeatmapLod(heatmapNavigation.viewport?.zoom ?? 7, 'overview'));
+  const cameraLod = useRef(heatmapLod);
+  const cameraZoom = useRef(heatmapNavigation.viewport?.zoom ?? 7);
+  const observeCameraZoom = (zoom: number) => {
+    if (!Number.isFinite(zoom)) return;
+    cameraZoom.current = zoom;
+    const next = selectHeatmapLod(zoom, cameraLod.current);
+    // Observe the native gesture, but only render on a hysteresis crossing.
+    // Bounds and network settlement still update exclusively at camera idle.
+    if (next !== cameraLod.current) {
+      cameraLod.current = next;
+      setHeatmapLod(next);
+      if (__DEV__) console.info('[heatmap-lod camera]', { zoom, targetLod: next });
+    }
+  };
   const [overviewTapped, setOverviewTapped] = useState(false);
   const heatmapRequestGate = useRef(createHeatmapRequestGate()).current;
   useEffect(() => {
@@ -133,7 +147,7 @@ export function MapScreen() {
     visibleViewportFeatures, visibleBounds, activeWeatherPoints, selectedHeatmapAreaId).join('|') : '',
     [viewportFeatures, visibleViewportFeatures, visibleBounds, selectedHeatmapAreaId, activeWeatherPoints]);
   const visual = useHeatmapVisuals({ enabled: heatmapEnabled, bounds: visibleBounds, moving: cameraMoving,
-    lod: heatmapLod, zoom: heatmapNavigation.viewport?.zoom ?? 7, bundle: heatmapBundle,
+    lod: heatmapLod, zoom: cameraZoom.current, bundle: heatmapBundle,
     profile: heatmapProfileId, day: heatmapTargetDay, mapRef: map });
   const heatmapStatus = heatmapViewportStatus(Boolean(visibleBounds), viewportCovered, heatmapLoading || completedPointsKey !== requiredPointsKey, Boolean(heatmapError));
   const readiness = heatmapReadiness(requiredPointsKey ? requiredPointsKey.split('|') : [], new Set(
@@ -378,13 +392,15 @@ export function MapScreen() {
           }).catch(() => { /* The region event supplies bounds if the native map is not ready yet. */ });
         }}
         onRegionWillChange={() => setCameraMoving(true)}
+        onRegionIsChanging={(event) => observeCameraZoom(event.nativeEvent.zoom)}
+        onDidFinishRenderingFrame={visual.onFullyRendered}
         onDidFinishRenderingFrameFully={visual.onFullyRendered}
         onRegionDidChange={(event) => {
           setCameraMoving(false);
           if (event.nativeEvent.userInteraction) mapWasMoved.current = true;
           const [longitude, latitude] = event.nativeEvent.center;
           const { zoom } = event.nativeEvent;
-          setHeatmapLod(previous => selectHeatmapLod(zoom, previous));
+          observeCameraZoom(zoom);
           setOverviewTapped(false);
           const bounds = event.nativeEvent.bounds;
           if (bounds?.length === 4 && bounds.every(Number.isFinite)) setVisibleBounds([...bounds] as Bounds);
@@ -405,34 +421,35 @@ export function MapScreen() {
       >
         <Camera ref={camera} initialViewState={heatmapNavigation.viewport ?? { center: SLOVENIA_CENTER, zoom: 7 }} />
         <GeoJSONSource id="regional-overview-source" data={visual.overviewData}
-          onPress={(event) => {
+          onPress={visual.interactionLod === 'overview' ? (event) => {
             event.stopPropagation();
             suppressMapPressUntil.current = Date.now() + 300;
             setOverviewTapped(true);
-          }}>
+          } : undefined}>
           <Layer id="regional-overview-fill" type="fill" minzoom={HEATMAP_NATIVE_RANGES.overview.min} maxzoom={HEATMAP_NATIVE_RANGES.overview.max}
             layout={{ visibility: visual.overviewVisible ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
-          <Layer id="regional-overview-border" type="line" minzoom={HEATMAP_NATIVE_RANGES.overview.min} maxzoom={HEATMAP_NATIVE_RANGES.overview.max}
+          <Layer id="regional-overview-border" type="line" afterId="regional-overview-fill" minzoom={HEATMAP_NATIVE_RANGES.overview.min} maxzoom={HEATMAP_NATIVE_RANGES.overview.max}
             layout={{ visibility: visual.overviewVisible ? 'visible' : 'none' }}
             paint={{ ...HEATMAP_BORDER_PAINT, 'line-opacity': 0.2, 'line-width': 0.4 }} />
         </GeoJSONSource>
         <GeoJSONSource
           id="mushroom-heatmap-pilot"
           data={visual.detailData}
-          onPress={(event) => {
+          onPress={visual.interactionLod === 'detail' ? (event) => {
             event.stopPropagation();
             const areaId = event.nativeEvent.features[0]?.properties?.id;
             if (typeof areaId === 'string') {
               setSelectedId(undefined);
               updateHeatmapNavigation({ selectedAreaId: areaId });
             }
-          }}
+          } : undefined}
         >
-          <Layer id="mushroom-heatmap-fill" type="fill" minzoom={HEATMAP_NATIVE_RANGES.detail.min} maxzoom={HEATMAP_NATIVE_RANGES.detail.max} layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
-          <Layer id="mushroom-heatmap-borders" type="line" minzoom={HEATMAP_NATIVE_RANGES.detail.min} maxzoom={HEATMAP_NATIVE_RANGES.detail.max} layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_BORDER_PAINT} />
+          <Layer id="mushroom-heatmap-fill" type="fill" afterId="regional-overview-border" minzoom={HEATMAP_NATIVE_RANGES.detail.min} maxzoom={HEATMAP_NATIVE_RANGES.detail.max} layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
+          <Layer id="mushroom-heatmap-borders" type="line" afterId="mushroom-heatmap-fill" minzoom={HEATMAP_NATIVE_RANGES.detail.min} maxzoom={HEATMAP_NATIVE_RANGES.detail.max} layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_BORDER_PAINT} />
           <Layer
             id="mushroom-heatmap-selected"
             type="line"
+            afterId="mushroom-heatmap-borders"
             minzoom={HEATMAP_NATIVE_RANGES.detail.min}
             maxzoom={HEATMAP_NATIVE_RANGES.detail.max}
             layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }}

@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { MapRef } from '@maplibre/maplibre-react-native';
 import { HEATMAP_VISUAL, createHeatmapVisualCache, createHeatmapVisualCoalescer, createHeatmapRenderConfirmation,
-  heatmapRenderProbes, finishHeatmapHandoff, heatmapLayerVisible, scheduleHeatmapVisualUpdate,
-  requestHeatmapHandoff, retainHeatmapGrid, type HeatmapHandoff, type HeatmapRenderView } from '../../domain/heatmap/visual';
+  heatmapRenderProbes, heatmapSourceReady, heatmapInteractionLod, finishHeatmapHandoff, heatmapLayerVisible, scheduleHeatmapVisualUpdate,
+  requestHeatmapHandoff, type HeatmapHandoff, type HeatmapRenderView } from '../../domain/heatmap/visual';
 import { OVERVIEW_FEATURES, OVERVIEW_INDEX, type HeatmapLod } from '../../domain/heatmap/lod';
 import { REGIONAL_INDEX } from '../../domain/heatmap/regional';
 import { localDateFor } from '../../domain/heatmap/assessment';
@@ -10,7 +10,6 @@ import type { Bounds } from '../../domain/heatmap/spatial';
 import type { MushroomWeatherProfileId } from '../../domain/types';
 import type { HeatmapTargetDay } from '../../domain/heatmap/types';
 import { weatherAssessmentsFor, type HeatmapPilotBundle } from './pilotHeatmap';
-import { shiftLocalDate } from '../weather';
 
 const EMPTY_SOURCE = '{"type":"FeatureCollection","features":[]}';
 export function useHeatmapVisuals({ enabled, bounds, moving, lod, zoom, bundle, profile, day, mapRef }: {
@@ -28,12 +27,14 @@ export function useHeatmapVisuals({ enabled, bounds, moving, lod, zoom, bundle, 
   desiredLod.current = lod;
   const lastUpdate = useRef(0);
   const handoffStarted = useRef(0);
+  const diagnosticContext = useRef({ zoom, targetLod: lod, displayedLod: handoff.displayed,
+    incomingLod: handoff.incoming, outgoingLod: handoff.incoming ? handoff.displayed : undefined,
+    incomingSourceReady: false, incomingFeatureCount: 0, expectedVisibleCount: 0 });
   const metrics = useRef({ renderAttempts: 0, commits: 0, overviewDataUpdates: 0, detailDataUpdates: 0 });
   const previousData = useRef<Partial<Record<HeatmapLod, string>>>({});
   const [confirmation] = useState(() => createHeatmapRenderConfirmation({
-    query: async (incoming, probes) => await mapRef.current?.queryRenderedFeatures({
+    query: async incoming => await mapRef.current?.queryRenderedFeatures({
       layers: [incoming === 'detail' ? 'mushroom-heatmap-fill' : 'regional-overview-fill'],
-      filter: ['in', ['get', 'id'], ['literal', probes.map(p => p.id)]],
     }) ?? [],
     nextFrame: callback => { const frame = requestAnimationFrame(callback); return () => cancelAnimationFrame(frame); },
     commit: incoming => {
@@ -41,6 +42,13 @@ export function useHeatmapVisuals({ enabled, bounds, moving, lod, zoom, bundle, 
         ? finishHeatmapHandoff(previous, incoming) : previous);
       if (__DEV__) console.info('[heatmap native handoff]', { verifiedLayer: incoming, extraRaf: 1,
         handoffMs: performance.now() - handoffStarted.current, elapsedSinceSourceMs: performance.now() - lastUpdate.current });
+    },
+    diagnostic: (event, state) => {
+      if (__DEV__) console.info('[heatmap-lod]', { event, ...diagnosticContext.current,
+        logicalActiveLod: diagnosticContext.current.targetLod, incomingGeneration: state.generation,
+        latestRenderConfirmationGeneration: state.confirmedGeneration, renderQueryCount: state.resultCount,
+        pendingRaf: state.pendingRaf, frameSequence: state.frameSequence,
+        transitionAgeMs: handoffStarted.current ? performance.now() - handoffStarted.current : 0 });
     },
   }));
   metrics.current.renderAttempts++;
@@ -69,9 +77,11 @@ export function useHeatmapVisuals({ enabled, bounds, moving, lod, zoom, bundle, 
     // This preparation never requests weather. Detail prewarm is cached-only as well.
     const overview = cache.prepare('overview', OVERVIEW_FEATURES, weather, profile, day, date);
     const overviewTiming = cache.lastTiming;
-    const detail = detailFeatures?.length ? cache.prepare('detail', detailFeatures, weather, profile, day, date) : undefined;
+    const detail = detailFeatures ? cache.prepare('detail', detailFeatures, weather, profile, day, date) : undefined;
     setViews(previous => {
-      const nextDetail = detail ? retainHeatmapGrid(previous.detail, detail) : previous.detail;
+      // Only a prepared, settled empty viewport intentionally replaces data with no-data.
+      // Pending preparation never clears the previous source.
+      const nextDetail = detail ?? previous.detail;
       if (previous.overview === overview && previous.detail === nextDetail) return previous;
       return { overview, detail: nextDetail };
     });
@@ -81,34 +91,41 @@ export function useHeatmapVisuals({ enabled, bounds, moving, lod, zoom, bundle, 
     });
   }, [enabled, visualBundle, profile, day, detailFeatures, cache]);
 
-  const targetLocalDate = shiftLocalDate(visualBundle?.baseLocalDate ?? localDateFor(), day === 'tomorrow' ? 1 : 0);
-  const detailReady = Boolean(views.detail && detailVisibleFeatures.some(f => {
-    const a = views.detail?.assessments[f.properties.id];
-    return a && a.speciesId === profile && a.targetDay === day && a.targetLocalDate === targetLocalDate
-      && a.score !== null && a.dataQuality !== 'insufficient';
-  }));
+  const baseLocalDate = visualBundle?.weather.baseLocalDate ?? localDateFor();
+  const settledBoundsReady = Boolean(bounds && bounds === visualBounds);
+  const detailReady = settledBoundsReady && heatmapSourceReady(views.detail, detailFeatures, profile, day, baseLocalDate);
+  const overviewReady = settledBoundsReady && heatmapSourceReady(views.overview, OVERVIEW_FEATURES, profile, day, baseLocalDate);
   useEffect(() => {
-    setHandoff(previous => requestHeatmapHandoff(previous, lod, lod === 'overview' ? Boolean(views.overview) : detailReady));
-  }, [lod, detailReady, views.overview]);
+    setHandoff(previous => requestHeatmapHandoff(previous, lod, lod === 'overview' ? overviewReady : detailReady));
+  }, [lod, detailReady, overviewReady]);
   const incomingView = handoff.incoming ? views[handoff.incoming] : undefined;
-  const firstIncomingId = incomingView?.collection.features[0]?.properties.id;
-  const incomingAssessment = firstIncomingId ? incomingView?.assessments[firstIncomingId] : undefined;
-  const incomingSelectionReady = incomingAssessment?.speciesId === profile && incomingAssessment.targetDay === day
-    && incomingAssessment.targetLocalDate === targetLocalDate && (handoff.incoming !== 'detail' || detailReady);
+  const incomingSelectionReady = handoff.incoming === 'detail' ? detailReady : overviewReady;
   const incomingProbes = useMemo(() => {
     if (!incomingView || !handoff.incoming || !visualBounds) return [];
     const visible = handoff.incoming === 'detail' ? detailVisibleFeatures : OVERVIEW_INDEX.visible(visualBounds, undefined, 0);
     return heatmapRenderProbes(incomingView, new Set(visible.map(f => f.properties.id)), handoff.incoming);
   }, [incomingView, handoff.incoming, visualBounds, detailVisibleFeatures]);
+  diagnosticContext.current = { zoom, targetLod: lod, displayedLod: handoff.displayed, incomingLod: handoff.incoming,
+    outgoingLod: handoff.incoming ? handoff.displayed : undefined, incomingSourceReady: incomingSelectionReady,
+    incomingFeatureCount: incomingView?.collection.features.length ?? 0, expectedVisibleCount: incomingProbes.length };
+  useEffect(() => {
+    if (__DEV__) console.info('[heatmap-lod state]', { ...diagnosticContext.current, detailSourceReady: detailReady });
+  }, [lod, handoff, detailReady, overviewReady]);
   // Every incoming source/viewport revision gets a new token. A map-wide frame can
   // only start a native layer query; it can no longer finish the transition itself.
   useLayoutEffect(() => {
+    let probeFrame: number | undefined;
     if (handoff.incoming && handoff.incoming === lod && enabled && !moving && incomingSelectionReady) {
-      handoffStarted.current = performance.now();
+      if (!handoffStarted.current) handoffStarted.current = performance.now();
       confirmation.arm(handoff.incoming, incomingProbes);
+      // The last native frame may precede the 60 ms JS settlement. If the data is
+      // byte-identical, no new native frame is guaranteed. Query existing rendered
+      // geometry after this props commit; RAF alone never certifies incoming data.
+      probeFrame = requestAnimationFrame(() => { void confirmation.verifyRenderedLayer(); });
     } else confirmation.cancel();
-    return () => confirmation.cancel();
+    return () => { if (probeFrame !== undefined) cancelAnimationFrame(probeFrame); confirmation.cancel(); };
   }, [handoff.incoming, incomingProbes, incomingSelectionReady, enabled, moving, lod, confirmation]);
+  useEffect(() => { if (!handoff.incoming) handoffStarted.current = 0; }, [handoff.incoming]);
   const onFullyRendered = useCallback(() => {
     void confirmation.onFullFrame();
   }, [confirmation]);
@@ -125,6 +142,11 @@ export function useHeatmapVisuals({ enabled, bounds, moving, lod, zoom, bundle, 
     detailData: views.detail?.serialized ?? EMPTY_SOURCE,
     overviewVisible: enabled && heatmapLayerVisible(handoff, 'overview'),
     detailVisible: enabled && heatmapLayerVisible(handoff, 'detail'),
+    targetLod: lod,
+    displayedLod: handoff.displayed,
+    transitionLod: handoff.incoming,
+    interactionLod: heatmapInteractionLod(lod, detailReady),
+    detailSourceReady: detailReady,
     onFullyRendered,
   };
 }

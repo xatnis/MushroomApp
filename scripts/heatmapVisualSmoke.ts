@@ -189,7 +189,7 @@ panBurstBenchmark();
 
 async function timingTests() {
   const expected = heatmapRenderProbes(a, new Set(features.map(f => f.properties.id)), 'detail');
-  ok(expected.length > 0 && expected.length <= 3, 'native query payload is bounded');
+  strictEqual(expected.length, features.length, 'confirmation can match any visible detail feature, not three sampled IDs');
   const frameQueue = new Set<() => void>();
   const queuedQueries: Array<(features: Array<{ properties: Record<string, unknown> }>) => void> = [];
   let committed: HeatmapLod | undefined, nativeQueries = 0;
