@@ -6,8 +6,8 @@ import type { MushroomWeatherProfileId } from '../types';
 import type { HeatmapHabitatFeature, HeatmapHabitatState, HeatmapTargetDay, HeatmapWeatherAssessment } from './types';
 
 export type HeatmapLod = 'overview' | 'detail';
-// Cartographic display policy, NOT species thresholds. ~30–42 km width on a 400pt map.
-export const HEATMAP_LOD = { detailEnterZoom: 9.5, overviewEnterZoom: 9.0,
+// Cartographic display policy, NOT species thresholds. See LOD_V1.md camera-size benchmark.
+export const HEATMAP_LOD = { detailEnterZoom: 9.2, overviewEnterZoom: 8.5,
   candidateFraction: 0.60, outsideModelFraction: 0.80 } as const;
 export function selectHeatmapLod(zoom: number, previous: HeatmapLod): HeatmapLod {
   if (!Number.isFinite(zoom)) return previous;

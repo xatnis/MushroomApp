@@ -24,9 +24,9 @@ state = finishHeatmapHandoff(state);
 strictEqual(state.displayed, 'overview');
 
 let wanted: HeatmapLod = 'overview'; let changes = 0;
-for (const zoom of [8.8, 9.2, 9.6, 9.3, 9.7, 8.9]) {
+for (const zoom of [8.4, 8.8, 9.1, 8.7, 9.2, 8.4]) {
   const next = selectHeatmapLod(zoom, wanted); if (next !== wanted) changes++;
-  wanted = next; state = requestHeatmapHandoff(state, wanted, zoom !== 9.6);
+  wanted = next; state = requestHeatmapHandoff(state, wanted, zoom !== 9.2);
   ok(heatmapLayerVisible(state, 'overview') || heatmapLayerVisible(state, 'detail'), 'never blank during rapid zoom');
 }
 strictEqual(changes, 2); strictEqual(finishHeatmapHandoff(state).displayed, 'overview', 'stale detail completion cannot overwrite zoom-out');
@@ -133,7 +133,7 @@ ok(!map.includes('maxzoom={detailReady'));
 ok(map.includes('onDidFinishRenderingFrameFully={visual.onFullyRendered}'));
 ok(!hook.includes('selectedAreaId'), 'card selection cannot rebuild source');
 ok(hook.includes('coalescer.push(bundle)'), 'bounded coalescing window');
-ok(hook.includes('REGIONAL_INDEX.visible(visualBounds)'), 'visual filter independent of network scheduling');
+ok(hook.includes('REGIONAL_INDEX.visible(detailBounds)'), 'visual filter independent of network scheduling');
 strictEqual(HEATMAP_VISUAL.viewportDelayMs, 60);
 console.log('Heatmap visual smoke passed: handoff/rapid zoom/cache/retention/source lifetime; React/native timing not measured.');
 console.log(JSON.stringify(rows, null, 2));

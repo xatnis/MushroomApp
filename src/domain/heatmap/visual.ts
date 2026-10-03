@@ -4,7 +4,9 @@ import type { MushroomWeatherProfileId } from '../types';
 import type { HeatmapHabitatFeature, HeatmapTargetDay, HeatmapWeatherAssessment } from './types';
 
 // Display policy only. Network settlement remains independently debounced at 250 ms.
-export const HEATMAP_VISUAL = { viewportDelayMs: 60, weatherCoalesceMs: 80, detailPrewarmZoom: 9.2 } as const;
+export const HEATMAP_VISUAL = { viewportDelayMs: 60, weatherCoalesceMs: 80, detailPrewarmZoom: 8.8 } as const;
+export const shouldPrewarmHeatmapDetail = (target: HeatmapLod, zoom: number) =>
+  target === 'overview' && Number.isFinite(zoom) && zoom >= HEATMAP_VISUAL.detailPrewarmZoom;
 // Already overlapping before this pass; native zoom MUST NOT override render readiness.
 export const HEATMAP_NATIVE_RANGES = { overview: { min: 0, max: 24 }, detail: { min: 0, max: 24 } } as const;
 export function scheduleHeatmapVisualUpdate(callback: () => void, delayMs: number = HEATMAP_VISUAL.viewportDelayMs) {

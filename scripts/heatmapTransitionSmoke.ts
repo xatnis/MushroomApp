@@ -12,7 +12,7 @@ const hook = readFileSync('src/services/heatmap/useHeatmapVisuals.ts', 'utf8');
 const queryCode = hook.slice(hook.indexOf('query: async'), hook.indexOf('nextFrame:'));
 ok(!queryCode.includes('filter:'), 'viewport query must not restrict confirmation to three IDs');
 ok(queryCode.includes('queryRenderedFeatures({'), 'options-only overload queries whole native viewport, not center point');
-ok(map.includes('onRegionIsChanging={(event) => observeCameraZoom(event.nativeEvent.zoom)}'));
+ok(map.includes('onRegionIsChanging={(event) => observeCameraZoom(event.nativeEvent.zoom, event.nativeEvent.bounds)}'));
 ok(map.includes('onDidFinishRenderingFrame={visual.onFullyRendered}'), 'incoming geometry must not wait for unrelated basemap downloads');
 ok(map.includes('afterId="regional-overview-border"'), 'detail explicitly above outgoing overview');
 ok(map.includes("onPress={visual.interactionLod === 'overview'"));
@@ -63,7 +63,7 @@ async function run() {
   };
 
   // Slow zoom: target changes at threshold, independent of the camera-idle event.
-  cross(8.8); cross(9.2); strictEqual(target, 'overview'); cross(9.5);
+  cross(8.4); cross(8.7); cross(8.9); cross(9.0); strictEqual(target, 'overview'); cross(9.2);
   strictEqual(target, 'detail'); strictEqual(state.displayed, 'overview'); strictEqual(state.incoming, 'detail');
   const firstFrame = confirmation.onFullFrame();
   // Center is a habitat hole / earlier render is empty, but a later frame exists.
@@ -80,7 +80,7 @@ async function run() {
   strictEqual(commits, 1); nonblank();
 
   // Zero expected geometry needs a post-submission native frame, NOT a >0 query.
-  cross(8.8);
+  cross(8.4);
   const overviewFrame = confirmation.onFullFrame(); replies.shift()!([{ properties: { ...probes[0] } }]);
   await overviewFrame; flushRaf(); strictEqual(state.displayed, 'overview');
   cross(9.7, []); const beforeZero = queries;
@@ -88,7 +88,7 @@ async function run() {
   flushRaf(); strictEqual(state.displayed, 'detail', 'legitimate no-data cannot keep overview forever');
 
   // Rapid zoom with a pending old query. New generation can confirm independently.
-  cross(8.8); const old = confirmation.onFullFrame();
+  cross(8.4); const old = confirmation.onFullFrame();
   cross(9.7); cross(10.2); cross(9.4); cross(9.8); cross(10.5);
   strictEqual(target, 'detail'); strictEqual(state.displayed, 'detail');
   replies.shift()!([{ properties: { ...probes[0] } }]); await old;

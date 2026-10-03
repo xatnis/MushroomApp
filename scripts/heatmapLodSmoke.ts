@@ -11,13 +11,13 @@ import { loadHeatmapPilot } from '../src/services/heatmap/pilotHeatmap';
 import { shiftLocalDate } from '../src/services/weather';
 import type { HeatmapWeatherBatch, HeatmapWeatherCellDefinition } from '../src/domain/heatmap/types';
 
-strictEqual(selectHeatmapLod(9.49, 'overview'), 'overview');
-strictEqual(selectHeatmapLod(9.5, 'overview'), 'detail');
-strictEqual(selectHeatmapLod(9.01, 'detail'), 'detail');
-strictEqual(selectHeatmapLod(9, 'detail'), 'overview');
+strictEqual(selectHeatmapLod(9.19, 'overview'), 'overview');
+strictEqual(selectHeatmapLod(9.2, 'overview'), 'detail');
+strictEqual(selectHeatmapLod(8.51, 'detail'), 'detail');
+strictEqual(selectHeatmapLod(8.5, 'detail'), 'overview');
 for (const initial of ['overview', 'detail'] as const) {
   let current = initial;
-  for (const zoom of [9.2, 9.4, 9.1, 9.45, 9.3]) current = selectHeatmapLod(zoom, current);
+  for (const zoom of [8.6, 8.8, 9.1, 8.95, 8.7]) current = selectHeatmapLod(zoom, current);
   strictEqual(current, initial, 'hysteresis');
 }
 strictEqual(overviewHabitatState({ candidate: .1, unknown: .9, 'outside-model': 0 }), 'unknown');

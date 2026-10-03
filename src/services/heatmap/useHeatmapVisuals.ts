@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { MapRef } from '@maplibre/maplibre-react-native';
-import { HEATMAP_VISUAL, createHeatmapVisualCache, createHeatmapVisualCoalescer, createHeatmapRenderConfirmation,
-  heatmapRenderProbes, heatmapSourceReady, heatmapInteractionLod, finishHeatmapHandoff, heatmapLayerVisible, scheduleHeatmapVisualUpdate,
+import { createHeatmapVisualCache, createHeatmapVisualCoalescer, createHeatmapRenderConfirmation,
+  heatmapRenderProbes, heatmapSourceReady, heatmapInteractionLod, finishHeatmapHandoff, heatmapLayerVisible, scheduleHeatmapVisualUpdate, shouldPrewarmHeatmapDetail,
   requestHeatmapHandoff, type HeatmapHandoff, type HeatmapRenderView } from '../../domain/heatmap/visual';
 import { OVERVIEW_FEATURES, OVERVIEW_INDEX, type HeatmapLod } from '../../domain/heatmap/lod';
 import { REGIONAL_INDEX } from '../../domain/heatmap/regional';
@@ -12,9 +12,10 @@ import type { HeatmapTargetDay } from '../../domain/heatmap/types';
 import { weatherAssessmentsFor, type HeatmapPilotBundle } from './pilotHeatmap';
 
 const EMPTY_SOURCE = '{"type":"FeatureCollection","features":[]}';
-export function useHeatmapVisuals({ enabled, bounds, moving, lod, zoom, bundle, profile, day, mapRef }: {
+export function useHeatmapVisuals({ enabled, bounds, moving, lod, zoom, prewarmBounds, bundle, profile, day, mapRef }: {
   enabled: boolean; bounds?: Bounds; moving: boolean; lod: HeatmapLod; zoom: number;
   bundle?: HeatmapPilotBundle; profile: MushroomWeatherProfileId; day: HeatmapTargetDay;
+  prewarmBounds?: Bounds;
   mapRef: RefObject<MapRef | null>;
 }) {
   const [cache] = useState(() => createHeatmapVisualCache());
@@ -64,10 +65,14 @@ export function useHeatmapVisuals({ enabled, bounds, moving, lod, zoom, bundle, 
   }, [bundle, visualBundle, coalescer]);
   useEffect(() => () => coalescer.cancel(), [coalescer]);
 
-  const detailFeatures = useMemo(() => enabled && visualBounds && (lod === 'detail' || zoom >= HEATMAP_VISUAL.detailPrewarmZoom)
-    ? REGIONAL_INDEX.visible(visualBounds) : undefined, [enabled, visualBounds, lod, zoom]);
-  const detailVisibleFeatures = useMemo(() => detailFeatures && visualBounds
-    ? REGIONAL_INDEX.visible(visualBounds, undefined, 0) : [], [detailFeatures, visualBounds]);
+  // Gesture prewarm is a current visual-only snapshot, not network bounds. A direct
+  // jump to detail without one waits for normal 60 ms settlement, retaining old data.
+  // The existing settled-source identity and native generations still gate handoff.
+  const detailBounds = moving ? prewarmBounds : visualBounds;
+  const detailFeatures = useMemo(() => enabled && detailBounds && (lod === 'detail' || shouldPrewarmHeatmapDetail(lod, zoom))
+    ? REGIONAL_INDEX.visible(detailBounds) : undefined, [enabled, detailBounds, lod, zoom]);
+  const detailVisibleFeatures = useMemo(() => detailFeatures && detailBounds
+    ? REGIONAL_INDEX.visible(detailBounds, undefined, 0) : [], [detailFeatures, detailBounds]);
   useEffect(() => {
     if (!enabled) return;
     const start = performance.now(), before = cache.builds;

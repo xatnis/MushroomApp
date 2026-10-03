@@ -11,8 +11,8 @@ Two levels, sharing the existing pure weather scorers:
 - OVERVIEW: approximately 4 km habitat units, 20 km weather sampling.
 - DETAIL: original 1 km units and 10 km sampling, untouched data and rules.
 
-`HEATMAP_LOD` centralizes display policy. Enter DETAIL at zoom >=9.5. Return to
-OVERVIEW at <=9.0. Between them retain the previous level. A new session in this band
+`HEATMAP_LOD` centralizes display policy. Enter DETAIL at zoom >=9.2. Return to
+OVERVIEW at <=8.5. Between them retain the previous level. A new session in this band
 defaults to overview. Invalid zoom keeps the previous level.
 
 At latitude ~46.5 degrees, Mercator ground resolution is approximately
@@ -66,21 +66,23 @@ ZGS fractions retain their existing meanings; this adds no canopy/host inference
 
 `regional-overview-source` / `regional-overview-fill` plus the existing separate
 detail source. Both sources and all their layers stay mounted while the native map
-is mounted. Native layers have a stable 0–24 zoom range; the unchanged 9.5/9.0
+is mounted. Native layers have a stable 0–24 zoom range; the 9.2/8.5
 React hysteresis requests a readiness-aware visibility handoff. Competing immediate
 native zoom cutoffs have been removed: they could hide a source during a gesture
 before the settled-camera React state caught up.
 
-Overview remains visible until detail has usable **visible** weather, prepared GeoJSON
-and an incoming visible layer has received `onDidFinishRenderingFrameFully`. Both
-layers overlap for that acknowledged native frame. The outgoing layer then hides;
+Overview remains visible until current detail geometry is prepared and the incoming
+layer is confirmed by a whole-viewport native rendered-feature query. Weather is
+not a geometry-readiness requirement: neutral no-score cells are valid. A genuinely
+empty detail source uses a post-submission native frame rather than a positive query.
+Both layers overlap for one additional RAF after confirmation. The outgoing layer then hides;
 no timer can hide it early. Stale callbacks cannot promote a superseded LOD. There is
 no crossfade: installed Android code supports fill-opacity transition, but its
 data-driven expression behaviour has not been verified on a physical device; the
 short overlap avoids depending on it. Remaining cells use existing no-data styling.
 
 Full coarse geometry stays prewarmed. Detail geometry/available in-memory weather
-prewarm starts near 9.2 without extra requests. See [render polish](RENDER_POLISH.md)
+prewarm starts at 8.8 without extra requests. See [render polish](RENDER_POLISH.md)
 for visual coalescing, bounded serialization cache and measured desktop results.
 Physical-device flicker and touch responsiveness still need acceptance testing.
 
@@ -94,9 +96,14 @@ micro-location finding probability.
 ## Loading and cache
 
 The active LOD determines spatial index, required points and weather definitions.
-Below the cached-only prewarm band at 9.2, overview does not prepare new detail
+Below the cached-only prewarm band at 8.8, overview does not prepare new detail
 geometry or request detail weather. In the band, preparation uses only in-memory
 snapshots; network work still exclusively follows the requested, settled LOD.
+During a gesture, crossing the prewarm band captures **one current visual-only
+viewport**. It does not filter the previous zoomed-out bounds or update network
+bounds on every native camera frame. On settlement the normal 60 ms visual path
+prepares the final bounds. Superseded prewarm views cannot certify a different
+current source revision; the existing native generation/queued-frame guards remain.
 Existing detail modules/static data still initialize in memory: this is not lazy file
 loading, and nationwide static memory is a separate future concern.
 
@@ -161,6 +168,49 @@ Tests pass: TypeScript, LOD boundaries/hysteresis, correct-grid demand/cache key
 same pure scorers, priority handoff/cache return, area weighting/geometry integrity,
 existing progressive loading/navigation/weather/habitat tests, 84,248 regional
 baseline comparisons and 15,688 original-pilot weather comparisons.
+
+### Earlier activation camera-cost check (2026-10-03)
+
+Run `node scripts/runSmoke.cjs scripts/heatmapLodThresholdSmoke.ts`.
+Actual regional geometries, north-up / zero pitch Web Mercator camera, a **400×650
+logical-point map** centred on Črna (46.470450, 14.850090). Weather points include the
+unchanged 20% overscan, not one request per polygon. Preparation includes building
+and serializing neutral/static-habitat GeoJSON; the median is five fresh-cache builds
+after the first build. Timings are one desktop run, not Android/native frame timing.
+
+| Zoom | Visible detail cells | Buffered cells | Required detail weather points | Prepare median |
+|---|---:|---:|---:|---:|
+| 8.5 | 3,590 | 6,577 | 83 | 39.0 ms |
+| 8.7 | 2,816 | 5,134 | 67 | 31.9 ms |
+| 9.0 | 1,975 | 3,522 | 49 | 25.7 ms |
+| 9.1 | 1,768 | 3,115 | 45 | 25.3 ms |
+| **9.2** | **1,577** | **2,760** | **39** | **19.3 ms** |
+| 9.5 | 1,125 | 1,947 | 28 | 15.4 ms |
+
+At Celje with the same screen, zoom 9.0 requires 5,162 buffered cells / 66 points /
+3,488.5 KiB serialized source; 9.2 reduces this to 4,237 / 57 / 2,863.8 KiB.
+The larger 520×800 Črna simulation similarly reduces 5,411 / 70 / 3,606.9 KiB to
+4,204 / 54 / 2,770.4 KiB. Five-build medians at 9.2 are ~23 ms (Celje) and ~31 ms
+(larger Črna); source cache hits are normally sub-ms, but host pauses can be longer.
+The first/JIT-heavy run and GC/host contention have visible variance.
+
+**Choose 9.2, not 9.0:** the latter almost doubles buffered polygon load versus 9.5
+and can approach the existing 75-point/minute scheduler budget on a larger view,
+before other recent requests. 9.2 is an earlier compromise, reducing demand versus
+9.0 by 14–23% in these samples. It still has more detail demand than the old 9.5
+threshold: this is not a promise of unchanged cold-start network volume or zero
+Android jank. The map at activation is ~23% wider than at 9.5. Local typical zooms
+10.5–15 and all data/scoring results remain unchanged.
+
+At 9.2 a completely cold view needs 4 HTTP requests at Črna or 6 for the other two
+samples (two per group of up to 25 points); cache/in-flight hits reduce this.
+Prewarm sends **zero** requests and changes no target LOD. Identical prepared
+cell sets/snapshot/profile/day return the same serialized source object; a changed
+viewport gets its own cached revision. Species/day switches remain zero-refetch.
+The 60 ms visual and 250 ms network debounce remain unchanged. Slow zoom switches
+target at 9.2 (not 9.5); zoom-out retains detail until 8.5. Rapid zoom and native
+confirmation tests preserve outgoing fallback, stale-generation rejection and
+the no-empty-frame state invariant. Actual device response requires another video.
 
 ## Phone acceptance / national future
 

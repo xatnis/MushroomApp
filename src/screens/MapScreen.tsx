@@ -23,7 +23,7 @@ import { slNumber } from '../domain/format';
 import { createHeatmapRequestGate, scheduleSettledHeatmapLoad, loadHeatmapPilot, mergeHeatmapBundles, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
 import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '../services/heatmap/areaLocality';
 import { useHeatmapVisuals } from '../services/heatmap/useHeatmapVisuals';
-import { HEATMAP_NATIVE_RANGES } from '../domain/heatmap/visual';
+import { HEATMAP_NATIVE_RANGES, HEATMAP_VISUAL, shouldPrewarmHeatmapDetail } from '../domain/heatmap/visual';
 import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
@@ -106,12 +106,24 @@ export function MapScreen() {
   const [heatmapLod, setHeatmapLod] = useState<HeatmapLod>(() => selectHeatmapLod(heatmapNavigation.viewport?.zoom ?? 7, 'overview'));
   const cameraLod = useRef(heatmapLod);
   const cameraZoom = useRef(heatmapNavigation.viewport?.zoom ?? 7);
-  const observeCameraZoom = (zoom: number) => {
+  const prewarmBand = useRef(false);
+  const [detailPrewarmBounds, setDetailPrewarmBounds] = useState<Bounds>();
+  const observeCameraZoom = (zoom: number, gestureBounds?: Bounds) => {
     if (!Number.isFinite(zoom)) return;
     cameraZoom.current = zoom;
     const next = selectHeatmapLod(zoom, cameraLod.current);
-    // Observe the native gesture, but only render on a hysteresis crossing.
-    // Bounds and network settlement still update exclusively at camera idle.
+    // One visual-only snapshot at prewarm-band entry; never use the old zoomed-out
+    // viewport to warm thousands of irrelevant cells. No per-camera-frame state.
+    if (heatmapEnabled && shouldPrewarmHeatmapDetail(next, zoom)) {
+      if (!prewarmBand.current && gestureBounds?.length === 4 && gestureBounds.every(Number.isFinite)) {
+        prewarmBand.current = true;
+        setDetailPrewarmBounds([...gestureBounds] as Bounds);
+      }
+    } else if (zoom < HEATMAP_VISUAL.detailPrewarmZoom && prewarmBand.current) {
+      prewarmBand.current = false;
+      setDetailPrewarmBounds(undefined);
+    }
+    // Bounds used by weather scheduling still update exclusively at camera idle.
     if (next !== cameraLod.current) {
       cameraLod.current = next;
       setHeatmapLod(next);
@@ -147,7 +159,7 @@ export function MapScreen() {
     visibleViewportFeatures, visibleBounds, activeWeatherPoints, selectedHeatmapAreaId).join('|') : '',
     [viewportFeatures, visibleViewportFeatures, visibleBounds, selectedHeatmapAreaId, activeWeatherPoints]);
   const visual = useHeatmapVisuals({ enabled: heatmapEnabled, bounds: visibleBounds, moving: cameraMoving,
-    lod: heatmapLod, zoom: cameraZoom.current, bundle: heatmapBundle,
+    lod: heatmapLod, zoom: cameraZoom.current, prewarmBounds: detailPrewarmBounds, bundle: heatmapBundle,
     profile: heatmapProfileId, day: heatmapTargetDay, mapRef: map });
   const heatmapStatus = heatmapViewportStatus(Boolean(visibleBounds), viewportCovered, heatmapLoading || completedPointsKey !== requiredPointsKey, Boolean(heatmapError));
   const readiness = heatmapReadiness(requiredPointsKey ? requiredPointsKey.split('|') : [], new Set(
@@ -391,8 +403,12 @@ export function MapScreen() {
             if (bounds?.length === 4 && bounds.every(Number.isFinite)) setVisibleBounds([...bounds] as Bounds);
           }).catch(() => { /* The region event supplies bounds if the native map is not ready yet. */ });
         }}
-        onRegionWillChange={() => setCameraMoving(true)}
-        onRegionIsChanging={(event) => observeCameraZoom(event.nativeEvent.zoom)}
+        onRegionWillChange={() => {
+          prewarmBand.current = false;
+          setDetailPrewarmBounds(undefined);
+          setCameraMoving(true);
+        }}
+        onRegionIsChanging={(event) => observeCameraZoom(event.nativeEvent.zoom, event.nativeEvent.bounds)}
         onDidFinishRenderingFrame={visual.onFullyRendered}
         onDidFinishRenderingFrameFully={visual.onFullyRendered}
         onRegionDidChange={(event) => {

@@ -274,3 +274,27 @@ absence of a physical flash must still be verified with a new phone recording.
 APK helper: `npm run apk -- --name MushroomApp-preview-lod-transition-fix.apk`.
 The helper was attempted and Gradle failed with `Unable to establish loopback connection`
 (exit 1); no old APK was copied. Run that same command locally for the new APK.
+
+## Earlier DETAIL activation (2026-10-03)
+
+The preceding sections describe the historical 9.5/9.0 policy. Current React
+hysteresis is **9.2 DETAIL / 8.5 OVERVIEW**, with cached-only detail prewarm at
+**8.8**. The proposed 9.0 activation required up to 5,411 buffered detail cells /
+70 weather points in the tested camera sizes, so 9.2 is the measured earlier
+compromise. See [LOD camera-cost measurements](LOD_V1.md#earlier-activation-camera-cost-check-2026-10-03).
+
+A gesture captures one visual-only current viewport at prewarm-band entry;
+it does not prepare the previously zoomed-out bounds or enqueue weather requests.
+The existing 60 ms final visual settlement, 250 ms weather settlement, mounted
+sources, target/displayed/transition separation, viewport-wide query, generation
+protection, queued-frame handling, zero-feature handling and extra RAF are unchanged.
+Prewarm does not change target or tap ownership. The overview hint follows target
+LOD; neutral static detail geometry is sufficient for transition even before weather.
+No additional timeout, crossfade or native zoom-range tuning was introduced.
+
+Tests: slow zoom, zoom-out, rapid zoom, cached preparation, superseded source
+identity, native handoff invariants and unchanged regional/pilot model outputs.
+Physical Android timing/jank and flicker must still be checked on the new APK.
+Build command: `npm run apk -- --name MushroomApp-preview-earlier-detail-lod.apk`.
+The helper failed with `Unable to establish loopback connection` (Gradle exit 1).
+No APK was copied and the named output does not exist. Use that same command locally.
