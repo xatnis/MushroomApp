@@ -55,6 +55,10 @@ output/
 # Local Android performance captures (never include device-specific logs in Git)
 /perf-output/
 
+# Research raw occurrences, private weather cache and local aggregate outputs
+/research/.cache/
+/research-output/
+
 # Heatmap pilot preparation scratch data (derived compact artifacts live in src/data/)
 /scripts/heatmap/.cache/
 /scripts/heatmap/raw/
