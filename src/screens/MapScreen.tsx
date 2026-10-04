@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useRef, useState } from 'react';
+import { startTransition, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Keyboard, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker, UserLocation, type MapRef, type CameraRef, type FillLayerSpecification, type LineLayerSpecification } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
@@ -24,6 +24,7 @@ import { createHeatmapRequestGate, scheduleSettledHeatmapLoad, loadHeatmapPilot,
 import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '../services/heatmap/areaLocality';
 import { useHeatmapVisuals } from '../services/heatmap/useHeatmapVisuals';
 import { HEATMAP_NATIVE_RANGES, HEATMAP_VISUAL, shouldPrewarmHeatmapDetail } from '../domain/heatmap/visual';
+import { INITIAL_HEATMAP_CONTROLS, heatmapControlsReducer, heatmapControlsPanelVisible } from '../domain/heatmap/controlsState';
 import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
@@ -99,7 +100,19 @@ export function MapScreen() {
   const [heatmapError, setHeatmapError] = useState<string>();
   const [completedPointsKey, setCompletedPointsKey] = useState<string>();
   const [heatmapRetry, setHeatmapRetry] = useState(0);
-  const [heatmapControlsVisible, setHeatmapControlsVisible] = useState(true);
+  const [heatmapControls, dispatchHeatmapControls] = useReducer(heatmapControlsReducer, INITIAL_HEATMAP_CONTROLS);
+  const heatmapControlsVisible = !heatmapControls.userDismissedPanel;
+  const selectHeatmapSpecies = (profileId: MushroomWeatherProfileId) => {
+    if (__DEV__) console.info('[heatmap selection tap]', { profileId, receivedAt: performance.now() });
+    updateHeatmapNavigation({ profileId });
+  };
+  const selectHeatmapDay = (targetDay: HeatmapTargetDay) => {
+    if (__DEV__) console.info('[heatmap selection tap]', { targetDay, receivedAt: performance.now() });
+    updateHeatmapNavigation({ targetDay });
+  };
+  useEffect(() => {
+    if (__DEV__) console.info('[heatmap selection state]', { profile: heatmapProfileId, day: heatmapTargetDay, committedAt: performance.now() });
+  }, [heatmapProfileId, heatmapTargetDay]);
   const [mapViewportHeight, setMapViewportHeight] = useState(0);
   const [visibleBounds, setVisibleBounds] = useState<Bounds>();
   const [cameraMoving, setCameraMoving] = useState(false);
@@ -176,6 +189,11 @@ export function MapScreen() {
   ).assessments[selectedHeatmapFeature.properties.id] : undefined,
   [selectedHeatmapFeature, heatmapBundle, heatmapProfileId, heatmapTargetDay]);
   const heatmapAreaCardOpen = heatmapLod === 'detail' && !selected && heatmapEnabled && Boolean(selectedHeatmapArea && selectedHeatmapFeature);
+  useEffect(() => {
+    if (__DEV__) console.info('[heatmap controls state]', { userDismissedPanel: heatmapControls.userDismissedPanel,
+      visible: heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen),
+      temporarilyHiddenByCard: heatmapAreaCardOpen });
+  }, [heatmapControls, heatmapEnabled, heatmapAreaCardOpen]);
   const heatmapAreaLocality = useMemo<HeatmapAreaLocalityResolution | undefined>(() => {
     if (!selectedHeatmapFeature) return undefined;
     const { id, centerLatitude, centerLongitude } = selectedHeatmapFeature.properties;
@@ -349,7 +367,8 @@ export function MapScreen() {
           accessibilityState={{ selected: heatmapEnabled }}
           accessibilityLabel="Način Pogoji"
           onPress={() => {
-            setHeatmapControlsVisible(true);
+            dispatchHeatmapControls({ type: 'open' });
+            if (__DEV__) console.info('[heatmap controls]', { event: 'explicit-open' });
             updateHeatmapNavigation({ enabled: true });
             setSelectedId(undefined);
             setCameraTarget(heatmapNavigation.viewport ?? {
@@ -488,7 +507,7 @@ export function MapScreen() {
         </Marker>)}
       </Map>
       <Pressable accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
-      {heatmapEnabled && heatmapControlsVisible && !heatmapAreaCardOpen ? <View style={styles.heatmapControls}>
+      {heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen) ? <View style={styles.heatmapControls}>
         {heatmapLod === 'overview' ? <Text style={commonStyles.muted}>{overviewTapped ? 'Približaj zemljevid za podrobnejše pogoje.' : 'Regionalni pregled · Približaj za podrobnejši prikaz'}</Text> : null}
         <View style={styles.heatmapControlsHeader}>
           <Text style={styles.heatmapControlLabel}>VRSTA</Text>
@@ -496,16 +515,21 @@ export function MapScreen() {
             accessibilityRole="button"
             accessibilityLabel="Skrij izbiro pogojev"
             hitSlop={8}
-            onPress={() => setHeatmapControlsVisible(false)}
+            onPressIn={(event) => {
+              event.stopPropagation();
+              dispatchHeatmapControls({ type: 'dismiss' });
+              if (__DEV__) console.info('[heatmap controls]', { event: 'user-dismiss', userDismissedPanel: true });
+            }}
+            onPress={() => dispatchHeatmapControls({ type: 'dismiss' })}
             style={({ pressed }) => [styles.closeButton, styles.heatmapControlsClose, pressed && styles.closeButtonPressed]}
           >
             <Ionicons name="close" size={21} color={colors.muted} />
           </Pressable>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.heatmapChipRow}>
-          {(Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[]).map((profileId) => <Chip key={profileId} label={MUSHROOM_WEATHER_PROFILES[profileId].label} selected={heatmapProfileId === profileId} onPress={() => updateHeatmapNavigation({ profileId })} />)}
+          {(Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[]).map((profileId) => <Chip key={profileId} label={MUSHROOM_WEATHER_PROFILES[profileId].label} selected={heatmapProfileId === profileId} onPress={() => selectHeatmapSpecies(profileId)} />)}
         </ScrollView>
-        <View style={styles.heatmapDateRow}><Text style={styles.heatmapControlLabel}>DATUM</Text><Chip label="Danes" selected={heatmapTargetDay === 'today'} onPress={() => updateHeatmapNavigation({ targetDay: 'today' })} /><Chip label="Jutri" selected={heatmapTargetDay === 'tomorrow'} onPress={() => updateHeatmapNavigation({ targetDay: 'tomorrow' })} /></View>
+        <View style={styles.heatmapDateRow}><Text style={styles.heatmapControlLabel}>DATUM</Text><Chip label="Danes" selected={heatmapTargetDay === 'today'} onPress={() => selectHeatmapDay('today')} /><Chip label="Jutri" selected={heatmapTargetDay === 'tomorrow'} onPress={() => selectHeatmapDay('tomorrow')} /></View>
         <View style={styles.heatmapLegend}><View style={[styles.legendDot, { backgroundColor: '#A96B50' }]} /><Text style={styles.legendText}>slabe</Text><View style={[styles.legendDot, { backgroundColor: '#C7A85A' }]} /><View style={[styles.legendDot, { backgroundColor: '#7EA46E' }]} /><View style={[styles.legendDot, { backgroundColor: '#3F7C57' }]} /><View style={[styles.legendDot, { backgroundColor: '#174E3D' }]} /><Text style={styles.legendText}>odlične</Text><View style={[styles.legendDot, { backgroundColor: '#8B9190' }]} /><Text style={styles.legendText}>omejeno/neznano</Text></View>
         <Text style={styles.heatmapAttribution}>Habitat: ESA WorldCover 2021 + Zavod za gozdove Slovenije – podatki o sestojih · Vreme: Open-Meteo · Meja: geoBoundaries</Text>
         {heatmapStatus === 'loading' ? <View pointerEvents="none" style={styles.heatmapStatus}><ActivityIndicator size="small" color={colors.primary} /><Text style={commonStyles.muted}>{readiness.firstUsefulReady ? 'Dopolnjujem podatke za prikazano območje …' : 'Nalagam vreme za prikazano območje …'}</Text></View> : null}
@@ -532,7 +556,7 @@ export function MapScreen() {
           ? `${heatmapAreaLocality.location.admin1}, ${heatmapAreaLocality.location.country}`
           : undefined}
         onClose={() => updateHeatmapNavigation({ selectedAreaId: undefined })}
-        onTargetDayChange={(targetDay) => updateHeatmapNavigation({ targetDay })}
+        onTargetDayChange={selectHeatmapDay}
         onOpenConditions={() => {
           const areaLocation = heatmapAreaLocality?.location ?? {
             name: 'Izbrano območje',
@@ -661,7 +685,7 @@ const styles = StyleSheet.create({
   heatmapControls: { position: 'absolute', left: spacing.sm, right: spacing.sm, top: 66, gap: spacing.xs, padding: spacing.sm, borderRadius: radii.md, backgroundColor: 'rgba(255,253,247,0.96)', borderWidth: 1, borderColor: colors.border, elevation: 4 },
   coverageNotice: { position: 'absolute', left: spacing.sm, right: 60, bottom: spacing.xl, padding: spacing.sm, borderRadius: radii.md, backgroundColor: 'rgba(255,253,247,0.96)' },
   heatmapControlsHeader: { minHeight: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  heatmapControlsClose: { width: 34, height: 34 },
+  heatmapControlsClose: { width: 44, height: 44 },
   heatmapControlLabel: { color: colors.primary, fontSize: 11, fontWeight: '900', letterSpacing: 0.7 },
   heatmapChipRow: { gap: spacing.xs, paddingRight: spacing.md },
   heatmapDateRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

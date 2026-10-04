@@ -1,5 +1,5 @@
 import { buildHeatmapRenderCollection } from './regional';
-import { buildOverviewCollection, type HeatmapLod } from './lod';
+import { OVERVIEW_FEATURES, buildOverviewCollection, type HeatmapLod } from './lod';
 import type { MushroomWeatherProfileId } from '../types';
 import type { HeatmapHabitatFeature, HeatmapTargetDay, HeatmapWeatherAssessment } from './types';
 
@@ -53,6 +53,39 @@ export function createHeatmapVisualCache(capacity = 12) {
       entries.set(key, view); builds++;
       while (entries.size > capacity) entries.delete(entries.keys().next().value!);
       return view;
+    },
+  };
+}
+
+/** A source data update is NOT a LOD transition. Publish the target source before
+ * scheduling any inactive prewarm. At detail LOD the overview is rebuilt only when
+ * requested again; its mounted old revision cannot pass current-selection readiness.
+ * Superseded deferred work may not publish, even if cancellation races with a task. */
+export function createHeatmapSourcePreparation(
+  cache: ReturnType<typeof createHeatmapVisualCache>,
+  publish: (lod: HeatmapLod, view: HeatmapRenderView) => void,
+  defer: (callback: () => void) => () => void,
+) {
+  let generation = 0, cancelDeferred: (() => void) | undefined;
+  const cancel = () => { generation++; cancelDeferred?.(); cancelDeferred = undefined; };
+  return {
+    cancel,
+    update({ lod, detailFeatures, weather, profile, day, date }: {
+      lod: HeatmapLod; detailFeatures?: HeatmapHabitatFeature[];
+      weather: Record<string, HeatmapWeatherAssessment>; profile: MushroomWeatherProfileId;
+      day: HeatmapTargetDay; date: string;
+    }) {
+      cancel();
+      const token = generation, features = lod === 'overview' ? OVERVIEW_FEATURES : detailFeatures;
+      if (!features) return;
+      const active = cache.prepare(lod, features, weather, profile, day, date);
+      publish(lod, active);
+      if (lod === 'overview' && detailFeatures) cancelDeferred = defer(() => {
+        if (token !== generation) return;
+        const detail = cache.prepare('detail', detailFeatures, weather, profile, day, date);
+        if (token === generation) publish('detail', detail);
+      });
+      return active;
     },
   };
 }

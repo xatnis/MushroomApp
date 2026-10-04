@@ -298,3 +298,73 @@ Physical Android timing/jank and flicker must still be checked on the new APK.
 Build command: `npm run apk -- --name MushroomApp-preview-earlier-detail-lod.apk`.
 The helper failed with `Unable to establish loopback connection` (Gradle exit 1).
 No APK was copied and the named output does not exist. Use that same command locally.
+
+## Controls intent and active-source selection (2026-10-04)
+
+Panel write-path audit at d5d9bcb: initial local visibility=true; Pogoji segment
+sets true; controls X sets false via release-time `onPress`. No LOD, weather,
+prewarm, navigation-focus or species/date effect sets it true. Detail-card hiding
+was purely conditional rendering, not a state write. Therefore the supplied
+0.25–9 s phone symptom cannot honestly be attributed to an automatic weather
+reopen in this code. Press cancellation/JS starvation and the actual received
+X events still require device logs; neither seconds-long delay nor its physical
+cause can be proven by a Node fixture.
+
+The local reducer now records explicit `userDismissedPanel` intent, accepting
+only open/dismiss. X dismisses on press-in (with accessibility onPress fallback)
+and has a 44-point target. Pogoji is the only reopen action. Temporary detail-card
+occlusion never changes intent: closing the card restores previously open controls,
+but never restores dismissed controls. No timeout, weather await, LOD query or
+navigation change is involved in close. Dev logs expose received dismiss/open
+and committed visibility, without location data.
+
+Confirmed selection bottleneck: `useHeatmapVisuals` synchronously built/serialized
+all 704 overview features BEFORE detail features, then committed both source props
+in one setViews. The same happened for target-day changes. Scorers had already run
+for all profiles/days when snapshots were bundled: selection itself is a cached
+assessment lookup, not a second weather fetch or expensive scorer execution.
+
+Now prepare/publish the target source first. At detail LOD, inactive overview data
+stays mounted at its last revision and is rebuilt on demand when overview is
+requested. Current-selection readiness prevents a stale inactive revision taking
+over. At overview LOD, keep detail prewarm only in the existing 8.8 band, deferred
+across a RAF + next-task boundary after active publication. Generation tokens and
+cleanup reject old deferred tasks even if a cancelled callback is delivered.
+No LOD confirmation query/overlap is added for an ordinary species/date data update.
+The existing actual LOD handoff, thresholds, 60/250 ms debounce, weather coalescing,
+cache keys/TTL and network scheduler are untouched.
+
+Reproduce: `node scripts/runSmoke.cjs scripts/heatmapControlsResponseSmoke.ts`.
+Real geometry (2,732 buffered detail cells), deterministic cached weather fixture,
+one desktop run; not native frame timing:
+
+| Cached selection | Assessment lookup | GeoJSON build | Serialization | Before both sources | Now active source |
+|---|---:|---:|---:|---:|---:|
+| Boletus today | 0.033 ms | 5.15 ms | 15.27 ms | 30.1 ms | 24.1 ms |
+| Chanterelle today | 0.004 ms | 5.45 ms | 13.96 ms | 30.1 ms | 20.7 ms |
+| Chanterelle tomorrow | 0.004 ms | 4.93 ms | 10.23 ms | 26.6 ms | 15.9 ms |
+
+Detail source update counts: formerly 1 detail + 1 overview per uncached selection;
+now 1 detail + 0 overview. Overview selection publishes 1 overview first; only
+requested near-threshold detail prewarm may submit a later inactive update.
+Static geometry references and viewport membership remain reusable; serialization
+still includes geometry and can remain a meaningful Android/native cost.
+Zero extra Open-Meteo requests, zero source remounts, zero new LOD transitions.
+
+Dev timing markers: selection tap received → selected state committed → cached
+lookup/build/stringify → source props committed → first map frame callback.
+The final callback is explicitly **map-wide, not proof of that source's new tiles**;
+React/native transfer and first genuinely updated heatmap frame require phone
+inspection. This change must not be presented as a measured sub-second Android SLA.
+
+Focused tests cover durable dismiss, explicit reopen, restore, active-first ordering,
+inactive-work cancellation/rapid latest-selection wins, cached-only profile/day,
+geometry reuse and unchanged handoff. Regional/pilot baseline results remain identical.
+Build: `npm run apk -- --name MushroomApp-preview-controls-species-response-fix.apk`.
+The helper failed with `Unable to establish loopback connection` (Gradle exit 1).
+The named output does not exist; no previous APK was copied. Run the same command
+locally to build this revision.
+
+Host timing is variable: a repeat while other regressions were running measured
+93–125 ms for both sources versus 58–117 ms for active-only preparation.
+These fixtures prove ordering/update counts, not a guaranteed Android latency.

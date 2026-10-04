@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { MapRef } from '@maplibre/maplibre-react-native';
-import { createHeatmapVisualCache, createHeatmapVisualCoalescer, createHeatmapRenderConfirmation,
+import { createHeatmapVisualCache, createHeatmapVisualCoalescer, createHeatmapRenderConfirmation, createHeatmapSourcePreparation,
   heatmapRenderProbes, heatmapSourceReady, heatmapInteractionLod, finishHeatmapHandoff, heatmapLayerVisible, scheduleHeatmapVisualUpdate, shouldPrewarmHeatmapDetail,
   requestHeatmapHandoff, type HeatmapHandoff, type HeatmapRenderView } from '../../domain/heatmap/visual';
 import { OVERVIEW_FEATURES, OVERVIEW_INDEX, type HeatmapLod } from '../../domain/heatmap/lod';
@@ -33,6 +33,19 @@ export function useHeatmapVisuals({ enabled, bounds, moving, lod, zoom, prewarmB
     incomingSourceReady: false, incomingFeatureCount: 0, expectedVisibleCount: 0 });
   const metrics = useRef({ renderAttempts: 0, commits: 0, overviewDataUpdates: 0, detailDataUpdates: 0 });
   const previousData = useRef<Partial<Record<HeatmapLod, string>>>({});
+  const selectionTiming = useRef<{ view: HeatmapRenderView; lod: HeatmapLod; preparedAt: number; submittedAt?: number } | undefined>(undefined);
+  const [sourcePreparation] = useState(() => createHeatmapSourcePreparation(cache, (sourceLod, view) => {
+    if (sourceLod === desiredLod.current && previousData.current[sourceLod] !== view.serialized) {
+      selectionTiming.current = { view, lod: sourceLod, preparedAt: performance.now() };
+    }
+    setViews(previous => previous[sourceLod] === view ? previous : { ...previous, [sourceLod]: view });
+    if (__DEV__) console.info('[heatmap visual prepare]', { phase: sourceLod === desiredLod.current ? 'active' : 'inactive-prewarm',
+      lod: sourceLod, selection: view.selectionKey, features: view.collection.features.length, timing: cache.lastTiming });
+  }, callback => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const frame = requestAnimationFrame(() => { timer = setTimeout(callback, 0); });
+    return () => { cancelAnimationFrame(frame); clearTimeout(timer); };
+  }));
   const [confirmation] = useState(() => createHeatmapRenderConfirmation({
     query: async incoming => await mapRef.current?.queryRenderedFeatures({
       layers: [incoming === 'detail' ? 'mushroom-heatmap-fill' : 'regional-overview-fill'],
@@ -76,25 +89,29 @@ export function useHeatmapVisuals({ enabled, bounds, moving, lod, zoom, prewarmB
   useEffect(() => {
     if (!enabled) return;
     const start = performance.now(), before = cache.builds;
+    const lookupAt = performance.now();
     const weather = visualBundle ? weatherAssessmentsFor(visualBundle, profile, day) : {};
     const date = visualBundle?.weather.baseLocalDate ?? localDateFor();
-    // Only 704 coarse features: keep the whole static overview prewarmed for instant zoom-out.
-    // This preparation never requests weather. Detail prewarm is cached-only as well.
-    const overview = cache.prepare('overview', OVERVIEW_FEATURES, weather, profile, day, date);
-    const overviewTiming = cache.lastTiming;
-    const detail = detailFeatures ? cache.prepare('detail', detailFeatures, weather, profile, day, date) : undefined;
-    setViews(previous => {
-      // Only a prepared, settled empty viewport intentionally replaces data with no-data.
-      // Pending preparation never clears the previous source.
-      const nextDetail = detail ?? previous.detail;
-      if (previous.overview === overview && previous.detail === nextDetail) return previous;
-      return { overview, detail: nextDetail };
-    });
+    const lookupMs = performance.now() - lookupAt;
+    // Cached lookup: no scorer calls. Publish target data first; inactive prewarm
+    // yields a frame/task boundary. Cancelled selection/viewport generations cannot publish.
+    sourcePreparation.update({ lod, detailFeatures, weather, profile, day, date });
     if (__DEV__ && cache.builds !== before) console.info('[heatmap visual prepare]', {
-      lod, builds: cache.builds - before, detailCells: detailFeatures?.length ?? 0, durationMs: performance.now() - start,
-      overviewTiming, detailTiming: detail ? cache.lastTiming : undefined,
+      phase: 'active-total', lod, profile, day, builds: cache.builds - before,
+      cachedScoreLookupMs: lookupMs, scorerCalculations: visualBundle ? 0 : 'missing-weather only',
+      durationMs: performance.now() - start, timing: cache.lastTiming,
     });
-  }, [enabled, visualBundle, profile, day, detailFeatures, cache]);
+    return sourcePreparation.cancel;
+  }, [enabled, visualBundle, profile, day, detailFeatures, lod, cache, sourcePreparation]);
+
+  useLayoutEffect(() => {
+    const timing = selectionTiming.current;
+    if (timing && views[timing.lod] === timing.view && timing.submittedAt === undefined) {
+      timing.submittedAt = performance.now();
+      if (__DEV__) console.info('[heatmap source submitted]', { lod: timing.lod, selection: timing.view.selectionKey,
+        features: timing.view.collection.features.length, prepareToPropsCommitMs: timing.submittedAt - timing.preparedAt });
+    }
+  }, [views]);
 
   const baseLocalDate = visualBundle?.weather.baseLocalDate ?? localDateFor();
   const settledBoundsReady = Boolean(bounds && bounds === visualBounds);
@@ -132,6 +149,12 @@ export function useHeatmapVisuals({ enabled, bounds, moving, lod, zoom, prewarmB
   }, [handoff.incoming, incomingProbes, incomingSelectionReady, enabled, moving, lod, confirmation]);
   useEffect(() => { if (!handoff.incoming) handoffStarted.current = 0; }, [handoff.incoming]);
   const onFullyRendered = useCallback(() => {
+    const timing = selectionTiming.current;
+    if (timing?.submittedAt !== undefined) {
+      if (__DEV__) console.info('[heatmap frame after submit]', { lod: timing.lod, selection: timing.view.selectionKey,
+        elapsedMs: performance.now() - timing.submittedAt, evidence: 'map-frame callback, not layer-specific confirmation' });
+      selectionTiming.current = undefined;
+    }
     void confirmation.onFullFrame();
   }, [confirmation]);
   useEffect(() => {
