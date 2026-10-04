@@ -52,6 +52,9 @@ yarn-error.*
 output/
 *.apk
 
+# Local Android performance captures (never include device-specific logs in Git)
+/perf-output/
+
 # Heatmap pilot preparation scratch data (derived compact artifacts live in src/data/)
 /scripts/heatmap/.cache/
 /scripts/heatmap/raw/
