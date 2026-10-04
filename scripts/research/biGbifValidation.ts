@@ -95,11 +95,12 @@ export function scoreDistribution(scores: number[]) {
 }
 
 /** Historical reanalysis adapter only; windows and scores remain production imports.
- * 09:00 local soil is a reproducible convention because occurrence collection time is unknown. */
-export function historicalAssessment(response: RecordData, date: string, latitude: number, longitude: number, profile: MushroomWeatherProfileId) {
+ * V1 defaults to 09:00 local; V2 requests start-of-day (00:00) to avoid using later observation-day soil. */
+export function historicalAssessment(response: RecordData, date: string, latitude: number, longitude: number, profile: MushroomWeatherProfileId, soilHour = 9) {
+  if (!Number.isInteger(soilHour) || soilHour < 0 || soilHour > 23) throw new Error('Invalid research soil hour.');
   const number = (value: unknown) => typeof value === 'number' && Number.isFinite(value) ? value : undefined;
   const daily = response.daily ?? {}, hourly = response.hourly ?? {};
-  const index = (hourly.time ?? []).indexOf(`${date}T09:00`);
+  const index = (hourly.time ?? []).indexOf(`${date}T${String(soilHour).padStart(2, '0')}:00`);
   const source: HeatmapWeatherCellSource = { id: 'historical-research', latitude, longitude, baseLocalDate: date,
     days: (daily.time ?? []).map((time: string, i: number) => ({ date: time, kind: 'historical' as const,
       precipitationMm: number(daily.precipitation_sum?.[i]), temperatureMeanC: number(daily.temperature_2m_mean?.[i]),
