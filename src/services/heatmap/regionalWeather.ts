@@ -5,9 +5,28 @@ import { getHeatmapWeatherBatch } from '../weather';
 import metadata from '../../data/heatmapRegional/metadata.json';
 
 export const REGIONAL_WEATHER_BATCH_SIZE = 25;
+// Verified with both official multi-coordinate endpoints. A bounded overview set
+// fits one pair of HTTP calls instead of two paced pairs; NOT an API hard limit.
+export const OVERVIEW_WEATHER_BATCH_SIZE = 40;
 // One batch in flight (two HTTP requests). Small interactive bursts, not 15s per batch.
 export const REGIONAL_WEATHER_BATCH_INTERVAL_MS = 2000;
+export const REGIONAL_WEATHER_POINT_BUDGET = 75;
+export function regionalWeatherStartWait(recent: Array<{ time: number; points: number }>, count: number,
+  now: number, nextStart: number, enforceBudget = true) {
+  let projected = recent.filter(item => item.time > now - 60000).reduce((sum, item) => sum + item.points, 0) + count;
+  let budgetWait = 0;
+  if (enforceBudget) for (const item of recent.filter(item => item.time > now - 60000)) {
+    if (projected <= REGIONAL_WEATHER_POINT_BUDGET) break;
+    projected -= item.points;
+    budgetWait = Math.max(0, item.time + 60000 - now);
+  }
+  return Math.max(0, nextStart - now, budgetWait);
+}
 const TTL_MS = 30 * 60 * 1000;
+export interface RegionalWeatherLoadOptions {
+  prefetch?: boolean;
+  onDiagnostic?: (event: Record<string, unknown>) => void;
+}
 export function regionalWeatherKey(points: HeatmapWeatherCellDefinition[], date: string): string {
   return `regional-v2:${HEATMAP_WEATHER_POLICY_VERSION}:${date}:D-60:D+1:soil09:${points.map(p => `${p.id}:${p.latitude}:${p.longitude}`).join('|')}`;
 }
@@ -22,13 +41,17 @@ export function createRegionalWeatherLoader(fetchBatch = getHeatmapWeatherBatch,
   const memory = new Map<string, HeatmapWeatherCellSource>();
   const pending = new Map<string, Promise<HeatmapWeatherCellSource>>();
   let nextStart = 0;
+  let overviewContinuationPoints = 0, overviewContinuationUntil = 0;
   let transport = Promise.resolve();
   const recent: Array<{ time: number; points: number }> = [];
   return async function load(db: SQLiteDatabase, points: HeatmapWeatherCellDefinition[], date: string,
-    onProgress?: (batch: HeatmapWeatherBatch) => void, signal?: AbortSignal): Promise<HeatmapWeatherBatch> {
+    onProgress?: (batch: HeatmapWeatherBatch) => void, signal?: AbortSignal, options: RegionalWeatherLoadOptions = {}): Promise<HeatmapWeatherBatch> {
     const started = Date.now();
+    const overview = points.length > 0 && points.length <= OVERVIEW_WEATHER_BATCH_SIZE && points.every(p => p.id.startsWith('overview-'));
+    const batchSize = overview ? OVERVIEW_WEATHER_BATCH_SIZE : REGIONAL_WEATHER_BATCH_SIZE;
+    const diagnostic = (event: Record<string, unknown>) => { debug(event); options.onDiagnostic?.(event); };
     const cells: HeatmapWeatherBatch['cells'] = {};
-    let requests = 0, hits = 0, joined = 0, diskHits = 0;
+    let requests = 0, hits = 0, joined = 0, diskHits = 0, schedulerWaitMs = 0;
     let firstUsefulMs: number | undefined;
     let readingCache = true;
     let publishedCount = -1;
@@ -110,26 +133,26 @@ export function createRegionalWeatherLoader(fetchBatch = getHeatmapWeatherBatch,
       }
       readingCache = false;
       await Promise.resolve(); emit();
-      for (let offset = 0; offset < missing.length; offset += REGIONAL_WEATHER_BATCH_SIZE) {
+      for (let offset = 0; offset < missing.length; offset += batchSize) {
         if (signal?.aborted) break;
         // Do not reserve slots for an entire old viewport. Recheck ownership after the lock.
         const preceding = transport;
         let release!: () => void;
         transport = new Promise<void>(resolve => { release = resolve; });
         await preceding;
-        const group = missing.slice(offset, offset + REGIONAL_WEATHER_BATCH_SIZE).filter(e => !e.done);
+        const group = missing.slice(offset, offset + batchSize).filter(e => !e.done);
         if (!group.length || signal?.aborted) { release(); continue; }
         while (recent.length && recent[0].time <= Date.now() - 60000) recent.shift();
         // Conservative local budget: <=75 locations/minute for these long-history requests.
         // HTTP count is NOT provider accounting. Other screens/IP users also consume quota.
-        let projected = recent.reduce((sum, item) => sum + item.points, 0) + group.length;
-        let budgetWait = 0;
-        if (intervalMs > 0) for (const item of recent) {
-          if (projected <= 75) break;
-          projected -= item.points;
-          budgetWait = Math.max(0, item.time + 60000 - Date.now());
-        }
-        const wait = Math.max(0, nextStart - Date.now(), budgetWait);
+        const continueOverview = overview && !options.prefetch && group.length <= overviewContinuationPoints && Date.now() <= overviewContinuationUntil;
+        // A six-point speculative warm-up + ONE <=34-point foreground follow-up
+        // may share a <=40-point initial burst. Still serial and budget limited.
+        const wait = regionalWeatherStartWait(recent, group.length, Date.now(), continueOverview ? 0 : nextStart, intervalMs > 0);
+        // Speculative work may not hold the shared transport while awaiting quota.
+        // Foreground uses the unchanged budget; prefetch simply yields/skips.
+        if (options.prefetch && wait > 0) { release(); cancelQueued(); break; }
+        const waitingAt = Date.now();
         if (wait) await new Promise<void>(resolve => {
           const finish = () => { clearTimeout(timer); signal?.removeEventListener('abort', finish); resolve(); };
           const timer = setTimeout(finish, wait);
@@ -137,15 +160,21 @@ export function createRegionalWeatherLoader(fetchBatch = getHeatmapWeatherBatch,
           if (signal?.aborted) finish();
         });
         if (signal?.aborted) { release(); break; }
+        schedulerWaitMs += Date.now() - waitingAt;
         try {
         nextStart = Date.now() + intervalMs;
+        overviewContinuationPoints = overview && options.prefetch ? OVERVIEW_WEATHER_BATCH_SIZE - group.length : 0;
+        overviewContinuationUntil = overviewContinuationPoints ? Date.now() + 5000 : 0;
         recent.push({ time: Date.now(), points: group.length });
         group.forEach(entry => { entry.running = true; });
         let batch: HeatmapWeatherBatch | undefined;
         requests += 2;
         const requestStarted = Date.now();
+        diagnostic({ phase: 'batch-start', overview, prefetch: Boolean(options.prefetch), batchPointCount: group.length,
+          elapsedMs: requestStarted - started, schedulerWaitMs, batchSize, continueOverview });
         try { batch = await fetchBatch(db, group.map(e => e.point), date); } catch { /* Resolve failures per point so other batches remain usable. */ }
-        debug({ batchPointCount: group.length, requestDurationMs: Date.now() - requestStarted });
+        diagnostic({ phase: 'batch-end', overview, batchPointCount: group.length, elapsedMs: Date.now() - started,
+          requestDurationMs: Date.now() - requestStarted });
         const writes: Promise<unknown>[] = [];
         for (const entry of group) {
           const cell = batch?.cells[entry.point.id] ?? { ...entry.point, baseLocalDate: date, days: [],
@@ -171,7 +200,7 @@ export function createRegionalWeatherLoader(fetchBatch = getHeatmapWeatherBatch,
     await Promise.all([work(), ...waits]);
     signal?.removeEventListener('abort', cancelQueued);
     const result = snapshot(); emit();
-    debug({ requiredPointCount: points.length, cacheHits: hits, joined, missingPointCount: owned.length - diskHits,
+    diagnostic({ phase: 'complete', overview, batchSize, schedulerWaitMs, requiredPointCount: points.length, cacheHits: hits, joined, missingPointCount: owned.length - diskHits,
       batchesRequested: requests / 2, durationMs: Date.now() - started, firstUsefulMs,
       readyDurationMs: Object.values(cells).every(healthy) ? Date.now() - started : undefined,
       failedPointCount: Object.values(cells).filter(c => !healthy(c)).length });

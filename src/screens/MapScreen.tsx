@@ -25,6 +25,8 @@ import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '
 import { useHeatmapVisuals } from '../services/heatmap/useHeatmapVisuals';
 import { HEATMAP_NATIVE_RANGES, HEATMAP_VISUAL, shouldPrewarmHeatmapDetail } from '../domain/heatmap/visual';
 import { INITIAL_HEATMAP_CONTROLS, heatmapControlsReducer, heatmapControlsPanelVisible } from '../domain/heatmap/controlsState';
+import { OVERVIEW_PREFETCH, shouldPrefetchOverview, prioritizedOverviewWeatherPointIds, overviewReadyCoverage, createOverviewCoverageDiagnostics } from '../domain/heatmap/overviewLoading';
+import { localDateFor } from '../domain/heatmap/assessment';
 import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
@@ -121,6 +123,10 @@ export function MapScreen() {
   const cameraZoom = useRef(heatmapNavigation.viewport?.zoom ?? 7);
   const prewarmBand = useRef(false);
   const [detailPrewarmBounds, setDetailPrewarmBounds] = useState<Bounds>();
+  const [overviewPrefetchBounds, setOverviewPrefetchBounds] = useState<Bounds>();
+  const previousSettledZoom = useRef(cameraZoom.current);
+  const overviewPrefetchGate = useRef(createHeatmapRequestGate()).current;
+  const [overviewCoverageDiagnostics] = useState(() => createOverviewCoverageDiagnostics());
   const observeCameraZoom = (zoom: number, gestureBounds?: Bounds) => {
     if (!Number.isFinite(zoom)) return;
     cameraZoom.current = zoom;
@@ -168,17 +174,33 @@ export function MapScreen() {
     ? activeIndex.visible(visibleBounds, heatmapLod === 'detail' ? selectedHeatmapAreaId : undefined) : [], [visibleBounds, selectedHeatmapAreaId, activeIndex, heatmapLod]);
   const visibleViewportFeatures = useMemo(() => visibleBounds ? activeIndex.visible(visibleBounds, undefined, 0) : [], [visibleBounds, activeIndex]);
   const viewportCovered = visibleViewportFeatures.length > 0;
-  const requiredPointsKey = useMemo(() => visibleBounds ? prioritizedWeatherPointIds(viewportFeatures,
-    visibleViewportFeatures, visibleBounds, activeWeatherPoints, selectedHeatmapAreaId).join('|') : '',
-    [viewportFeatures, visibleViewportFeatures, visibleBounds, selectedHeatmapAreaId, activeWeatherPoints]);
+  const requiredPointsKey = useMemo(() => {
+    if (!visibleBounds) return '';
+    if (heatmapLod === 'overview') {
+      const selectedArea = selectedHeatmapAreaId ? REGIONAL_INDEX.byId.get(selectedHeatmapAreaId)?.properties : undefined;
+      return prioritizedOverviewWeatherPointIds(viewportFeatures, visibleViewportFeatures, visibleBounds, activeWeatherPoints,
+        selectedArea ? { latitude: selectedArea.centerLatitude, longitude: selectedArea.centerLongitude } : exploreLocation).join('|');
+    }
+    return prioritizedWeatherPointIds(viewportFeatures, visibleViewportFeatures, visibleBounds, activeWeatherPoints, selectedHeatmapAreaId).join('|');
+  }, [viewportFeatures, visibleViewportFeatures, visibleBounds, selectedHeatmapAreaId, activeWeatherPoints, heatmapLod, exploreLocation?.latitude, exploreLocation?.longitude]);
   const visual = useHeatmapVisuals({ enabled: heatmapEnabled, bounds: visibleBounds, moving: cameraMoving,
     lod: heatmapLod, zoom: cameraZoom.current, prewarmBounds: detailPrewarmBounds, bundle: heatmapBundle,
     profile: heatmapProfileId, day: heatmapTargetDay, mapRef: map });
   const heatmapStatus = heatmapViewportStatus(Boolean(visibleBounds), viewportCovered, heatmapLoading || completedPointsKey !== requiredPointsKey, Boolean(heatmapError));
-  const readiness = heatmapReadiness(requiredPointsKey ? requiredPointsKey.split('|') : [], new Set(
+  const readyWeatherPointIds = useMemo(() => new Set(
     Object.entries(heatmapBundle ? weatherAssessmentsFor(heatmapBundle, heatmapProfileId, heatmapTargetDay) : {})
       .filter(([, value]) => value.score.score !== null && value.dataQuality !== 'insufficient').map(([id]) => id)),
+    [heatmapBundle, heatmapProfileId, heatmapTargetDay]);
+  const readiness = heatmapReadiness(requiredPointsKey ? requiredPointsKey.split('|') : [], readyWeatherPointIds,
     !heatmapLoading && completedPointsKey === requiredPointsKey);
+  useEffect(() => {
+    if (!__DEV__ || !heatmapEnabled || heatmapLod !== 'overview') return;
+    const coverage = overviewReadyCoverage(visibleViewportFeatures, readyWeatherPointIds);
+    const key = `${visibleViewportFeatures.map(f => f.properties.id).join(',')}/${heatmapBundle?.baseLocalDate ?? localDateFor()}/${heatmapProfileId}/${heatmapTargetDay}`;
+    for (const event of overviewCoverageDiagnostics(key, coverage)) console.info('[heatmap overview coverage]', {
+      ...event, readyCells: coverage.readyCells, visibleCells: coverage.totalCells,
+      evidence: 'JS assessment readiness; not native rendered-frame timing' });
+  }, [heatmapEnabled, heatmapLod, visibleViewportFeatures, readyWeatherPointIds, heatmapProfileId, heatmapTargetDay, heatmapBundle?.baseLocalDate, overviewCoverageDiagnostics]);
   const selectedHeatmapFeature = selectedHeatmapAreaId
     ? HEATMAP_HABITAT.features.find((feature) => feature.properties.id === selectedHeatmapAreaId)
     : undefined;
@@ -242,6 +264,27 @@ export function MapScreen() {
     if (typeof __DEV__ !== 'undefined' && __DEV__) console.info('[Heatmap viewport]', { visibleCellCount: visibleViewportFeatures.length, bufferedCellCount: viewportFeatures.length, requiredPointCount: requiredPointsKey.split('|').length });
     return () => { cancelSettledLoad(); heatmapRequestGate.invalidate(); controller.abort(); };
   }, [db, requiredPointsKey, viewportCovered, cameraMoving, cameraTarget, heatmapEnabled, heatmapRequestGate, heatmapRetry, activeWeatherPoints]);
+
+  // Only settled, descending DETAIL zoom near 8.5 may speculate on at most six
+  // coarse points. It never changes LOD/UI loading, shares cache/dedupe/budget,
+  // and skips rather than waiting on quota. New gestures invalidate queued work.
+  useEffect(() => {
+    if (!heatmapEnabled || heatmapLod !== 'detail' || cameraMoving || cameraTarget || !overviewPrefetchBounds) return;
+    const requestId = overviewPrefetchGate.next(), controller = new AbortController();
+    const visible = OVERVIEW_INDEX.visible(overviewPrefetchBounds, undefined, 0);
+    const buffered = OVERVIEW_INDEX.visible(overviewPrefetchBounds);
+    const pointIds = prioritizedOverviewWeatherPointIds(buffered, visible, overviewPrefetchBounds, OVERVIEW_WEATHER_POINTS)
+      .slice(0, OVERVIEW_PREFETCH.maxPoints);
+    const cancel = scheduleSettledHeatmapLoad(() => {
+      if (!pointIds.length) return;
+      void loadHeatmapPilot(db, { pointIds, pointDefinitions: OVERVIEW_WEATHER_POINTS, prefetch: true, signal: controller.signal,
+        onProgress: bundle => {
+          if (overviewPrefetchGate.isCurrent(requestId)) startTransition(() => setHeatmapBundle(previous => mergeHeatmapBundles(previous, bundle)));
+        },
+      }).catch(() => { /* Optional prefetch failure never affects the foreground UI. */ });
+    }, 250);
+    return () => { cancel(); overviewPrefetchGate.invalidate(); controller.abort(); };
+  }, [db, heatmapEnabled, heatmapLod, cameraMoving, cameraTarget, overviewPrefetchBounds, overviewPrefetchGate]);
 
   useEffect(() => {
     if (!searchOpen) {
@@ -423,6 +466,7 @@ export function MapScreen() {
           }).catch(() => { /* The region event supplies bounds if the native map is not ready yet. */ });
         }}
         onRegionWillChange={() => {
+          setOverviewPrefetchBounds(undefined);
           prewarmBand.current = false;
           setDetailPrewarmBounds(undefined);
           setCameraMoving(true);
@@ -438,6 +482,9 @@ export function MapScreen() {
           observeCameraZoom(zoom);
           setOverviewTapped(false);
           const bounds = event.nativeEvent.bounds;
+          setOverviewPrefetchBounds(shouldPrefetchOverview(cameraLod.current, zoom, previousSettledZoom.current)
+            && bounds?.length === 4 && bounds.every(Number.isFinite) ? [...bounds] as Bounds : undefined);
+          previousSettledZoom.current = zoom;
           if (bounds?.length === 4 && bounds.every(Number.isFinite)) setVisibleBounds([...bounds] as Bounds);
           if (!heatmapEnabled) return;
           if (Number.isFinite(latitude) && Number.isFinite(longitude) && Number.isFinite(zoom)) {

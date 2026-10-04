@@ -43,13 +43,19 @@ const buildBundle = (weather: HeatmapWeatherBatch): HeatmapPilotBundle => {
 
 export async function loadHeatmapPilot(
   db: SQLiteDatabase,
-  options: { reference?: Date; pointIds: string[]; pointDefinitions?: HeatmapWeatherCellDefinition[]; signal?: AbortSignal; onProgress?: (bundle: HeatmapPilotBundle) => void },
+  options: { reference?: Date; pointIds: string[]; pointDefinitions?: HeatmapWeatherCellDefinition[]; signal?: AbortSignal; prefetch?: boolean; onProgress?: (bundle: HeatmapPilotBundle) => void },
 ): Promise<HeatmapPilotBundle> {
   const baseLocalDate = localDateFor(options.reference);
   const byId = new Map((options.pointDefinitions ?? metadata.weatherCells).map(point => [point.id, point]));
   const points = [...new Set(options.pointIds)].flatMap(id => byId.has(id) ? [byId.get(id)!] : []);
   return buildBundle(await getRegionalWeather(db, points, baseLocalDate,
-    options.onProgress ? weather => options.onProgress?.(buildBundle(weather)) : undefined, options.signal));
+    options.onProgress ? weather => {
+      // Skipped/failed speculative work is not a foreground error or replacement
+      // for existing useful data. Completed requests still populate shared cache.
+      const progress = options.prefetch ? { ...weather, cells: Object.fromEntries(Object.entries(weather.cells)
+        .filter(([, c]) => !c.errors.historical && !c.errors.forecast && !c.stale && c.days.length > 0)) } : weather;
+      if (!options.prefetch || Object.keys(progress.cells).length) options.onProgress?.(buildBundle(progress));
+    } : undefined, options.signal, { prefetch: options.prefetch }));
 }
 
 /** Keep already useful cells during a pan or retry; date rollover starts a new snapshot. */

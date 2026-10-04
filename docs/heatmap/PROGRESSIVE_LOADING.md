@@ -1,5 +1,9 @@
 # Regional progressive weather loading
 
+The baseline pacing measurements below are retained for comparison. For the
+current bounded 40-point OVERVIEW transport and zoom-out prefetch policy see
+[Overview loading](OVERVIEW_LOADING.md). DETAIL pacing/model semantics are unchanged.
+
 ## Diagnosis
 
 The small-window benchmark did not represent the phone's low zoom. A reproducible
