@@ -43,3 +43,17 @@ On a small Android phone, verify a two-line Črna na Koroškem title, fixed X/da
 TypeScript and 15 smoke/regression scripts passed: card presentation/interaction, navigation, controls response, transition confirmation, LOD/thresholds/visuals, regional/progressive/overview loading, generic weather details, Pilot, Boletus/Chanterelle/ZGS habitat and regional regression. The regional baseline comparison covered 84,248 cases; Pilot weather comparison covered 15,688 cases. Production model files/data remain unchanged.
 
 The requested APK helper failed at Gradle daemon startup with `java.io.IOException: Unable to establish loopback connection`. No new APK was created or copied. Run the same helper command locally; native scroll, wrapping, accessibility and gesture QA remain unverified on a physical Android device.
+
+## Density and hierarchy polish
+
+The same card extent and body scrolling are retained. Header metadata now combines region and species, e.g. `Koroška · Jesenski goban`; the redundant domestic country is omitted only in this compact line and retained in expanded Details. Foreign-country context is retained. Title and metadata wrap naturally without line caps; X remains a 44-point target.
+
+Card/header gaps shrink from 8 to 4 points. Date-control outer padding shrinks from 3 to 1 while each tab keeps a 44-point touch target. Score font size is unchanged. The existing summary wording/logic is unchanged, inside a subtle tinted/accent block labelled `ZAKAJ <score>?` (unpublished score: `ZAKAJ TA OCENA?`, never a fake zero).
+
+Factors use name and a textual neutral green pill, then a shorter secondary value. Row vertical padding shrinks from 8 to 5 points and section padding from 8 to 2. Text and pills can wrap; nothing is line-clipped. Short formats retain the same values/windows, e.g. `13 °C / 20 dni`. Drying's main labels are Neugodno / Manj ugodno / Ugodno / Zelo ugodno using the identical display bands; the original detailed influence labels and long descriptions remain in Details. No ecological/scoring threshold was changed.
+
+Habitat copy is unchanged with tighter spacing. Reliability level and heading share one row and the main description is shorter (`Na voljo so vsi glavni podatki.` for Visoka). The full explanation and input-completeness/non-statistical-confidence clarification are retained in Details. Details toggle keeps a 44-point target; body has right padding for scrollbar clearance and unchanged bottom padding. Technical contribution rows, all sources, disclaimers and navigation remain available.
+
+These are style/layout-contract checks, not a measured native screenshot result. On Redmi 13C verify summary plus 2–3 factors below the fixed header, all four after a short scroll, long unknown/limited states, expanded attribution at the end, large-font settings, and one-finger scroll. Build with `npm run apk -- --name MushroomApp-preview-conditions-card-density-polish.apk`.
+
+Density-pass validation (2026-10-05): TypeScript, the updated card harness and 11 existing navigation/controls/LOD/loading/weather/habitat/regional scripts passed. Regional 84,248 and Pilot 15,688 baseline comparisons remain identical. The density APK helper failed at Gradle startup with the same loopback error; no new APK was copied. The helper command above must be run locally.

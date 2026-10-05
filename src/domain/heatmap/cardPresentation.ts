@@ -3,7 +3,7 @@ import type { MushroomScoreComponent } from '../types';
 import type { HeatmapAreaAssessment } from './types';
 
 export type FactorKey = 'rain' | 'temperature' | 'soilMoisture' | 'drying';
-export interface CardFactor { key: FactorKey; label: string; status: string; ratio?: number; mixed: boolean; detail: string }
+export interface CardFactor { key: FactorKey; label: string; status: string; ratio?: number; mixed: boolean; detail: string; compactDetail: string; detailedStatus: string }
 // DISPLAY bands only. Component value=1 is favourable, including drying (inverse deficit).
 // These never alter weather weights, ecological thresholds, published score or habitat state.
 export const FACTOR_DISPLAY_BANDS = { veryFavourable: .85, favourable: .65, moderate: .40 } as const;
@@ -17,6 +17,12 @@ const value = (number: number | undefined, unit: string, digits = 1) => number =
   ? 'ni podatka' : `${slNumber(number, digits)} ${unit}`;
 const rainDays = (key: string) => Number(key.replace('rain', ''));
 
+export function compactCardMetadata(areaDetails: string | undefined, speciesLabel: string): string {
+  // Only omit the redundant domestic country in the header; full metadata stays in Details.
+  const region = areaDetails?.trim().replace(/,\s*(Slovenija|Slovenia)$/i, '');
+  return region ? `${region} · ${speciesLabel}` : speciesLabel;
+}
+
 export function cardFactors(a: HeatmapAreaAssessment): CardFactor[] {
   const components = a.scoreDetails.components;
   const h = a.summary.historical, current = a.summary.current;
@@ -29,7 +35,7 @@ export function cardFactors(a: HeatmapAreaAssessment): CardFactor[] {
     const mixed = key === 'rain' && group.length > 1
       && Math.max(...group.map(c => c.value)) - Math.min(...group.map(c => c.value)) >= RAIN_DISPLAY_DISAGREEMENT;
     const labels = key === 'rain' ? ['Neugodne', 'Zmerno ugodne', 'Ugodne', 'Zelo ugodne']
-      : key === 'drying' ? ['Močan neugoden vpliv', 'Povečan vpliv', 'Zmeren vpliv', 'Majhen vpliv']
+      : key === 'drying' ? ['Neugodno', 'Manj ugodno', 'Ugodno', 'Zelo ugodno']
         : ['Neugodna', 'Zmerno ugodna', 'Ugodna', 'Zelo ugodna'];
     const band = factorBand(ratio);
     let detail = 'Za ta dejavnik ni dovolj podatkov.';
@@ -48,8 +54,25 @@ export function cardFactors(a: HeatmapAreaAssessment): CardFactor[] {
         ? 'V zadnjem tednu je bilo več izhlapevanja kot novih padavin.'
         : 'Padavine v zadnjem tednu uravnavajo vpliv izhlapevanja.';
     }
+    let compactDetail = 'Ni dovolj podatkov.';
+    if (band >= 0 && key === 'rain') {
+      compactDetail = group.map(c => c.key === 'rain'
+        ? `7 / 14 / 30 dni: ${[h?.rain7dMm, h?.rain14dMm, h?.rain30dMm].map(n => n == null ? '—' : slNumber(n, 1)).join(' / ')} mm`
+        : `${value(h?.[`rain${rainDays(c.key)}dMm` as keyof NonNullable<typeof h>] as number | undefined, 'mm')} / ${rainDays(c.key)} dni`).join(' · ');
+    } else if (band >= 0 && key === 'temperature') {
+      const days = a.speciesId === 'cantharellusCibarius' ? 14 : 20;
+      compactDetail = `${value(days === 14 ? h?.avgTemp14dC : h?.avgTemp20dC, '°C')} / ${days} dni`;
+    } else if (band >= 0 && key === 'soilMoisture') {
+      compactDetail = band >= 2 ? 'Vlaga tal ustreza profilu.' : 'Vlaga tal manj ustreza profilu.';
+      if (current?.soilMoisture0To7Cm == null || current?.soilMoisture7To28Cm == null) compactDetail += ' Ena plast manjka.';
+    } else if (band >= 0 && key === 'drying') {
+      compactDetail = h?.evapotranspiration7dMm != null && h.rain7dMm != null && h.evapotranspiration7dMm > h.rain7dMm
+        ? 'Več izhlapevanja kot dežja v 7 dneh.' : 'Dež uravnava izhlapevanje v 7 dneh.';
+    }
+    const status = mixed ? 'Mešani signali' : band < 0 ? 'Ni podatkov' : labels[band];
+    const detailedStatus = key === 'drying' && band >= 0 ? ['Močan neugoden vpliv', 'Povečan vpliv', 'Zmeren vpliv', 'Majhen vpliv'][band] : status;
     return { key, label: { rain: 'Padavine', temperature: 'Temperatura', soilMoisture: 'Vlaga tal', drying: 'Izsuševanje' }[key],
-      ratio, mixed, status: mixed ? 'Mešani signali' : band < 0 ? 'Ni podatkov' : labels[band], detail };
+      ratio, mixed, status, detail, compactDetail, detailedStatus };
   });
 }
 
@@ -94,7 +117,9 @@ export function cardReliability(a: HeatmapAreaAssessment, pending = false) {
   const explanation = level === 'Visoka' ? 'Na voljo so vsi glavni vremenski podatki in dovolj podatkov o območju.'
     : level === 'Srednja' ? 'Del podatkov je omejen, vendar je ocena še vedno uporabna.'
       : 'Za del vremenskih ali habitatnih podatkov ni dovolj informacij.';
-  return { level, explanation };
+  const compactExplanation = level === 'Visoka' ? 'Na voljo so vsi glavni podatki.'
+    : level === 'Srednja' ? 'Del podatkov je omejen.' : 'Za del ocene ni dovolj podatkov.';
+  return { level, explanation, compactExplanation };
 }
 
 export function cardTechnicalDetails(a: HeatmapAreaAssessment) {

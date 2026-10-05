@@ -2,8 +2,11 @@
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
 import ts from 'typescript';
-import { cardFactors, cardSummary, cardHabitat, cardReliability, cardTechnicalDetails, factorBand } from '../src/domain/heatmap/cardPresentation';
+import { cardFactors, cardSummary, cardHabitat, cardReliability, cardTechnicalDetails, factorBand, compactCardMetadata } from '../src/domain/heatmap/cardPresentation';
+import { colors, spacing, radii } from '../src/theme';
 import { assessHeatmapWeather } from '../src/domain/heatmap/assessment';
 import { HEATMAP_HABITAT, HEATMAP_PROFILE_IDS, HEATMAP_PILOT_METADATA, habitatStateFor, areaAssessmentFor } from '../src/domain/heatmap/pilot';
 import { MUSHROOM_WEATHER_PROFILES } from '../src/domain/mushroomWeather';
@@ -22,10 +25,25 @@ const area = HEATMAP_HABITAT.features.find(f => habitatStateFor(f, 'boletusEduli
 const make = (profile: HeatmapAreaAssessment['speciesId'], day: HeatmapAreaAssessment['targetDay'] = 'today') =>
   areaAssessmentFor(area, assessHeatmapWeather(source, profile, day));
 const assessment = make('boletusEdulis');
+const oldPresentation = { exports: {} as typeof import('../src/domain/heatmap/cardPresentation') };
+const oldHelper = execFileSync('git', ['show', '75fc7e8:src/domain/heatmap/cardPresentation.ts']).toString();
+new Function('require', 'module', 'exports', ts.transpileModule(oldHelper, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText)(
+  createRequire(resolve('src/domain/heatmap/cardPresentation.ts')), oldPresentation, oldPresentation.exports);
+strictEqual(compactCardMetadata('Koroška, Slovenija', 'Jesenski goban'), 'Koroška · Jesenski goban');
+strictEqual(compactCardMetadata('Koroška, Slovenia', 'Jesenski goban'), 'Koroška · Jesenski goban');
+strictEqual(compactCardMetadata(undefined, 'Navadna lisička'), 'Navadna lisička');
+strictEqual(compactCardMetadata('Kärnten, Österreich', 'Užitna sirovka'), 'Kärnten, Österreich · Užitna sirovka');
 for (const [ratio, expected] of [[.85, 3], [.65, 2], [.4, 1], [.399, 0], [NaN, -1], [undefined, -1]] as const) strictEqual(factorBand(ratio), expected);
 for (const profile of HEATMAP_PROFILE_IDS) for (const day of ['today', 'tomorrow'] as const) {
   const a = make(profile, day), before = JSON.stringify(a);
   const factors = cardFactors(a), technical = cardTechnicalDetails(a);
+  strictEqual(cardSummary(a), oldPresentation.exports.cardSummary(a), 'summary semantics unchanged');
+  deepStrictEqual(technical, oldPresentation.exports.cardTechnicalDetails(a), 'technical values unchanged');
+  deepStrictEqual(cardHabitat(a), oldPresentation.exports.cardHabitat(a), 'habitat copy unchanged');
+  strictEqual(cardReliability(a).level, oldPresentation.exports.cardReliability(a).level, 'reliability mapping unchanged');
+  strictEqual(cardReliability(a).explanation, oldPresentation.exports.cardReliability(a).explanation, 'full reliability explanation preserved');
+  deepStrictEqual(factors.map(f => ({ ratio: f.ratio, mixed: f.mixed, detail: f.detail })),
+    oldPresentation.exports.cardFactors(a).map(f => ({ ratio: f.ratio, mixed: f.mixed, detail: f.detail })), 'factor semantics/long descriptions unchanged');
   strictEqual(factors.length, 4);
   deepStrictEqual(factors.map(f => f.key), ['rain', 'temperature', 'soilMoisture', 'drying']);
   const rain = a.scoreDetails.components.filter(c => c.key.startsWith('rain'));
@@ -42,7 +60,9 @@ for (const profile of HEATMAP_PROFILE_IDS) for (const day of ['today', 'tomorrow
 ok(cardSummary(assessment).startsWith('Padavine in temperatura so zelo ugodne.'));
 const dry = areaAssessmentFor(area, assessHeatmapWeather({ ...source, days: source.days.map(d => ({ ...d, precipitationMm: 0, evapotranspirationMm: 5 })) }, 'boletusEdulis', 'today'));
 ok(cardSummary(dry).includes('padavine manj ugodne'));
-strictEqual(cardFactors(dry)[3].status, 'Močan neugoden vpliv');
+strictEqual(cardFactors(dry)[3].status, 'Neugodno');
+strictEqual(cardFactors(dry)[3].detailedStatus, 'Močan neugoden vpliv');
+strictEqual(cardFactors(assessment)[1].compactDetail, '13 °C / 20 dni');
 const mixed = { ...make('cantharellusCibarius'), scoreDetails: { ...assessment.scoreDetails, components: [
   { key: 'rain30' as const, label: '30 dni', value: 1, weight: 40, weightedPoints: 40 },
   { key: 'rain7' as const, label: '7 dni', value: 0, weight: 10, weightedPoints: 0 },
@@ -56,6 +76,7 @@ ok(cardFactors(missing).every(f => f.status === 'Ni podatkov'));
 ok(cardSummary(missing).includes('ni dovolj podatkov'));
 strictEqual(cardReliability(missing).level, 'Omejena');
 strictEqual(cardReliability(assessment).level, 'Visoka');
+strictEqual(cardReliability(assessment).compactExplanation, 'Na voljo so vsi glavni podatki.');
 strictEqual(cardReliability(assessment, true).level, 'Omejena');
 strictEqual(cardReliability({ ...assessment, habitatState: 'unknown' }).level, 'Srednja');
 strictEqual(cardReliability({ ...assessment, dataQuality: 'limited' }).level, 'Srednja');
@@ -79,6 +100,23 @@ const functionText = (text: string, name: string) => {
 };
 const baseline = execFileSync('git', ['show', '8c70834:src/screens/MapScreen.tsx']).toString();
 strictEqual(functionText(screen, 'MapScreen'), functionText(baseline, 'MapScreen'), 'parent heatmap/LOD/network/navigation code untouched');
+const sheet = (sourceText: string) => {
+  const file = ts.createSourceFile('MapScreen.tsx', sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const declaration = file.statements.find(s => ts.isVariableStatement(s) && s.declarationList.declarations.some(d => d.name.getText(file) === 'styles'))!;
+  return new Function('StyleSheet', 'colors', 'spacing', 'radii', declaration.getText(file) + '\nreturn styles;')({ create: (v: any) => v, hairlineWidth: 1 }, colors, spacing, radii);
+};
+const actualStyles = sheet(screen), oldStyles = sheet(execFileSync('git', ['show', '75fc7e8:src/screens/MapScreen.tsx']).toString());
+strictEqual(actualStyles.heatmapPreview.maxHeight, oldStyles.heatmapPreview.maxHeight);
+strictEqual(actualStyles.heatmapPreview.bottom, oldStyles.heatmapPreview.bottom);
+deepStrictEqual(actualStyles.heatmapDetailsScroll, oldStyles.heatmapDetailsScroll);
+ok(actualStyles.heatmapFactor.paddingVertical < oldStyles.heatmapFactor.paddingVertical);
+ok(actualStyles.heatmapCardSection.paddingVertical < oldStyles.heatmapCardSection.paddingVertical);
+ok(actualStyles.heatmapCardDateSwitch.padding < oldStyles.heatmapCardDateSwitch.padding);
+ok(actualStyles.heatmapDetailsContent.paddingRight > 0, 'scrollbar clearance');
+for (const key of ['heatmapCardDateOption', 'heatmapDetailsToggle']) ok(actualStyles[key].minHeight >= 44);
+ok(actualStyles.heatmapCardClose.height >= 44);
+strictEqual(actualStyles.heatmapAreaScore.fontSize, oldStyles.heatmapAreaScore.fontSize);
+ok(!functionText(screen, 'HeatmapAreaCard').includes('numberOfLines='), 'long titles, metadata, states and factor descriptions can wrap without data loss');
 type Element = { type: string; props: Record<string, any> };
 let cursor = 0, calculations = 0;
 const hooks: any[] = [], effects: Array<() => void> = [];
@@ -91,7 +129,7 @@ const bindings = {
   useMemo: (factory: () => any, deps: any[]) => { const slot = cursor++; if (dependenciesChanged(hooks[slot]?.deps, deps)) { calculations++; hooks[slot] = { deps, value: factory() }; } return hooks[slot].value; },
   Card: 'Card', View: 'View', Text: 'Text', Pressable: 'Pressable', ScrollView: 'ScrollView', AppButton: 'AppButton', Ionicons: 'Icon',
   styles: new Proxy({}, { get: (_, key) => key }), commonStyles: {}, colors: {}, StyleSheet: { flatten: (v: any) => v },
-  MUSHROOM_WEATHER_PROFILES, HEATMAP_PILOT_METADATA, cardFactors, cardSummary, cardHabitat, cardReliability, cardTechnicalDetails,
+  MUSHROOM_WEATHER_PROFILES, HEATMAP_PILOT_METADATA, cardFactors, cardSummary, cardHabitat, cardReliability, cardTechnicalDetails, compactCardMetadata,
 };
 const javascript = ts.transpileModule(functionText(screen, 'HeatmapAreaCard'), { compilerOptions: { jsx: ts.JsxEmit.React, target: ts.ScriptTarget.ES2022 } }).outputText;
 const card = new Function(...Object.keys(bindings), javascript + '\nreturn HeatmapAreaCard;')(...Object.values(bindings));
@@ -105,6 +143,12 @@ const button = (tree: any, label: string) => nodes(tree).find(n => n.props.acces
 let tree = render();
 ok(!text(tree).includes('Prispevek k vremenski oceni:'));
 ok(!text(tree).includes('VIRI PODATKOV'));
+ok(text(tree).includes('Koroška · Jesenski goban'));
+ok(!text(tree).includes('Koroška, Slovenija'));
+ok(text(tree).includes(`ZAKAJ ${assessment.score}?`));
+ok(text(tree).includes('Na voljo so vsi glavni podatki.'));
+ok(!text(tree).includes('ne statistične gotovosti'));
+for (const f of cardFactors(assessment)) ok(text(tree).includes(f.compactDetail) && text(tree).includes(f.status));
 ok(text(tree).includes(`${assessment.score} / 100`) && text(tree).includes(assessment.classLabel));
 const scroll = nodes(tree).find(n => n.type === 'ScrollView')!;
 ok(!nodes(scroll).some(n => n.props.accessibilityRole === 'tab'), 'date remains outside scroll');
@@ -114,12 +158,28 @@ const beforeToggleCalculations = calculations;
 button(tree, 'Poglej podrobnosti').props.onPress(); tree = render();
 strictEqual(calculations, beforeToggleCalculations, 'details toggle does not rebuild even card presentation');
 ok(text(tree).includes('VIRI PODATKOV') && text(tree).includes('geoBoundaries') && text(tree).includes('Prispevek k vremenski oceni:'));
+ok(text(tree).includes('Koroška, Slovenija') && text(tree).includes('ne statistične gotovosti'));
+for (const f of cardFactors(assessment)) ok(text(tree).includes(f.detail));
 button(tree, 'Prikaži razmere za jutri').props.onPress(); strictEqual(chosenDay, 'tomorrow');
 props.targetDay = 'tomorrow'; props.assessment = make('boletusEdulis', 'tomorrow'); tree = render();
 ok(button(tree, 'Skrij podrobnosti').props.accessibilityState.expanded);
 ok(text(tree).includes(cardTechnicalDetails(props.assessment)[0].lines[0]));
 props.assessment = make('cantharellusCibarius', 'tomorrow'); tree = render();
 ok(text(tree).includes('14 dneh') && button(tree, 'Skrij podrobnosti'));
+for (const profile of HEATMAP_PROFILE_IDS) {
+  props.assessment = make(profile, 'tomorrow'); tree = render();
+  ok(text(tree).includes(compactCardMetadata(props.areaDetails, MUSHROOM_WEATHER_PROFILES[profile].label)));
+  ok(button(tree, 'Skrij podrobnosti').props.accessibilityState.expanded);
+}
+for (const state of ['unknown', 'outside-model', 'candidate'] as const) {
+  props.assessment = { ...make('lactariusDeliciosus', 'tomorrow'), habitatState: state }; tree = render();
+  ok(text(tree).includes(cardHabitat(props.assessment).title));
+}
+props.assessment = { ...missing, areaId: assessment.areaId }; tree = render();
+ok(text(tree).includes('ZAKAJ TA OCENA?') && !text(tree).includes('ZAKAJ 0?'));
+props.areaDetails = 'Dolgo regionalno ime za preverjanje preloma, Slovenija';
+props.assessment = make('cantharellusCibarius', 'tomorrow'); tree = render();
+ok(text(tree).includes('Dolgo regionalno ime za preverjanje preloma · Navadna lisička'));
 button(tree, 'Skrij podrobnosti').props.onPress(); tree = render();
 ok(!text(tree).includes('Prispevek k vremenski oceni:'));
 button(tree, 'Poglej podrobnosti').props.onPress(); tree = render();
@@ -127,4 +187,4 @@ props.assessment = { ...props.assessment, areaId: 'new-area' }; tree = render();
 ok(button(tree, 'Poglej podrobnosti'), 'new area resets expanded state');
 button(tree, 'Zapri podrobnosti območja').props.onPress(); strictEqual(closed, 1);
 nodes(tree).find(n => n.type === 'AppButton')!.props.onPress(); strictEqual(navigated, 1);
-console.log('PASS: presentation, species/day, missing data, reliability, habitat states, actual card expand/collapse; parent MapScreen unchanged (0 new weather/LOD/source side effects). Native scroll/touch layout still requires phone QA.');
+console.log('PASS: compact metadata/pills/reliability, preserved long text and contributions, species/day/missing/habitat states, expansion; parent MapScreen unchanged (0 new weather/LOD/source side effects). Density verified via style contracts; native wrapping/scroll still needs phone QA.');
