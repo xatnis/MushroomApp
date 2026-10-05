@@ -19,7 +19,7 @@ import { buildHeatmapRenderCollection, HEATMAP_HABITAT, HEATMAP_PILOT_METADATA, 
 import { heatmapViewportStatus, prioritizedWeatherPointIds, heatmapReadiness, type Bounds } from '../domain/heatmap/spatial';
 import { OVERVIEW_INDEX, OVERVIEW_WEATHER_POINTS, selectHeatmapLod, type HeatmapLod } from '../domain/heatmap/lod';
 import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
-import { slNumber } from '../domain/format';
+import { cardFactors, cardSummary, cardHabitat, cardReliability, cardTechnicalDetails } from '../domain/heatmap/cardPresentation';
 import { createHeatmapRequestGate, scheduleSettledHeatmapLoad, loadHeatmapPilot, mergeHeatmapBundles, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
 import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '../services/heatmap/areaLocality';
 import { useHeatmapVisuals } from '../services/heatmap/useHeatmapVisuals';
@@ -620,55 +620,17 @@ export function MapScreen() {
   </Screen>;
 }
 
-const heatmapValue = (value: number | undefined, unit: string, digits = 1) =>
-  value == null ? 'ni podatka' : `${slNumber(value, digits)} ${unit}`;
-
-function heatmapInfluences(assessment: HeatmapAreaAssessment): Array<{ label: string; value: string }> {
-  const history = assessment.summary.historical;
-  const current = assessment.summary.current;
-  const contribution = (key: string, maximum: number) => {
-    const component = assessment.scoreDetails.components.find((item) => item.key === key);
-    return component ? `${slNumber(component.weightedPoints, 1)} / ${maximum}` : `ni podatka / ${maximum}`;
-  };
-  if (assessment.speciesId === 'boletusEdulis') return [
-    { label: 'Padavine 26 dni', value: `${heatmapValue(history?.rain26dMm, 'mm')} · ${contribution('rain26', 50)}` },
-    { label: 'Temperatura 20 dni', value: `${heatmapValue(history?.avgTemp20dC, '°C')} · ${contribution('temperature', 30)}` },
-    { label: 'Vlaga tal 0–7 / 7–28 cm', value: `${heatmapValue(current?.soilMoisture0To7Cm, 'm³/m³', 3)} / ${heatmapValue(current?.soilMoisture7To28Cm, 'm³/m³', 3)} · ${contribution('soilMoisture', 15)}` },
-    { label: 'ET₀ / dež 7 dni', value: `${heatmapValue(history?.evapotranspiration7dMm, 'mm')} / ${heatmapValue(history?.rain7dMm, 'mm')} · ${contribution('drying', 5)}` },
-  ];
-  if (assessment.speciesId === 'cantharellusCibarius') return [
-    { label: 'Padavine 30 dni', value: `${heatmapValue(history?.rain30dMm, 'mm')} · ${contribution('rain30', 40)}` },
-    { label: 'Padavine 7 dni', value: `${heatmapValue(history?.rain7dMm, 'mm')} · ${contribution('rain7', 10)}` },
-    { label: 'Temperatura 14 dni', value: `${heatmapValue(history?.avgTemp14dC, '°C')} · ${contribution('temperature', 25)}` },
-    { label: 'Vlaga tal 0–7 / 7–28 cm', value: `${heatmapValue(current?.soilMoisture0To7Cm, 'm³/m³', 3)} / ${heatmapValue(current?.soilMoisture7To28Cm, 'm³/m³', 3)} · ${contribution('soilMoisture', 20)}` },
-    { label: 'Izsuševanje', value: contribution('drying', 5) },
-  ];
-  if (assessment.speciesId === 'lactariusDeliciosus') return [
-    { label: 'Padavine 60 dni', value: `${heatmapValue(history?.rain60dMm, 'mm')} · ${contribution('rain60', 35)}` },
-    { label: 'Padavine 14 dni', value: `${heatmapValue(history?.rain14dMm, 'mm')} · ${contribution('rain14', 10)}` },
-    { label: 'Temperatura 20 dni', value: `${heatmapValue(history?.avgTemp20dC, '°C')} · ${contribution('temperature', 25)}` },
-    { label: 'Vlaga tal 0–7 / 7–28 cm', value: `${heatmapValue(current?.soilMoisture0To7Cm, 'm³/m³', 3)} / ${heatmapValue(current?.soilMoisture7To28Cm, 'm³/m³', 3)} · ${contribution('soilMoisture', 25)}` },
-    { label: 'Izsuševanje', value: contribution('drying', 5) },
-  ];
-  return [
-    { label: 'Padavine 7 / 14 / 30 dni', value: `${heatmapValue(history?.rain7dMm, 'mm')} / ${heatmapValue(history?.rain14dMm, 'mm')} / ${heatmapValue(history?.rain30dMm, 'mm')} · ${contribution('rain', 45)}` },
-    { label: 'Temperatura 20 dni', value: `${heatmapValue(history?.avgTemp20dC, '°C')} · ${contribution('temperature', 25)}` },
-    { label: 'Vlaga tal 0–7 / 7–28 cm', value: `${heatmapValue(current?.soilMoisture0To7Cm, 'm³/m³', 3)} / ${heatmapValue(current?.soilMoisture7To28Cm, 'm³/m³', 3)} · ${contribution('soilMoisture', 20)}` },
-    { label: 'ET₀ / dež 7 dni', value: `${heatmapValue(history?.evapotranspiration7dMm, 'mm')} / ${heatmapValue(history?.rain7dMm, 'mm')} · ${contribution('drying', 10)}` },
-  ];
-}
-
 function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; weatherPending?: boolean; targetDay: HeatmapTargetDay; maxHeight?: number; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  useEffect(() => setDetailsExpanded(false), [assessment.areaId]);
   const profile = MUSHROOM_WEATHER_PROFILES[assessment.speciesId];
-  const quality = assessment.dataQuality === 'complete' ? 'Popolni podatki' : assessment.dataQuality === 'limited' ? 'Omejeni podatki' : 'Ni dovolj podatkov';
-  const habitat = assessment.habitatState === 'candidate'
-    ? ['lactariusDeliciosus', 'boletusEdulis', 'cantharellusCibarius'].includes(assessment.speciesId) ? 'Potencialno ustrezno gozdno območje' : 'Potencialno habitatno območje'
-    : assessment.habitatState === 'unknown'
-      ? assessment.speciesId === 'lactariusDeliciosus' ? 'Bor ni dovolj potrjen'
-        : ['boletusEdulis', 'cantharellusCibarius'].includes(assessment.speciesId) ? 'Gostiteljska drevesa niso dovolj potrjena' : 'Habitat ni potrjen'
-      : 'Zunaj habitatnega modela';
+  const presentation = useMemo(() => {
+    const factors = cardFactors(assessment);
+    return { factors, summary: cardSummary(assessment, factors), habitat: cardHabitat(assessment),
+      technical: cardTechnicalDetails(assessment), reliability: cardReliability(assessment, weatherPending) };
+  }, [assessment, weatherPending]);
   return <Card style={StyleSheet.flatten([styles.heatmapPreview, maxHeight ? { maxHeight } : undefined])}>
-    <View style={styles.heatmapPreviewHeader}><View style={styles.grow}><Text style={commonStyles.heading}>{areaLabel}</Text>{areaDetails ? <Text style={commonStyles.muted}>{areaDetails}</Text> : null}<Text style={commonStyles.muted}>{profile.label}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={onClose} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
+    <View style={styles.heatmapPreviewHeader}><View style={styles.grow}><Text style={commonStyles.heading}>{areaLabel}</Text>{areaDetails ? <Text style={commonStyles.muted}>{areaDetails}</Text> : null}<Text style={commonStyles.muted}>{profile.label}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={onClose} style={({ pressed }) => [styles.closeButton, styles.heatmapCardClose, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
     <View style={styles.heatmapCardDateSwitch} accessibilityRole="tablist">
       {([['today', 'Danes'], ['tomorrow', 'Jutri']] as const).map(([day, label]) => <Pressable
         key={day}
@@ -689,13 +651,45 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
       nestedScrollEnabled
       showsVerticalScrollIndicator
     >
-      <Text style={styles.heatmapDetailTitle}>HABITAT</Text><Text style={commonStyles.body}>{habitat}</Text>
-      {assessment.treeCompositionSource ? <Text style={commonStyles.muted}>Vir drevesne sestave: {assessment.treeCompositionSource}</Text> : null}
-      <Text style={styles.heatmapDetailTitle}>KAKOVOST PODATKOV</Text><Text style={commonStyles.body}>{quality}</Text>
-      <Text style={styles.heatmapDetailTitle}>GLAVNI VPLIVI</Text>
-      {heatmapInfluences(assessment).map((row) => <View key={row.label} style={styles.heatmapInfluence}><Text style={styles.heatmapInfluenceLabel}>{row.label}</Text><Text style={styles.heatmapInfluenceValue}>{row.value}</Text></View>)}
-      {assessment.limitations.slice(0, 3).map((limitation) => <Text key={limitation} style={commonStyles.muted}>• {limitation}</Text>)}
-      <Text style={commonStyles.muted}>Eksperimentalna ocena vremenskih razmer in primernosti habitata. Ne predstavlja verjetnosti najdbe.</Text>
+      <Text style={styles.heatmapSummary}>{presentation.summary}</Text>
+      <View style={styles.heatmapCardSection}>
+        <Text style={styles.heatmapDetailTitle}>GLAVNI DEJAVNIKI</Text>
+        {presentation.factors.map(factor => <View key={factor.key} style={styles.heatmapFactor}>
+          <View style={styles.heatmapFactorHeading}><Text style={styles.heatmapFactorName}>{factor.label}</Text><Text style={styles.heatmapFactorStatus}>{factor.status}</Text></View>
+          <Text style={commonStyles.muted}>{factor.detail}</Text>
+        </View>)}
+      </View>
+      <View style={styles.heatmapCardSection}><Text style={styles.heatmapDetailTitle}>HABITAT</Text>
+        <Text style={styles.heatmapBlockLabel}>{presentation.habitat.title}</Text><Text style={commonStyles.muted}>{presentation.habitat.explanation}</Text>
+      </View>
+      <View style={styles.heatmapCardSection}><Text style={styles.heatmapDetailTitle}>ZANESLJIVOST OCENE</Text>
+        <Text style={styles.heatmapBlockLabel}>{presentation.reliability.level}</Text><Text style={commonStyles.muted}>{presentation.reliability.explanation}</Text>
+        <Text style={commonStyles.muted}>Opisuje popolnost vhodnih podatkov, ne statistične gotovosti.</Text>
+      </View>
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded: detailsExpanded }}
+        accessibilityLabel={detailsExpanded ? 'Skrij podrobnosti' : 'Poglej podrobnosti'}
+        onPress={() => setDetailsExpanded(expanded => !expanded)}
+        style={({ pressed }) => [styles.heatmapDetailsToggle, pressed && styles.closeButtonPressed]}>
+        <Text style={styles.heatmapDetailsToggleText}>{detailsExpanded ? 'Skrij podrobnosti' : 'Poglej podrobnosti'}</Text>
+        <Ionicons name={detailsExpanded ? 'chevron-up' : 'chevron-down'} size={19} color={colors.primary} />
+      </Pressable>
+      {detailsExpanded ? <View style={styles.heatmapCardSection}>
+        <Text style={styles.heatmapDetailTitle}>PODROBNOSTI</Text>
+        {presentation.technical.length ? presentation.technical.map(row => <View key={row.key} style={styles.heatmapTechnicalRow}>
+          <Text style={styles.heatmapBlockLabel}>{row.label}</Text>
+          {row.lines.map(line => <Text key={line} style={commonStyles.muted}>{line}</Text>)}
+          <Text style={styles.heatmapTechnicalContribution}>{row.contribution}</Text>
+        </View>) : <Text style={commonStyles.muted}>Vremenskih komponent še ni na voljo.</Text>}
+        {assessment.limitations.map((limitation, index) => <Text key={`${index}-${limitation}`} style={commonStyles.muted}>• {limitation}</Text>)}
+        <Text style={commonStyles.muted}>Vremensko vzorčenje: {assessment.weatherSamplingResolutionM / 1000} km · {assessment.sourceAge}</Text>
+        <Text style={styles.heatmapDetailTitle}>VIRI PODATKOV</Text>
+        <Text style={commonStyles.muted}>Vreme: Open-Meteo</Text>
+        <Text style={commonStyles.muted}>Habitat: ESA WorldCover 2021 · Zavod za gozdove Slovenije – podatki o sestojih (kjer so na voljo)</Text>
+        {assessment.treeCompositionSource ? <Text style={commonStyles.muted}>Vir drevesne sestave: {assessment.treeCompositionSource}</Text> : null}
+        <Text style={commonStyles.muted}>{HEATMAP_PILOT_METADATA.worldCover.attribution}</Text>
+        <Text style={commonStyles.muted}>Meja: geoBoundaries</Text>
+      </View> : null}
+      <Text style={commonStyles.muted}>Ocena predstavlja primernost vremenskih razmer in ne zagotavlja prisotnosti gob.</Text>
       <Text style={commonStyles.muted}>Karta ne potrjuje dostopa ali dovoljenja za nabiranje.</Text>
       <AppButton title="Poglej podrobne razmere" variant="secondary" onPress={onOpenConditions} />
     </ScrollView>
@@ -746,7 +740,7 @@ const styles = StyleSheet.create({
   heatmapPreview: { position: 'absolute', left: spacing.sm, right: spacing.sm, bottom: spacing.sm, maxHeight: '80%', minHeight: 0, padding: spacing.md, gap: spacing.sm, elevation: 6, zIndex: 5 },
   heatmapPreviewHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   heatmapCardDateSwitch: { flexDirection: 'row', alignSelf: 'flex-start', padding: 3, gap: 3, borderRadius: radii.round, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border },
-  heatmapCardDateOption: { minWidth: 82, minHeight: 36, paddingHorizontal: spacing.md, alignItems: 'center', justifyContent: 'center', borderRadius: radii.round },
+  heatmapCardDateOption: { minWidth: 82, minHeight: 44, paddingHorizontal: spacing.md, alignItems: 'center', justifyContent: 'center', borderRadius: radii.round },
   heatmapCardDateOptionActive: { backgroundColor: colors.primary },
   heatmapCardDateText: { color: colors.primary, fontSize: 13, fontWeight: '800' },
   heatmapCardDateTextActive: { color: colors.white },
@@ -756,8 +750,17 @@ const styles = StyleSheet.create({
   heatmapAreaScore: { color: colors.primary, fontSize: 27, fontWeight: '900' },
   heatmapClassLabel: { flexShrink: 1, color: colors.text, fontSize: 15, lineHeight: 21, fontWeight: '700' },
   heatmapDetailTitle: { marginTop: spacing.xs, color: colors.primary, fontSize: 11, fontWeight: '900', letterSpacing: 0.7 },
-  heatmapInfluence: { paddingVertical: spacing.xs, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
-  heatmapInfluenceLabel: { color: colors.muted, fontSize: 11, fontWeight: '700' },
-  heatmapInfluenceValue: { color: colors.text, fontSize: 12, fontWeight: '700' },
+  heatmapCardClose: { width: 44, height: 44, borderRadius: 22 },
+  heatmapSummary: { color: colors.text, fontSize: 15, lineHeight: 22 },
+  heatmapCardSection: { gap: spacing.sm, paddingVertical: spacing.sm },
+  heatmapFactor: { gap: spacing.xs, paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  heatmapFactorHeading: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: spacing.sm },
+  heatmapFactorName: { color: colors.text, fontSize: 14, fontWeight: '700' },
+  heatmapFactorStatus: { flexShrink: 1, color: colors.primary, fontSize: 14, fontWeight: '700' },
+  heatmapBlockLabel: { color: colors.text, fontSize: 15, lineHeight: 21, fontWeight: '700' },
+  heatmapDetailsToggle: { minHeight: 48, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, backgroundColor: colors.surfaceSoft, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border },
+  heatmapDetailsToggleText: { color: colors.primary, fontSize: 15, fontWeight: '700' },
+  heatmapTechnicalRow: { gap: spacing.xs, paddingVertical: spacing.sm, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  heatmapTechnicalContribution: { color: colors.text, fontSize: 13, lineHeight: 19 },
   list: { flex: 1, minHeight: 0, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.md },
 });
