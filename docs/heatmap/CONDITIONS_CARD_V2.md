@@ -93,3 +93,21 @@ The focused harness checks exclusive opening/closing, default/null state, CTA wo
 Build: `npm run apk -- --name MushroomApp-preview-conditions-accordion-polish.apk`.
 
 Validation (2026-10-05): TypeScript and all 12 card/navigation/controls/transition/LOD/loading/weather/habitat/regional smoke scripts passed. Regional 84,248 and Pilot 15,688 baseline comparisons remain identical. Gradle failed with `Unable to establish loopback connection`; the helper exited unsuccessfully and the named output APK does not exist. No old APK was copied. Run the same command locally for phone QA.
+
+## Accordion scroll positioning
+
+Code diagnosis: the single-open implementation changed only `openSection`. ScrollView had no ref, anchor measurements or post-layout alignment. Closing a long section changed content height/header positions while the native view retained (or bounded) the old offset; nothing associated the new section with a new offset. This matches the reported phone symptom; no physical device measurements were made here.
+
+Each stable section View is a non-collapsible native anchor. After an explicit opening, a post-commit RAF performs fresh `measureLayout` against ScrollView's inner content View; section/parent layout and content-size events coalesce/remeasure the same pending request. Thus the measurement includes nested Details offsets and does not reuse the previous structure's Y. A selection generation plus per-measurement revision prevents both stale section callbacks and superseded same-selection measurements from scrolling. The callback consumes the request exactly once and issues animated `scrollTo`.
+
+The fixed header is outside the scroll viewport, not an overlapping sticky element. Its height is already excluded: the target is measured content Y minus the existing content top padding (8 points), providing the same breathing room without subtracting the header twice. ScrollView's actual `onLayout` height supplies the open section's minimum height, so short/final sections have enough scroll range to reach the top rather than being clamped to the bottom. This is dynamic scroll room, not a fixed card/header height.
+
+Only opening a section requests alignment. Closing it or revealing the three initially closed headers does not. Day/species/weather changes keep the section and do not request alignment. A new click cancels queued RAF/invalidates callbacks and stops an ongoing alignment at the last observed offset before the new target. Hiding Details, card X, area changes and unmount invalidate pending work. Refs are removed by native unmount; no old callback can scroll a new card.
+
+Header/main contents, CTA wording, scores/summary/factors, Weather/Habitat/Reliability semantics and single-open behaviour are unchanged. No parent MapScreen, service, model or LOD code changed; refs/layout/scroll handlers are confined to HeatmapAreaCard. Scroll events update only a ref, not React state. Native Android animation and physical title alignment still require phone QA.
+
+The card harness simulates content/viewport layout, native measurements and RAF: all direction changes, rapid taps, stale layout/measurement callbacks, repeated layout in one generation, short-section scroll room, no scrolling on close/day/species, and card-close/unmount cancellation. Native measurement is mocked; this is not a screenshot or native animation test.
+
+Build: `npm run apk -- --name MushroomApp-preview-conditions-accordion-scroll-fix.apk`.
+
+Validation (2026-10-05): TypeScript and all 12 card/navigation/controls/transition/LOD/loading/weather/habitat/regional scripts passed. Regional 84,248 and Pilot 15,688 comparisons remain identical. The requested APK helper failed at Gradle startup with `Unable to establish loopback connection`; the named output APK does not exist and no stale artifact was copied. Physical Android animated alignment remains unverified; run the same helper locally and check all three direction changes plus rapid taps.

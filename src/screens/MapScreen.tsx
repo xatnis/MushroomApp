@@ -623,9 +623,56 @@ export function MapScreen() {
 function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; weatherPending?: boolean; targetDay: HeatmapTargetDay; maxHeight?: number; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [openSection, setOpenSection] = useState<'weather' | 'habitat' | 'reliability' | null>(null);
+  const [scrollHeight, setScrollHeight] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const contentRef = useRef<View>(null!);
+  const anchors = useRef<Partial<Record<NonNullable<typeof openSection>, View>>>({});
+  const scrollGeneration = useRef(0);
+  const scrollMeasurement = useRef(0);
+  const pendingScroll = useRef<{ section: NonNullable<typeof openSection>; generation: number; areaId: string } | null>(null);
+  const scrollFrame = useRef<number | null>(null);
+  const scrollY = useRef(0);
+  const scrollAnimating = useRef(false);
+  const cancelSectionScroll = () => {
+    scrollGeneration.current++;
+    pendingScroll.current = null;
+    if (scrollFrame.current != null) cancelAnimationFrame(scrollFrame.current);
+    scrollFrame.current = null;
+    if (scrollAnimating.current) scrollRef.current?.scrollTo({ y: scrollY.current, animated: false });
+    scrollAnimating.current = false;
+  };
+  const toggleSection = (section: NonNullable<typeof openSection>) => {
+    cancelSectionScroll();
+    if (openSection !== section) pendingScroll.current = { section, generation: scrollGeneration.current, areaId: assessment.areaId };
+    setOpenSection(openSection === section ? null : section);
+  };
+  const generation = scrollGeneration.current;
+  const alignSectionAfterLayout = () => {
+    const request = pendingScroll.current;
+    if (!request || request.generation !== generation || request.section !== openSection || request.areaId !== assessment.areaId || !detailsExpanded) return;
+    const measurement = ++scrollMeasurement.current;
+    if (scrollFrame.current != null) cancelAnimationFrame(scrollFrame.current);
+    scrollFrame.current = requestAnimationFrame(() => {
+      scrollFrame.current = null;
+      if (pendingScroll.current !== request || !contentRef.current) return;
+      // Fresh native measurement relative to scroll content, including all parent offsets.
+      anchors.current[request.section]?.measureLayout(contentRef.current, (_x, y) => {
+        if (pendingScroll.current !== request || scrollGeneration.current !== request.generation || scrollMeasurement.current !== measurement) return;
+        pendingScroll.current = null;
+        scrollAnimating.current = true;
+        // Fixed header is outside ScrollView; its height is already excluded.
+        scrollRef.current?.scrollTo({ y: Math.max(0, y - styles.heatmapDetailsContent.paddingTop), animated: true });
+      });
+    });
+  };
   useEffect(() => {
+    alignSectionAfterLayout();
+  }, [openSection, detailsExpanded]);
+  useEffect(() => {
+    cancelSectionScroll();
     setDetailsExpanded(false);
     setOpenSection(null);
+    return cancelSectionScroll;
   }, [assessment.areaId]);
   const profile = MUSHROOM_WEATHER_PROFILES[assessment.speciesId];
   const presentation = useMemo(() => {
@@ -634,7 +681,7 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
       technical: cardTechnicalDetails(assessment), reliability: cardReliability(assessment, weatherPending) };
   }, [assessment, weatherPending]);
   return <Card style={StyleSheet.flatten([styles.heatmapPreview, maxHeight ? { maxHeight } : undefined])}>
-    <View style={styles.heatmapPreviewHeader}><View style={styles.heatmapCardHeading}><Text style={styles.heatmapCardTitle}>{areaLabel}</Text><Text style={styles.heatmapCardSecondary}>{compactCardMetadata(areaDetails, profile.label)}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={onClose} style={({ pressed }) => [styles.closeButton, styles.heatmapCardClose, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
+    <View style={styles.heatmapPreviewHeader}><View style={styles.heatmapCardHeading}><Text style={styles.heatmapCardTitle}>{areaLabel}</Text><Text style={styles.heatmapCardSecondary}>{compactCardMetadata(areaDetails, profile.label)}</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Zapri podrobnosti območja" hitSlop={8} onPress={() => { cancelSectionScroll(); setDetailsExpanded(false); setOpenSection(null); onClose(); }} style={({ pressed }) => [styles.closeButton, styles.heatmapCardClose, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
     <View style={styles.heatmapCardDateSwitch} accessibilityRole="tablist">
       {([['today', 'Danes'], ['tomorrow', 'Jutri']] as const).map(([day, label]) => <Pressable
         key={day}
@@ -650,6 +697,13 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
     <View style={styles.heatmapScoreLine}><Text style={styles.heatmapAreaScore}>{assessment.score == null ? '—' : `${assessment.score} / 100`}</Text><Text style={styles.heatmapClassLabel}>{assessment.classLabel}</Text></View>
     {weatherPending ? <Text style={commonStyles.muted}>Vremenski podatki za to območje se še nalagajo.</Text> : null}
     <ScrollView
+      ref={scrollRef}
+      innerViewRef={contentRef}
+      onLayout={event => setScrollHeight(event.nativeEvent.layout.height)}
+      onContentSizeChange={alignSectionAfterLayout}
+      onScroll={event => { scrollY.current = event.nativeEvent.contentOffset.y; }}
+      scrollEventThrottle={16}
+      onMomentumScrollEnd={() => { scrollAnimating.current = false; }}
       style={styles.heatmapDetailsScroll}
       contentContainerStyle={styles.heatmapDetailsContent}
       nestedScrollEnabled
@@ -674,16 +728,21 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
       </View>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: detailsExpanded }}
         accessibilityLabel={detailsExpanded ? 'Manj informacij' : 'Več informacij'}
-        onPress={() => setDetailsExpanded(expanded => !expanded)}
+        onPress={() => { cancelSectionScroll(); setDetailsExpanded(expanded => !expanded); }}
         style={({ pressed }) => [styles.heatmapDetailsToggle, pressed && styles.closeButtonPressed]}>
         <Text style={styles.heatmapDetailsToggleText}>{detailsExpanded ? 'Manj informacij' : 'Več informacij'}</Text>
         <Ionicons name={detailsExpanded ? 'chevron-up' : 'chevron-down'} size={19} color={colors.primary} />
       </Pressable>
       {detailsExpanded ? <View style={styles.heatmapCardSection}>
         <Text style={styles.heatmapDetailTitle}>PODROBNOSTI</Text>
-        {([['weather', 'Vreme'], ['habitat', 'Habitat'], ['reliability', 'Zanesljivost in viri']] as const).map(([section, label]) => <View key={section} style={styles.heatmapAccordion}>
+        {([['weather', 'Vreme'], ['habitat', 'Habitat'], ['reliability', 'Zanesljivost in viri']] as const).map(([section, label]) => <View key={section}
+          ref={view => { if (view) anchors.current[section] = view; else delete anchors.current[section]; }}
+          collapsable={false}
+          onLayout={alignSectionAfterLayout}
+          // Ensure even a short final section can reach the top without native offset clamping.
+          style={[styles.heatmapAccordion, openSection === section && scrollHeight > 0 ? { minHeight: scrollHeight } : undefined]}>
           <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ expanded: openSection === section }}
-            onPress={() => setOpenSection(current => current === section ? null : section)}
+            onPress={() => toggleSection(section)}
             style={({ pressed }) => [styles.heatmapAccordionHeader, pressed && styles.closeButtonPressed]}>
             <Text style={styles.heatmapBlockLabel}>{label}</Text><Ionicons name={openSection === section ? 'chevron-down' : 'chevron-forward'} size={18} color={colors.primary} />
           </Pressable>
