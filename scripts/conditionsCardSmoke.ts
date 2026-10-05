@@ -113,7 +113,7 @@ ok(actualStyles.heatmapFactor.paddingVertical < oldStyles.heatmapFactor.paddingV
 ok(actualStyles.heatmapCardSection.paddingVertical < oldStyles.heatmapCardSection.paddingVertical);
 ok(actualStyles.heatmapCardDateSwitch.padding < oldStyles.heatmapCardDateSwitch.padding);
 ok(actualStyles.heatmapDetailsContent.paddingRight > 0, 'scrollbar clearance');
-for (const key of ['heatmapCardDateOption', 'heatmapDetailsToggle']) ok(actualStyles[key].minHeight >= 44);
+for (const key of ['heatmapCardDateOption', 'heatmapDetailsToggle', 'heatmapAccordionHeader']) ok(actualStyles[key].minHeight >= 44);
 ok(actualStyles.heatmapCardClose.height >= 44);
 strictEqual(actualStyles.heatmapAreaScore.fontSize, oldStyles.heatmapAreaScore.fontSize);
 ok(!functionText(screen, 'HeatmapAreaCard').includes('numberOfLines='), 'long titles, metadata, states and factor descriptions can wrap without data loss');
@@ -122,7 +122,7 @@ let cursor = 0, calculations = 0;
 const hooks: any[] = [], effects: Array<() => void> = [];
 const dependenciesChanged = (old: any[], next: any[]) => !old || old.length !== next.length || next.some((d, i) => d !== old[i]);
 const bindings = {
-  React: { createElement: (type: string, props: any, ...children: any[]) => ({ type, props: { ...props, children } }) },
+  React: { Fragment: 'Fragment', createElement: (type: string, props: any, ...children: any[]) => ({ type, props: { ...props, children } }) },
   useState: (initial: any) => { const slot = cursor++; if (!(slot in hooks)) hooks[slot] = initial;
     return [hooks[slot], (next: any) => { hooks[slot] = typeof next === 'function' ? next(hooks[slot]) : next; }]; },
   useEffect: (effect: () => void, deps: any[]) => { const slot = cursor++; if (dependenciesChanged(hooks[slot], deps)) effects.push(effect); hooks[slot] = deps; },
@@ -146,23 +146,59 @@ ok(!text(tree).includes('VIRI PODATKOV'));
 ok(text(tree).includes('Koroška · Jesenski goban'));
 ok(!text(tree).includes('Koroška, Slovenija'));
 ok(text(tree).includes(`ZAKAJ ${assessment.score}?`));
-ok(text(tree).includes('Na voljo so vsi glavni podatki.'));
+ok(!text(tree).includes('Na voljo so vsi glavni podatki.'));
 ok(!text(tree).includes('ne statistične gotovosti'));
-for (const f of cardFactors(assessment)) ok(text(tree).includes(f.compactDetail) && text(tree).includes(f.status));
+for (const f of cardFactors(assessment)) {
+  ok(!text(tree).includes(f.compactDetail), 'no secondary factor values in main view');
+  ok(text(tree).includes(f.status));
+}
+deepStrictEqual(nodes(tree).filter(n => n.props.style === 'heatmapCompactStatus').map(text),
+  ['Habitat Potencialno ustrezno', 'Zanesljivost Visoka']);
+ok(!text(tree).includes(cardHabitat(assessment).explanation));
+ok(!button(tree, 'Vreme'), 'no details headers before expansion');
 ok(text(tree).includes(`${assessment.score} / 100`) && text(tree).includes(assessment.classLabel));
 const scroll = nodes(tree).find(n => n.type === 'ScrollView')!;
 ok(!nodes(scroll).some(n => n.props.accessibilityRole === 'tab'), 'date remains outside scroll');
 ok(!nodes(scroll).some(n => n.props.accessibilityLabel === 'Zapri podrobnosti območja'), 'X remains fixed');
-ok(text(scroll).includes('ne zagotavlja prisotnosti gob.'));
+ok(!text(scroll).includes('ne zagotavlja prisotnosti gob.'), 'disclaimer lives in Sources, not duplicated in main');
 const beforeToggleCalculations = calculations;
 button(tree, 'Poglej podrobnosti').props.onPress(); tree = render();
 strictEqual(calculations, beforeToggleCalculations, 'details toggle does not rebuild even card presentation');
-ok(text(tree).includes('VIRI PODATKOV') && text(tree).includes('geoBoundaries') && text(tree).includes('Prispevek k vremenski oceni:'));
-ok(text(tree).includes('Koroška, Slovenija') && text(tree).includes('ne statistične gotovosti'));
-for (const f of cardFactors(assessment)) ok(text(tree).includes(f.detail));
+const sectionLabels = ['Vreme', 'Habitat', 'Zanesljivost in viri'];
+for (const label of sectionLabels) {
+  strictEqual(button(tree, label).props.accessibilityState.expanded, false);
+  strictEqual(nodes(button(tree, label)).find(n => n.type === 'Icon')!.props.name, 'chevron-forward');
+}
+ok(!text(tree).includes('Prispevek k vremenski oceni:') && !text(tree).includes('VIRI PODATKOV'), 'outer expansion reveals only collapsed sections');
+button(tree, 'Vreme').props.onPress(); tree = render();
+strictEqual(calculations, beforeToggleCalculations, 'accordion is UI-only, not even presentation recalculation');
+for (const row of cardTechnicalDetails(assessment)) {
+  ok(text(tree).includes(row.contribution));
+  for (const line of row.lines) ok(text(tree).includes(line));
+}
+for (const f of cardFactors(assessment)) if (f.key === 'soilMoisture' || f.key === 'drying') ok(text(tree).includes(f.detail));
+ok(!text(tree).includes('VIRI PODATKOV'));
+button(tree, 'Habitat').props.onPress(); tree = render();
+ok(button(tree, 'Vreme').props.accessibilityState.expanded && button(tree, 'Habitat').props.accessibilityState.expanded, 'multiple sections can remain open');
+ok(text(tree).includes(assessment.limitations[0]));
+ok(text(tree).includes(HEATMAP_PILOT_METADATA.worldCover.attribution));
+if (assessment.treeCompositionSource) ok(text(tree).includes(assessment.treeCompositionSource));
+button(tree, 'Zanesljivost in viri').props.onPress(); tree = render();
+strictEqual(calculations, beforeToggleCalculations, 'all section toggles leave presentation and parent data unchanged');
+for (const label of sectionLabels) strictEqual(nodes(button(tree, label)).find(n => n.type === 'Icon')!.props.name, 'chevron-down');
+ok(text(tree).includes('VIRI PODATKOV') && text(tree).includes('geoBoundaries') && text(tree).includes('Open-Meteo') && text(tree).includes('ESA WorldCover 2021') && text(tree).includes('Zavod za gozdove Slovenije'));
+ok(text(tree).includes('Koroška, Slovenija') && text(tree).includes('ne statistične verjetnosti pravilnosti'));
+ok(text(tree).includes('ne zagotavlja prisotnosti gob.') && text(tree).includes('Karta ne potrjuje dostopa'));
+for (const limitation of assessment.limitations) ok(text(tree).includes(limitation));
+strictEqual(text(tree).split('Ocena predstavlja primernost vremenskih razmer').length - 1, 1, 'no duplicate disclaimer');
+button(tree, 'Vreme').props.onPress(); tree = render();
+ok(!text(tree).includes('Prispevek k vremenski oceni:'));
+ok(button(tree, 'Habitat').props.accessibilityState.expanded && button(tree, 'Zanesljivost in viri').props.accessibilityState.expanded);
+button(tree, 'Vreme').props.onPress(); tree = render();
 button(tree, 'Prikaži razmere za jutri').props.onPress(); strictEqual(chosenDay, 'tomorrow');
 props.targetDay = 'tomorrow'; props.assessment = make('boletusEdulis', 'tomorrow'); tree = render();
 ok(button(tree, 'Skrij podrobnosti').props.accessibilityState.expanded);
+for (const label of sectionLabels) ok(button(tree, label).props.accessibilityState.expanded, 'date preserves all open sections');
 ok(text(tree).includes(cardTechnicalDetails(props.assessment)[0].lines[0]));
 props.assessment = make('cantharellusCibarius', 'tomorrow'); tree = render();
 ok(text(tree).includes('14 dneh') && button(tree, 'Skrij podrobnosti'));
@@ -170,6 +206,8 @@ for (const profile of HEATMAP_PROFILE_IDS) {
   props.assessment = make(profile, 'tomorrow'); tree = render();
   ok(text(tree).includes(compactCardMetadata(props.areaDetails, MUSHROOM_WEATHER_PROFILES[profile].label)));
   ok(button(tree, 'Skrij podrobnosti').props.accessibilityState.expanded);
+  for (const label of sectionLabels) ok(button(tree, label).props.accessibilityState.expanded, 'species preserves all open sections');
+  for (const row of cardTechnicalDetails(props.assessment)) for (const line of row.lines) ok(text(tree).includes(line));
 }
 for (const state of ['unknown', 'outside-model', 'candidate'] as const) {
   props.assessment = { ...make('lactariusDeliciosus', 'tomorrow'), habitatState: state }; tree = render();
@@ -185,6 +223,14 @@ ok(!text(tree).includes('Prispevek k vremenski oceni:'));
 button(tree, 'Poglej podrobnosti').props.onPress(); tree = render();
 props.assessment = { ...props.assessment, areaId: 'new-area' }; tree = render();
 ok(button(tree, 'Poglej podrobnosti'), 'new area resets expanded state');
+button(tree, 'Poglej podrobnosti').props.onPress(); tree = render();
+for (const label of sectionLabels) strictEqual(button(tree, label).props.accessibilityState.expanded, false, 'new area resets every accordion');
+button(tree, 'Vreme').props.onPress(); tree = render();
 button(tree, 'Zapri podrobnosti območja').props.onPress(); strictEqual(closed, 1);
+// Closing the card unmounts it in the unchanged parent; simulate a fresh mount.
+hooks.length = 0; effects.length = 0; tree = render();
+ok(button(tree, 'Poglej podrobnosti'));
+button(tree, 'Poglej podrobnosti').props.onPress(); tree = render();
+for (const label of sectionLabels) strictEqual(button(tree, label).props.accessibilityState.expanded, false, 'fresh card starts collapsed');
 nodes(tree).find(n => n.type === 'AppButton')!.props.onPress(); strictEqual(navigated, 1);
-console.log('PASS: compact metadata/pills/reliability, preserved long text and contributions, species/day/missing/habitat states, expansion; parent MapScreen unchanged (0 new weather/LOD/source side effects). Density verified via style contracts; native wrapping/scroll still needs phone QA.');
+console.log('PASS: decision-only main, three independent accordions, exact technical values, all caveats/sources/disclaimers, date/species preservation, new-area/unmount reset; parent MapScreen unchanged (0 new weather/LOD/source side effects). Native wrapping/scroll still needs phone QA.');

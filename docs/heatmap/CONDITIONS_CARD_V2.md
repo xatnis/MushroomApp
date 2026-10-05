@@ -30,7 +30,7 @@ A known outside-model classification is not itself missing data; a high reliabil
 
 Details show actual component raw values, both soil depths, ET0/rain7, original weightedPoints/weight (no copied maxima), limitations, source age and weather sampling scale. Attribution retains Open-Meteo, ESA WorldCover 2021 and its full attribution, ZGS stand data where available, and geoBoundaries. No new ZGS licence claim is made.
 
-The main body always includes: “Ocena predstavlja primernost vremenskih razmer in ne zagotavlja prisotnosti gob.” Attribution stays accessible in Details.
+The disclaimer “Ocena predstavlja primernost vremenskih razmer in ne zagotavlja prisotnosti gob.” stays accessible in Details (in the current progressive-disclosure layout: Zanesljivost in viri). Attribution is retained.
 
 ## Checks
 
@@ -57,3 +57,23 @@ Habitat copy is unchanged with tighter spacing. Reliability level and heading sh
 These are style/layout-contract checks, not a measured native screenshot result. On Redmi 13C verify summary plus 2–3 factors below the fixed header, all four after a short scroll, long unknown/limited states, expanded attribution at the end, large-font settings, and one-finger scroll. Build with `npm run apk -- --name MushroomApp-preview-conditions-card-density-polish.apk`.
 
 Density-pass validation (2026-10-05): TypeScript, the updated card harness and 11 existing navigation/controls/LOD/loading/weather/habitat/regional scripts passed. Regional 84,248 and Pilot 15,688 baseline comparisons remain identical. The density APK helper failed at Gradle startup with the same loopback error; no new APK was copied. The helper command above must be run locally.
+
+## Current layout: progressive disclosure
+
+Three levels now replace the expanded monolithic report:
+
+1. **Decision:** fixed title/compact metadata/date/score, unchanged short summary, four name/status-only factor rows, compact Habitat and Zanesljivost statuses, and Poglej podrobnosti. No secondary raw values or long explanations in the main view. Candidate habitat is shortened to `Potencialno ustrezno`; unknown/outside-model keep their specific labels.
+2. **Explanation:** Poglej podrobnosti reveals three initially collapsed, independent accordions: Vreme, Habitat, Zanesljivost in viri. Multiple sections may remain open. Headers have 44-point targets, textual labels, expanded accessibility state and forward/down chevrons from existing Ionicons.
+3. **Technical:** Vreme contains four groups with the actual per-species component breakdown, raw periods/values, unchanged weightedPoints/weight, normalized interpretation, both soil layers and ET0/rain7. Rain/temperature raw values are not repeated a second time as secondary factor prose. Missing groups retain Ni podatkov and their existing explanation. No charts or new dependencies.
+
+Habitat contains the full classification, production species-specific explanation, WorldCover dataset/vintage/full attribution and ZGS source/acquisition date where available. The existing areaAssessmentFor contract puts the habitat explanation first in limitations; that first item is shown here, while remaining weather caveats appear under Zanesljivost in viri. Nothing is discarded.
+
+Zanesljivost in viri retains the unchanged reliability level/full explanation, weather caveats, source age/fetchedAt/sampling scale, full location metadata, all four source names and both weather/presence and access/permission disclaimers. It explicitly states that completeness is not a statistical probability of correctness. These are not repeated below the accordions.
+
+State remains local to HeatmapAreaCard. Species/day retain outer expansion and all independent section states. Hiding/reopening the outer details preserves the user's section choices; new area or card unmount resets everything. Stable section keys and the unchanged ScrollView preserve normal scroll reconciliation: no scrollTo calls, animation, height changes to the maximum, or source remounts. Expanding above/below existing content can naturally change scrollable content size; device QA must confirm comfortable behaviour.
+
+No production/domain helper, model, habitat rule, weather service or parent MapScreen logic changed in this pass. The focused test checks actual accordion handlers, multi-open behaviour, collapse, date/species updates, missing data, reset, preservation of technical values/attribution/caveats and the unchanged parent function. Native wrap/scroll/Redmi 13C visual density still need a physical test.
+
+Build: `npm run apk -- --name MushroomApp-preview-conditions-progressive-disclosure.apk`.
+
+Validation (2026-10-05): TypeScript and 12 focused/existing test scripts passed, including navigation, weather/habitat, loading and LOD checks. Regional 84,248 and Pilot 15,688 comparisons remain identical. The requested helper failed with `Unable to establish loopback connection`; no APK was created/copied. Physical Android scroll/accordion usability remains to be checked after a local build.
