@@ -622,10 +622,10 @@ export function MapScreen() {
 
 function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; weatherPending?: boolean; targetDay: HeatmapTargetDay; maxHeight?: number; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  const [openSections, setOpenSections] = useState({ weather: false, habitat: false, reliability: false });
+  const [openSection, setOpenSection] = useState<'weather' | 'habitat' | 'reliability' | null>(null);
   useEffect(() => {
     setDetailsExpanded(false);
-    setOpenSections({ weather: false, habitat: false, reliability: false });
+    setOpenSection(null);
   }, [assessment.areaId]);
   const profile = MUSHROOM_WEATHER_PROFILES[assessment.speciesId];
   const presentation = useMemo(() => {
@@ -673,21 +673,21 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
         <Text style={styles.heatmapFactorName}>Zanesljivost</Text><Text style={styles.heatmapCompactStatusValue}>{presentation.reliability.level}</Text>
       </View>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: detailsExpanded }}
-        accessibilityLabel={detailsExpanded ? 'Skrij podrobnosti' : 'Poglej podrobnosti'}
+        accessibilityLabel={detailsExpanded ? 'Manj informacij' : 'Več informacij'}
         onPress={() => setDetailsExpanded(expanded => !expanded)}
         style={({ pressed }) => [styles.heatmapDetailsToggle, pressed && styles.closeButtonPressed]}>
-        <Text style={styles.heatmapDetailsToggleText}>{detailsExpanded ? 'Skrij podrobnosti' : 'Poglej podrobnosti'}</Text>
+        <Text style={styles.heatmapDetailsToggleText}>{detailsExpanded ? 'Manj informacij' : 'Več informacij'}</Text>
         <Ionicons name={detailsExpanded ? 'chevron-up' : 'chevron-down'} size={19} color={colors.primary} />
       </Pressable>
       {detailsExpanded ? <View style={styles.heatmapCardSection}>
         <Text style={styles.heatmapDetailTitle}>PODROBNOSTI</Text>
         {([['weather', 'Vreme'], ['habitat', 'Habitat'], ['reliability', 'Zanesljivost in viri']] as const).map(([section, label]) => <View key={section} style={styles.heatmapAccordion}>
-          <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ expanded: openSections[section] }}
-            onPress={() => setOpenSections(current => ({ ...current, [section]: !current[section] }))}
+          <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ expanded: openSection === section }}
+            onPress={() => setOpenSection(current => current === section ? null : section)}
             style={({ pressed }) => [styles.heatmapAccordionHeader, pressed && styles.closeButtonPressed]}>
-            <Text style={styles.heatmapBlockLabel}>{label}</Text><Ionicons name={openSections[section] ? 'chevron-down' : 'chevron-forward'} size={18} color={colors.primary} />
+            <Text style={styles.heatmapBlockLabel}>{label}</Text><Ionicons name={openSection === section ? 'chevron-down' : 'chevron-forward'} size={18} color={colors.primary} />
           </Pressable>
-          {openSections[section] ? <View style={styles.heatmapAccordionBody}>
+          {openSection === section ? <View style={styles.heatmapAccordionBody}>
             {section === 'weather' ? presentation.factors.map(factor => {
               const rows = presentation.technical.filter(row => factor.key === 'rain' ? row.key.startsWith('rain') : row.key === factor.key);
               return <View key={factor.key} style={styles.heatmapTechnicalRow}>
@@ -708,24 +708,36 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
               <Text style={commonStyles.muted}>{HEATMAP_PILOT_METADATA.worldCover.attribution}</Text>
               <Text style={commonStyles.muted}>Habitatna evidenca ne dokazuje prisotnosti gob.</Text>
             </> : <>
-              <Text style={styles.heatmapBlockLabel}>Zanesljivost ocene: {presentation.reliability.level}</Text>
-              <Text style={commonStyles.muted}>{presentation.reliability.explanation}</Text>
-              <Text style={commonStyles.muted}>Zanesljivost opisuje popolnost vhodnih podatkov, ne statistične verjetnosti pravilnosti.</Text>
-              {assessment.limitations.slice(1).map((limitation, index) => <Text key={`${index}-${limitation}`} style={commonStyles.muted}>• {limitation}</Text>)}
-              <Text style={commonStyles.muted}>Vremensko vzorčenje: {assessment.weatherSamplingResolutionM / 1000} km · {assessment.sourceAge}</Text>
-              <Text style={commonStyles.muted}>Vremenski podatki pridobljeni: {assessment.fetchedAt}</Text>
-              {areaDetails ? <Text style={commonStyles.muted}>{areaDetails} · {profile.label}</Text> : null}
-              <Text style={styles.heatmapDetailTitle}>VIRI PODATKOV</Text>
-              <Text style={commonStyles.muted}>Vreme: Open-Meteo</Text>
-              <Text style={commonStyles.muted}>Habitat: ESA WorldCover 2021 · Zavod za gozdove Slovenije – podatki o sestojih (kjer so na voljo)</Text>
-              <Text style={commonStyles.muted}>Meja: geoBoundaries</Text>
-              <Text style={commonStyles.muted}>Ocena predstavlja primernost vremenskih razmer in ne zagotavlja prisotnosti gob.</Text>
-              <Text style={commonStyles.muted}>Karta ne potrjuje dostopa ali dovoljenja za nabiranje.</Text>
+              <View style={styles.heatmapReliabilityGroup}>
+                <Text style={styles.heatmapDetailTitle}>ZANESLJIVOST</Text>
+                <Text style={styles.heatmapBlockLabel}>{presentation.reliability.level}</Text>
+                <Text style={commonStyles.muted}>{presentation.reliability.compactExplanation}</Text>
+              </View>
+              <View style={styles.heatmapReliabilityGroup}>
+                <Text style={styles.heatmapDetailTitle}>OMEJITEV</Text>
+                <Text style={commonStyles.muted}>Zanesljivost opisuje popolnost vhodnih podatkov, ne statistične gotovosti.</Text>
+                {assessment.limitations.slice(1).map((limitation, index) => <Text key={`${index}-${limitation}`} style={commonStyles.muted}>• {limitation}</Text>)}
+                <Text style={commonStyles.muted}>Vremensko vzorčenje: {assessment.weatherSamplingResolutionM / 1000} km · {assessment.sourceAge}</Text>
+                <Text style={commonStyles.muted}>Vremenski podatki pridobljeni: {assessment.fetchedAt}</Text>
+                {areaDetails ? <Text style={commonStyles.muted}>{areaDetails} · {profile.label}</Text> : null}
+              </View>
+              <View style={styles.heatmapReliabilityGroup}>
+                <Text style={styles.heatmapDetailTitle}>VIRI</Text>
+                <Text style={commonStyles.muted}>Open-Meteo</Text>
+                <Text style={commonStyles.muted}>Zavod za gozdove Slovenije – podatki o sestojih (kjer so na voljo)</Text>
+                <Text style={commonStyles.muted}>ESA WorldCover 2021</Text>
+                <Text style={commonStyles.muted}>geoBoundaries</Text>
+              </View>
+              <View style={styles.heatmapReliabilityGroup}>
+                <Text style={styles.heatmapDetailTitle}>DISCLAIMER</Text>
+                <Text style={commonStyles.muted}>Ocena predstavlja primernost vremenskih razmer in ne zagotavlja prisotnosti gob.</Text>
+                <Text style={commonStyles.muted}>Karta ne potrjuje dostopa ali dovoljenja za nabiranje.</Text>
+              </View>
             </>}
           </View> : null}
         </View>)}
       </View> : null}
-      <AppButton title="Poglej podrobne razmere" variant="secondary" onPress={onOpenConditions} />
+      <AppButton title="Odpri celoten pregled razmer" variant="secondary" onPress={onOpenConditions} />
     </ScrollView>
   </Card>;
 }
@@ -807,6 +819,7 @@ const styles = StyleSheet.create({
   heatmapAccordion: { borderWidth: 1, borderColor: colors.border, borderRadius: radii.sm },
   heatmapAccordionHeader: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs },
   heatmapAccordionBody: { gap: spacing.sm, paddingHorizontal: spacing.sm, paddingBottom: spacing.sm },
+  heatmapReliabilityGroup: { gap: spacing.xs, paddingVertical: spacing.xs },
   heatmapTechnicalContribution: { color: colors.text, fontSize: 13, lineHeight: 19 },
   list: { flex: 1, minHeight: 0, paddingHorizontal: spacing.lg, paddingBottom: spacing.sm, gap: spacing.md },
 });

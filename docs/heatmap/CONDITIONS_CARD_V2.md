@@ -58,7 +58,7 @@ These are style/layout-contract checks, not a measured native screenshot result.
 
 Density-pass validation (2026-10-05): TypeScript, the updated card harness and 11 existing navigation/controls/LOD/loading/weather/habitat/regional scripts passed. Regional 84,248 and Pilot 15,688 baseline comparisons remain identical. The density APK helper failed at Gradle startup with the same loopback error; no new APK was copied. The helper command above must be run locally.
 
-## Current layout: progressive disclosure
+## Progressive-disclosure redesign (before the accordion polish below)
 
 Three levels now replace the expanded monolithic report:
 
@@ -77,3 +77,19 @@ No production/domain helper, model, habitat rule, weather service or parent MapS
 Build: `npm run apk -- --name MushroomApp-preview-conditions-progressive-disclosure.apk`.
 
 Validation (2026-10-05): TypeScript and 12 focused/existing test scripts passed, including navigation, weather/habitat, loading and LOD checks. Regional 84,248 and Pilot 15,688 comparisons remain identical. The requested helper failed with `Unable to establish loopback connection`; no APK was created/copied. Physical Android scroll/accordion usability remains to be checked after a local build.
+
+## Current layout: mini accordion polish
+
+The header and decision view are identical to the progressive-disclosure baseline. Only Details changes:
+
+- One local `openSection: 'weather' | 'habitat' | 'reliability' | null` replaces three independent booleans. Opening a section closes the previous one; tapping the open section closes it. The first `Več informacij` expansion starts with all sections closed (no automatic Weather expansion).
+- `Poglej podrobnosti` becomes `Več informacij`, with `Manj informacij` for collapsing the inline details. `Poglej podrobne razmere` becomes `Odpri celoten pregled razmer`, retaining the existing Conditions navigation.
+- Reliability/Sources is grouped with small labels and whitespace: `ZANESLJIVOST` (level and existing compact explanation), `OMEJITEV` (input completeness, not statistical certainty; existing weather caveats/age/sampling/acquisition/location context), `VIRI` (four source names), and `DISCLAIMER` (weather suitability/no mushroom guarantee and access caveat). Full WorldCover attribution and ZGS metadata remain in Habitat. No nested accordions or charts.
+
+Weather and Habitat accordion content is unchanged. Species/day updates preserve the one open section; hiding/reopening inline Details preserves the choice. New area/card unmount resets both `detailsExpanded` and `openSection`. All state is child-local: no weather requests, GeoJSON preparation, LOD changes or source remounts. Presentation memoization is unchanged.
+
+The focused harness checks exclusive opening/closing, default/null state, CTA wording, the four reliability groups, source/caveat/disclaimer preservation, species/day updates and reset. It also compares the parent MapScreen, fixed header/main view and Weather/Habitat content to their baselines. Native scrolling and long-text wrapping still require phone QA.
+
+Build: `npm run apk -- --name MushroomApp-preview-conditions-accordion-polish.apk`.
+
+Validation (2026-10-05): TypeScript and all 12 card/navigation/controls/transition/LOD/loading/weather/habitat/regional smoke scripts passed. Regional 84,248 and Pilot 15,688 baseline comparisons remain identical. Gradle failed with `Unable to establish loopback connection`; the helper exited unsuccessfully and the named output APK does not exist. No old APK was copied. Run the same command locally for phone QA.
