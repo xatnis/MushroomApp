@@ -31,7 +31,7 @@ ok(!heatmapControlsPanelVisible(controls, true, false), 'dismiss during card occ
 
 const screen = readFileSync('src/screens/MapScreen.tsx', 'utf8');
 const hook = readFileSync('src/services/heatmap/useHeatmapVisuals.ts', 'utf8');
-strictEqual((screen.match(/dispatchHeatmapControls\(\{ type: 'open' \}\)/g) ?? []).length, 1, 'only explicit Pogoji reopens');
+strictEqual((screen.match(/dispatchHeatmapControls\(\{ type: 'open' \}\)/g) ?? []).length, 2, 'only explicit Pogoji or compact context control reopens');
 ok(screen.includes('onPressIn={(event) => {') && screen.includes("type: 'dismiss'"));
 ok(!hook.includes('loadHeatmapPilot(') && !hook.includes('getRegionalWeather('));
 ok(screen.includes('data={visual.detailData}') && screen.includes('data={visual.overviewData}'));

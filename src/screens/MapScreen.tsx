@@ -4,7 +4,7 @@ import { Camera, GeoJSONSource, Layer, Map, Marker, UserLocation, type MapRef, t
 import * as Location from 'expo-location';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import { useIsFocused, useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppButton, Card, Chip, EmptyState, Field, Notice, Screen, StatusPill, commonStyles } from '../components/ui';
 import { useApp } from '../state/AppContext';
@@ -24,7 +24,7 @@ import { createHeatmapRequestGate, scheduleSettledHeatmapLoad, loadHeatmapPilot,
 import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '../services/heatmap/areaLocality';
 import { useHeatmapVisuals } from '../services/heatmap/useHeatmapVisuals';
 import { HEATMAP_NATIVE_RANGES, HEATMAP_VISUAL, shouldPrewarmHeatmapDetail } from '../domain/heatmap/visual';
-import { INITIAL_HEATMAP_CONTROLS, heatmapControlsReducer, heatmapControlsPanelVisible } from '../domain/heatmap/controlsState';
+import { INITIAL_HEATMAP_CONTROLS, heatmapControlsReducer, heatmapControlsPanelVisible, hotspotPopupVisible, hotspotFocusPadding } from '../domain/heatmap/controlsState';
 import { OVERVIEW_PREFETCH, shouldPrefetchOverview, prioritizedOverviewWeatherPointIds, overviewReadyCoverage, createOverviewCoverageDiagnostics } from '../domain/heatmap/overviewLoading';
 import { localDateFor } from '../domain/heatmap/assessment';
 import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
@@ -76,6 +76,7 @@ export function MapScreen() {
   const db = useSQLiteContext();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<TabsParamList, 'Map'>>();
+  const isFocused = useIsFocused();
   const {
     hotspots, finds, session, exploreLocation, setExploreLocation, pendingHotspotFocus, clearHotspotFocus,
     heatmapNavigation, updateHeatmapNavigation,
@@ -85,6 +86,7 @@ export function MapScreen() {
   const mapWasMoved = useRef(false);
   const locationRequestGate = useRef(createLocationRequestGate()).current;
   const suppressMapPressUntil = useRef(0);
+  const consumedHotspotFocus = useRef<string | undefined>(undefined);
   const [mode, setMode] = useState<'map' | 'list'>('map');
   const [query, setQuery] = useState('');
   const [ownerFilter, setOwnerFilter] = useState<'mine' | 'friends'>('mine');
@@ -97,7 +99,9 @@ export function MapScreen() {
   const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
   const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
   const [placeSearchError, setPlaceSearchError] = useState<string>();
-  const [cameraTarget, setCameraTarget] = useState<{ center: [number, number]; zoom: number; focusRequestId?: string }>();
+  const [cameraTarget, setCameraTarget] = useState<{ center: [number, number]; zoom: number; focusRequestId?: string; hotspotId?: string }>();
+  const [popupLayout, setPopupLayout] = useState<{ id: string; height: number }>();
+  const [contextBottom, setContextBottom] = useState(0);
   const { enabled: heatmapEnabled, profileId: heatmapProfileId, targetDay: heatmapTargetDay, selectedAreaId: selectedHeatmapAreaId } = heatmapNavigation;
   const [heatmapBundle, setHeatmapBundle] = useState<HeatmapPilotBundle>();
   const [heatmapLoading, setHeatmapLoading] = useState(false);
@@ -313,24 +317,42 @@ export function MapScreen() {
   }, [mode]);
 
   useEffect(() => {
-    if (mode !== 'map' || !mapReady || !cameraTarget || !camera.current) return;
+    if (!isFocused || mode !== 'map' || !mapReady || !cameraTarget || !camera.current) return;
+    const popupExpected = cameraTarget.hotspotId && selected?.id === cameraTarget.hotspotId && hotspotPopupVisible(true, heatmapEnabled,
+      heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen));
+    if (popupExpected && (popupLayout?.id !== cameraTarget.hotspotId || mapViewportHeight <= 0)) return;
+    if (popupExpected && heatmapEnabled && !heatmapControlsVisible && contextBottom <= 0) return;
     setCameraMoving(true);
-    camera.current.easeTo({ center: cameraTarget.center, zoom: cameraTarget.zoom, duration: 700 });
+    const padding = popupExpected ? hotspotFocusPadding(mapViewportHeight, popupLayout!.height, spacing.lg, heatmapEnabled ? contextBottom : 0, spacing.sm)
+      : { top: 0, bottom: 0, left: 0, right: 0 };
+    camera.current.easeTo({ center: cameraTarget.center, zoom: cameraTarget.zoom, duration: 700, padding });
     if (cameraTarget.focusRequestId) clearHotspotFocus(cameraTarget.focusRequestId);
     setCameraTarget(undefined);
-  }, [cameraTarget, clearHotspotFocus, mapReady, mode]);
+  }, [cameraTarget, clearHotspotFocus, mapReady, mode, isFocused, popupLayout, mapViewportHeight, contextBottom, heatmapEnabled, heatmapControls, heatmapAreaCardOpen, selected?.id]);
 
   useEffect(() => {
-    if (!pendingHotspotFocus) return;
+    if (isFocused) return;
+    if (consumedHotspotFocus.current) clearHotspotFocus(consumedHotspotFocus.current);
+    consumedHotspotFocus.current = undefined;
+    setSelectedId(undefined); setCameraTarget(undefined); setPopupLayout(undefined); setContextBottom(0);
+    dispatchHeatmapControls({ type: 'leave' });
+  }, [isFocused, clearHotspotFocus]);
+
+  useEffect(() => {
+    if (!isFocused || !pendingHotspotFocus) return;
+    consumedHotspotFocus.current = pendingHotspotFocus.requestId;
     setSelectedId(pendingHotspotFocus.hotspotId); setOwnerFilter('mine'); setMode('map');
-    if (pendingHotspotFocus.conditions) updateHeatmapNavigation({ enabled: true,
-      ...pendingHotspotFocus.conditions, selectedAreaId: undefined });
+    if (pendingHotspotFocus.conditions) {
+      dispatchHeatmapControls({ type: 'hotspot-entry' });
+      updateHeatmapNavigation({ enabled: true, ...pendingHotspotFocus.conditions, selectedAreaId: undefined });
+    }
     setCameraTarget({
       center: [pendingHotspotFocus.longitude, pendingHotspotFocus.latitude],
       zoom: 15,
       focusRequestId: pendingHotspotFocus.requestId,
+      hotspotId: pendingHotspotFocus.hotspotId,
     });
-  }, [pendingHotspotFocus]);
+  }, [pendingHotspotFocus, isFocused]);
 
   useEffect(() => {
     if (!route.params?.focusExploreLocationAt || !exploreLocation) return;
@@ -342,7 +364,8 @@ export function MapScreen() {
   const focusHotspot = (hotspot: (typeof hotspots)[number]) => {
     locationRequestGate.cancel(); setLocating(false);
     setSelectedId(hotspot.id); setOwnerFilter('mine'); setMode('map');
-    setCameraTarget({ center: [hotspot.longitude, hotspot.latitude], zoom: 15 });
+    if (heatmapEnabled) dispatchHeatmapControls({ type: 'hotspot-entry' });
+    setCameraTarget({ center: [hotspot.longitude, hotspot.latitude], zoom: 15, hotspotId: hotspot.id });
   };
 
   const selectPlace = (place: PlaceSearchResult) => {
@@ -373,7 +396,7 @@ export function MapScreen() {
       setLocationGranted(true);
       const current = result.location;
       setSelectedId(undefined);
-      camera.current?.easeTo({ center: [current.coords.longitude, current.coords.latitude], zoom: 15, duration: 700 });
+      camera.current?.easeTo({ center: [current.coords.longitude, current.coords.latitude], zoom: 15, duration: 700, padding: { top: 0, bottom: 0, left: 0, right: 0 } });
       setExploreLocation({ name: 'Moja lokacija', latitude: current.coords.latitude, longitude: current.coords.longitude, source: 'gps' });
       const accuracy = accuracyMeters(current);
       if (accuracy != null && accuracy > 100) {
@@ -554,6 +577,14 @@ export function MapScreen() {
         </Marker>)}
       </Map>
       <Pressable accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
+      {heatmapEnabled && !heatmapAreaCardOpen && !heatmapControlsVisible ? <Pressable
+        accessibilityRole="button" accessibilityLabel="Odpri izbiro pogojev"
+        onLayout={({ nativeEvent }) => setContextBottom(nativeEvent.layout.y + nativeEvent.layout.height)}
+        onPress={() => dispatchHeatmapControls({ type: 'open' })}
+        style={({ pressed }) => [styles.contextControl, pressed && styles.closeButtonPressed]}>
+        <Text numberOfLines={1} style={styles.contextText}>{MUSHROOM_WEATHER_PROFILES[heatmapProfileId].label} · {heatmapTargetDay === 'today' ? 'Danes' : 'Jutri'}</Text>
+        <Ionicons name="options-outline" size={18} color={colors.primary} />
+      </Pressable> : null}
       {heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen) ? <View style={styles.heatmapControls}>
         {heatmapLod === 'overview' ? <Text style={commonStyles.muted}>{overviewTapped ? 'Približaj zemljevid za podrobnejše pogoje.' : 'Regionalni pregled · Približaj za podrobnejši prikaz'}</Text> : null}
         <View style={styles.heatmapControlsHeader}>
@@ -589,11 +620,14 @@ export function MapScreen() {
         <View style={styles.grow}><Text numberOfLines={1} style={styles.conditionsLocation}>{exploreLocation.name}</Text><Text style={styles.conditionsActionText}>Poglej razmere</Text></View>
         <Ionicons name="chevron-forward" size={18} color={colors.primary} />
       </Pressable> : null}
-      {selected ? <Card style={styles.preview}>
-        <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{selected.title || 'Rastišče brez naslova'}</Text><Text style={commonStyles.muted}>{finds.filter((find) => find.hotspotId === selected.id).length} obiskov</Text></View><StatusPill state={selected.syncState} /><Pressable accessibilityRole="button" accessibilityLabel="Zapri kartico rastišča" hitSlop={8} onPress={() => setSelectedId(undefined)} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
+      {selected && hotspotPopupVisible(true, heatmapEnabled, heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen)) ? <View style={styles.preview}
+        onLayout={({ nativeEvent }) => setPopupLayout({ id: selected.id, height: nativeEvent.layout.height })}>
+        <Card style={styles.previewDensity}>
+        <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{selected.title || 'Rastišče brez naslova'}</Text><Text style={commonStyles.muted}>{finds.filter((find) => find.hotspotId === selected.id).length} obiskov</Text></View><StatusPill state={selected.syncState} /><Pressable accessibilityRole="button" accessibilityLabel="Zapri kartico rastišča" hitSlop={8} onPress={() => setSelectedId(undefined)} style={({ pressed }) => [styles.closeButton, styles.heatmapControlsClose, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
         {heatmapEnabled ? <HotspotConditionsPopup hotspot={selected} profile={heatmapProfileId} day={heatmapTargetDay} /> : null}
         <AppButton title="Odpri rastišče" variant="secondary" onPress={() => navigation.navigate('HotspotDetail', { hotspotId: selected.id })} />
-      </Card> : null}
+        </Card>
+      </View> : null}
       {!selected && heatmapEnabled && heatmapLod === 'detail' && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
         assessment={selectedHeatmapArea}
         weatherPending={!heatmapBundle?.weather.cells[selectedHeatmapFeature.properties.weatherCellId] && heatmapStatus === 'loading'}
@@ -803,6 +837,11 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
 }
 
 const styles = StyleSheet.create({
+  previewDensity: { padding: 14, gap: 10 },
+  contextControl: { position: 'absolute', top: 66, left: spacing.sm, right: 60, minHeight: 44,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md,
+    borderRadius: radii.round, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, elevation: 4 },
+  contextText: { flex: 1, color: colors.primary, fontSize: 13, fontWeight: '600' },
   screen: { flex: 1, minHeight: 0, padding: 0, gap: 0 },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md, gap: spacing.md },
   controls: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.sm },

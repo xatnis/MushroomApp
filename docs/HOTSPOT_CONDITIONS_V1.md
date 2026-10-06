@@ -97,6 +97,47 @@ Build: `npm run apk -- --name MushroomApp-preview-hotspot-conditions-v1.apk`. Do
 
 Known limits: native badge/popup placement and responsiveness still require phone verification; outside AOI habitat is unknown; snapshots are not cloud-synced; immediate saves may legitimately lack a snapshot; current weather and forecast inputs remain model estimates, not finding probabilities.
 
+## Hotspot-focused map entry and overlay hierarchy
+
+The existing optional `pendingHotspotFocus.conditions` is the explicit entry intent from
+“Odpri pogoje na zemljevidu”; no permanent map mode or second filter is introduced.
+Previously it enabled conditions and selected the hotspot without dismissing the global
+filter. Both overlays independently rendered, producing two nearby close buttons.
+
+Now the entry collapses the existing filter and opens the selected hotspot popup.
+A compact **profile · Danes/Jutri** control opens that same filter. While it is open,
+the popup is hidden but the hotspot remains selected; closing the filter restores the
+popup with the current profile/day. Popup close only clears selection. Normal explicit
+Pogoji entry retains its existing behavior. A hotspot marker tap similarly gives the
+popup overlay ownership, never opening the filter. Markers remain above the unchanged
+native heatmap sources/layers.
+
+The controls reducer saves pre-entry visibility and restores it on Map blur. Selection,
+pending camera target, consumed navigation intent and measured overlay refs are cleared;
+an inactive Map never consumes a fresh intent meant for its next focused visit. Profile,
+day and enabled heatmap context remain intact. Existing durable user-dismiss behavior
+and conditions-area-card occlusion remain unchanged.
+
+Popup padding is 14 rather than 16 points and inter-block gaps are 10 rather than 12
+(12.5% / 16.7% reductions); text sizes and information stay unchanged. Popup close is
+44×44 points, action buttons retain their 48-point minimum. Camera focus uses the exact
+saved longitude/latitude at zoom 15. Its native padding is derived from actual popup
+height, bottom margin and compact-control layout, waiting for those layouts before
+the focus animation. Non-hotspot focus resets padding; no geographic pan offset is
+invented. Extremely small map areas remain a physical-device layout limitation.
+
+Focused check: `node scripts/runSmoke.cjs scripts/hotspotOverlaySmoke.ts` executes actual
+Map entry/blur/marker handlers in a JS harness and validates exclusivity, restoration,
+profile/day/coordinate preservation, inactive-screen protection and measured padding.
+Pinned-source checks keep weather/GeoJSON/LOD calculations and native sources unchanged.
+Native placement/animation still requires a physical Android test; this is not GPU QA.
+
+Build: `npm run apk -- --name MushroomApp-preview-hotspot-overlay-polish.apk`.
+On the phone, verify entry shows one popup + compact context; opening the compact
+control hides the popup, X restores it, species/day changes appear on restored popup
+and badges, popup X preserves conditions, and a later ordinary Map visit has no stale
+selected hotspot or entry-specific filter collapse.
+
 ## Future extensions
 
 Location evaluation is expressed in terms of `targetProfile` and can support other foraging targets later without coupling a new scorer to diary mushrooms. A future “best hotspot today” feature can batch the same evaluator/cache; no ranking is added now. Versioned saved inputs, timestamps and immutable scores provide a basis for optional field-outcome/effort/confidence validation later, with a separate schema and honest treatment of effort/negative outcomes. No field-outcome UI or pseudo-validation claim is introduced in V1.
