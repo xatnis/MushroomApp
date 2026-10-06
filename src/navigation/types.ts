@@ -13,7 +13,7 @@ export type RootStackParamList = {
   Tabs: NavigatorScreenParams<TabsParamList> | undefined;
   Record: { hotspotId?: string; latitude?: number; longitude?: number; findId?: string;
     conditionsProfile?: import('../domain/types').MushroomWeatherProfileId } | undefined;
-  HotspotDetail: { hotspotId: string };
+  HotspotDetail: { hotspotId: string; conditionsContext?: import('../domain/hotspotRanking').ConditionsTargetContext };
   FindDetail: { findId: string };
   MyFinds: undefined;
   Auth: { mode?: 'login' | 'signup' | 'reset' } | undefined;

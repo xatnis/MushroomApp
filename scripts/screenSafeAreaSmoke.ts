@@ -65,7 +65,13 @@ strictEqual(ios.props.children.props.children.props.automaticallyAdjustContentIn
 for (const [screen, title] of [['HotspotDetailScreen', 'Izbriši rastišče in obiske'], ['FindDetailScreen', 'Izbriši obisk']]) {
   const source = readFileSync(`src/screens/${screen}.tsx`, 'utf8');
   const baseline = execFileSync('git', ['show', `ca6e88d:src/screens/${screen}.tsx`], { encoding: 'utf8' });
-  strictEqual(source.replaceAll('<Screen bottomSafeArea>', '<Screen>'), baseline, 'only layout opt-in changes; actions/data/UI hierarchy intact');
+  if (screen === 'FindDetailScreen') strictEqual(source.replaceAll('<Screen bottomSafeArea>', '<Screen>'), baseline, 'visit screen actions/data/UI hierarchy intact');
+  else {
+    // Ranking may supply an entry profile/day; safe-area ownership and delete/save actions must stay intact.
+    strictEqual(source.slice(source.indexOf('  const save ='), source.indexOf('  return <Screen')),
+      baseline.slice(baseline.indexOf('  const save ='), baseline.indexOf('  return <Screen')));
+    ok(source.includes('return <Screen bottomSafeArea>'));
+  }
   ok(source.includes(`title="${title}" variant="danger" onPress={remove}`));
   ok(source.indexOf(`title="${title}"`) < source.lastIndexOf('</Screen>'));
 }

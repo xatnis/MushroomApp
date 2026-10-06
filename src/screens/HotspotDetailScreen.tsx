@@ -27,9 +27,11 @@ export function HotspotDetailScreen() {
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const load = useCallback(async () => { const value = await repository.getHotspot(profile.id, route.params.hotspotId); setHotspot(value); setTitle(value?.title ?? ''); setNotes(value?.notes ?? '');
-    const key = `${profile.id}:${route.params.hotspotId}`;
-    if (value && initialized.current !== key) { initialized.current = key; setConditionsProfile(initialHotspotProfile(value.finds)); setConditionsDay('today'); }
-  }, [profile.id, repository, route.params.hotspotId]);
+    const key = `${profile.id}:${route.params.hotspotId}:${route.params.conditionsContext?.targetProfile ?? ''}:${route.params.conditionsContext?.dayMode ?? ''}`;
+    if (value && initialized.current !== key) { initialized.current = key;
+      setConditionsProfile(route.params.conditionsContext?.targetProfile ?? initialHotspotProfile(value.finds));
+      setConditionsDay(route.params.conditionsContext?.dayMode ?? 'today'); }
+  }, [profile.id, repository, route.params.hotspotId, route.params.conditionsContext?.targetProfile, route.params.conditionsContext?.dayMode]);
   useFocusEffect(useCallback(() => { void load(); }, [load]));
   if (!hotspot) return <Screen bottomSafeArea><EmptyState title="Rastišča ni mogoče najti" message="Morda je bilo izbrisano ali pripada drugemu lokalnemu profilu." /></Screen>;
   const species = Array.from(new Set(hotspot.finds.flatMap((find) => find.items.map((item) => speciesName(item.speciesId, item.customName)))));

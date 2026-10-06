@@ -30,6 +30,8 @@ import { localDateFor } from '../domain/heatmap/assessment';
 import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
 import { HotspotConditionsMarkers } from '../components/HotspotConditionsMarkers';
 import { HotspotConditionsPopup } from '../components/HotspotConditions';
+import { HotspotRankingList } from '../components/HotspotRankingList';
+import { DEFAULT_RANKING_CONTEXT, type ConditionsTargetContext } from '../domain/hotspotRanking';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const SLOVENIA_CENTER: [number, number] = [14.82, 46.12];
@@ -102,6 +104,7 @@ export function MapScreen() {
   const [cameraTarget, setCameraTarget] = useState<{ center: [number, number]; zoom: number; focusRequestId?: string; hotspotId?: string }>();
   const [popupLayout, setPopupLayout] = useState<{ id: string; height: number }>();
   const [contextBottom, setContextBottom] = useState(0);
+  const [rankingContext, setRankingContext] = useState<ConditionsTargetContext>(DEFAULT_RANKING_CONTEXT);
   const { enabled: heatmapEnabled, profileId: heatmapProfileId, targetDay: heatmapTargetDay, selectedAreaId: selectedHeatmapAreaId } = heatmapNavigation;
   const [heatmapBundle, setHeatmapBundle] = useState<HeatmapPilotBundle>();
   const [heatmapLoading, setHeatmapLoading] = useState(false);
@@ -651,7 +654,9 @@ export function MapScreen() {
         }}
       /> : null}
       {locating ? <View style={styles.locating}><Text style={commonStyles.muted}>Določam natančno lokacijo …</Text></View> : null}
-    </View> : <View style={styles.list}>{ownerFilter === 'friends' ? friendHotspots.map((hotspot) => <Pressable key={hotspot.id} onPress={() => void Linking.openURL(`geo:${hotspot.latitude},${hotspot.longitude}?q=${hotspot.latitude},${hotspot.longitude}`)}><Card><Text style={commonStyles.heading}>{hotspot.title || 'Deljeno rastišče'}</Text><Text style={commonStyles.muted}>@{hotspot.owner_username} · točna lokacija, izrecno deljena s prijatelji</Text></Card></Pressable>) : filtered.length ? filtered.map((hotspot) => <Pressable key={hotspot.id} onPress={() => navigation.navigate('HotspotDetail', { hotspotId: hotspot.id })}><Card><View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{hotspot.title || 'Rastišče brez naslova'}</Text><Text style={commonStyles.muted}>{hotspot.latitude.toFixed(4)}, {hotspot.longitude.toFixed(4)} · {finds.filter((find) => find.hotspotId === hotspot.id).length} obiskov</Text></View><StatusPill state={hotspot.syncState} /></View></Card></Pressable>) : <EmptyState title={query.trim() ? 'Ni zadetkov med rastišči' : 'Še ni rastišč'} message={query.trim() ? 'Poskusite z drugim nazivom ali vrsto.' : 'Dodajte prvo rastišče z gumbom + ali z dolgim pritiskom na zemljevid.'} />}</View>}
+    </View> : <View style={styles.list}>{ownerFilter === 'friends' ? friendHotspots.map((hotspot) => <Pressable key={hotspot.id} onPress={() => void Linking.openURL(`geo:${hotspot.latitude},${hotspot.longitude}?q=${hotspot.latitude},${hotspot.longitude}`)}><Card><Text style={commonStyles.heading}>{hotspot.title || 'Deljeno rastišče'}</Text><Text style={commonStyles.muted}>@{hotspot.owner_username} · točna lokacija, izrecno deljena s prijatelji</Text></Card></Pressable>) : filtered.length
+      ? <HotspotRankingList hotspots={filtered} finds={finds} context={rankingContext} onContext={setRankingContext} />
+      : <EmptyState title={query.trim() ? 'Ni zadetkov med rastišči' : 'Še ni rastišč'} message={query.trim() ? 'Poskusite z drugim nazivom ali vrsto.' : 'Dodajte prvo rastišče z gumbom + ali z dolgim pritiskom na zemljevid.'} />}</View>}
   </Screen>;
 }
 
