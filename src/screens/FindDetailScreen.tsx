@@ -8,6 +8,8 @@ import { formatQuantity, slDateTime } from '../domain/format';
 import { speciesName } from '../domain/species';
 import { colors, spacing } from '../theme';
 import { removeLocalPhoto } from '../services/media';
+import { visitConditionsText } from '../domain/conditionsSnapshot';
+import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
 
 export function FindDetailScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'FindDetail'>>();
@@ -21,6 +23,8 @@ export function FindDetailScreen() {
     <View style={styles.row}><View style={styles.grow}><Text style={commonStyles.title}>{find.outcome === 'nothing' ? 'Nič nisem našel' : 'Zabeležen obisk'}</Text><Text style={commonStyles.muted}>{slDateTime(find.observedAt)} · {hotspot?.title || 'Rastišče'}</Text></View><StatusPill state={find.syncState} /></View>
     <Card>{find.items.length ? find.items.map((item) => <View key={item.id}><Text style={commonStyles.heading}>{speciesName(item.speciesId, item.customName)}</Text><Text style={commonStyles.body}>{find.outcome === 'nothing' && item.searchedFor ? 'Iskana vrsta' : formatQuantity(item.quantity, item.unit)}</Text></View>) : <Text style={commonStyles.body}>Brez navedenih vrst.</Text>}{find.notes ? <Text style={commonStyles.body}>{find.notes}</Text> : null}</Card>
     <Card><Text style={commonStyles.heading}>Vreme ob času obiska</Text>{find.weather.status === 'complete' ? <><Text style={commonStyles.body}>Ocenjena temperatura: {find.weather.temperatureC?.toFixed(1) ?? '—'} °C</Text><Text style={commonStyles.body}>Padavine v uri: {find.weather.precipitationMm?.toFixed(1) ?? '—'} mm</Text><Text style={commonStyles.muted}>Open-Meteo · {find.weather.dataset === 'archive' ? 'zgodovinski arhiv' : 'nedavni podatki'} · pridobljeno {find.weather.retrievedAt ? slDateTime(find.weather.retrievedAt) : '—'}</Text></> : <Notice tone={find.weather.status === 'error' ? 'warning' : 'info'}>{find.weather.status === 'pending' ? 'Vreme bo dopolnjeno, ko bo povezava na voljo.' : 'Za ta obisk vreme ni na voljo.'}</Notice>}</Card>
+    {find.conditionsSnapshot ? <Card><Text style={commonStyles.heading}>{visitConditionsText(find.conditionsSnapshot)}</Text>
+      <Text style={commonStyles.muted}>{MUSHROOM_WEATHER_PROFILES[find.conditionsSnapshot.targetProfile].label} · shranjena ocena ob beleženju, ne današnji preračun</Text></Card> : null}
     <View style={styles.photos}>{find.photos.map((photo) => <View key={photo.id}><Image source={{ uri: photo.localUri }} style={styles.photo} />{photo.uploadState === 'failed' ? <Text style={styles.failed}>Prenos ni uspel</Text> : null}</View>)}</View>
     <Card><Text style={commonStyles.heading}>Zasebnost</Text><Text style={commonStyles.body}>{find.visibility === 'private' ? 'Zasebni obisk' : find.visibility === 'friends' ? 'Viden sprejetim prijateljem' : 'Objavljeno skupnosti brez GPS koordinat'}</Text>{find.visibility === 'community' ? <Text style={commonStyles.muted}>Community API ne vrne zemljepisne širine ali dolžine. Zasebni naslov rastišča in drugi obiski niso objavljeni.</Text> : null}</Card>
     <AppButton title="Uredi obisk" onPress={() => navigation.navigate('Record', { findId: find.id })} />

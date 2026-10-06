@@ -34,7 +34,8 @@ interface AppContextValue {
   heatmapNavigation: HeatmapNavigationState;
   updateHeatmapNavigation: (patch: Partial<HeatmapNavigationState>) => void;
   pendingHotspotFocus?: PendingHotspotFocus;
-  requestHotspotFocus: (hotspot: Pick<Hotspot, 'id' | 'latitude' | 'longitude'>) => void;
+  requestHotspotFocus: (hotspot: Pick<Hotspot, 'id' | 'latitude' | 'longitude'>,
+    conditions?: Pick<HeatmapNavigationState, 'profileId' | 'targetDay'>) => void;
   clearHotspotFocus: (requestId: string) => void;
   repository: DiaryRepository;
   refresh: () => Promise<void>;
@@ -55,6 +56,7 @@ interface AppContextValue {
 }
 
 interface PendingHotspotFocus {
+  conditions?: Pick<HeatmapNavigationState, 'profileId' | 'targetDay'>;
   requestId: string;
   hotspotId: string;
   latitude: number;
@@ -82,13 +84,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [pendingHotspotFocus, setPendingHotspotFocus] = useState<PendingHotspotFocus>();
   const focusSequence = useRef(0);
 
-  const requestHotspotFocus = useCallback((hotspot: Pick<Hotspot, 'id' | 'latitude' | 'longitude'>) => {
+  const requestHotspotFocus = useCallback((hotspot: Pick<Hotspot, 'id' | 'latitude' | 'longitude'>,
+    conditions?: Pick<HeatmapNavigationState, 'profileId' | 'targetDay'>) => {
     focusSequence.current += 1;
     setPendingHotspotFocus({
       requestId: `${Date.now()}:${focusSequence.current}`,
       hotspotId: hotspot.id,
       latitude: hotspot.latitude,
       longitude: hotspot.longitude,
+      conditions,
     });
   }, []);
 

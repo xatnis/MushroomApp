@@ -8,6 +8,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppButton, Card, Chip, Field, Notice, Screen, SectionTitle, commonStyles } from '../components/ui';
 import { useApp } from '../state/AppContext';
+import { useLocationConditions } from '../services/heatmap/useLocationConditions';
+import { conditionsProfileForItems, createConditionsSnapshot } from '../domain/locationConditions';
+import { localDateFor } from '../domain/heatmap/assessment';
 import type { RootStackParamList } from '../navigation/types';
 import type { DraftItem, FindPhoto, Outcome, QuantityUnit, RecordingDraft, Visibility } from '../domain/types';
 import { normalizeSearch, speciesName } from '../domain/species';
@@ -94,6 +97,12 @@ export function RecordScreen() {
   }, [placeQuery, placeSearchOpen]);
 
   const selectedHotspot = hotspots.find((hotspot) => hotspot.id === draft.hotspotId);
+  const conditionsLatitude = selectedHotspot?.latitude ?? draft.latitude;
+  const conditionsLongitude = selectedHotspot?.longitude ?? draft.longitude;
+  const conditions = useLocationConditions(conditionsLatitude != null && conditionsLongitude != null
+    ? [{ id: 'new-visit', latitude: conditionsLatitude, longitude: conditionsLongitude }] : [],
+    route.params?.conditionsProfile ?? conditionsProfileForItems(draft.items), 'today',
+    !existing && Number.isFinite(Date.parse(draft.observedAt)) && localDateFor(new Date(draft.observedAt)) === localDateFor(), 250);
   const nearby = useMemo(() => draft.latitude == null || draft.longitude == null ? undefined : hotspots
     .map((hotspot) => ({ hotspot, km: haversineKm(draft.latitude!, draft.longitude!, hotspot.latitude, hotspot.longitude) }))
     .filter(({ km }) => km <= 0.15).sort((a, b) => a.km - b.km)[0], [draft.latitude, draft.longitude, hotspots]);
@@ -207,7 +216,8 @@ export function RecordScreen() {
         const result = await saveVisit({
           profile, hotspot,
           newHotspot: hotspot ? undefined : { latitude, longitude, title: draft.hotspotTitle?.trim() || undefined, locationName: draft.locationName, locationAdmin1: draft.locationAdmin1, locationAdmin2: draft.locationAdmin2, locationCountry: draft.locationCountry, locationSource: draft.locationSource ?? 'manual', accuracyM: draft.accuracyM, locationSharing: 'private' },
-          find: { hotspotId: hotspot?.id ?? '', observedAt: draft.observedAt, observationLatitude: latitude, observationLongitude: longitude, observationAccuracyM: draft.accuracyM, outcome: draft.outcome, notes: draft.notes.trim() || undefined, visibility: draft.visibility, shareExactCommunityLocation: false, weather: { provider: 'open-meteo', status: 'pending' }, items, photos },
+          find: { hotspotId: hotspot?.id ?? '', observedAt: draft.observedAt, observationLatitude: latitude, observationLongitude: longitude, observationAccuracyM: draft.accuracyM, outcome: draft.outcome, notes: draft.notes.trim() || undefined, visibility: draft.visibility, shareExactCommunityLocation: false, weather: { provider: 'open-meteo', status: 'pending' }, items, photos,
+            conditionsSnapshot: conditions.mappings[0] && createConditionsSnapshot(conditions.mappings[0], conditions.assessments['new-visit'], draft.observedAt, timestamp) },
         });
         setMessage(profile.mode === 'cloud' ? (online ? 'Shranjeno v napravi. Čaka na sinhronizacijo.' : 'Shranjeno brez povezave. Čaka na sinhronizacijo.') : (online ? 'Shranjeno v napravi.' : 'Shranjeno brez povezave.'));
         navigation.replace('HotspotDetail', { hotspotId: result.hotspotId });

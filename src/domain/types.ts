@@ -86,6 +86,8 @@ export interface WeatherSnapshot {
 }
 
 export interface FindRecord {
+  /** Immutable, device-local conditions at save time; absent on existing visits. */
+  conditionsSnapshot?: ConditionsSnapshot;
   id: string;
   hotspotId: string;
   profileId: string;
@@ -105,6 +107,35 @@ export interface FindRecord {
   serverRevision?: number;
   items: FindItem[];
   photos: FindPhoto[];
+}
+
+export interface ConditionsSnapshot {
+  schemaVersion: 1;
+  recordedAt: string;
+  observedAt: string;
+  evaluatedLocalDate: string;
+  targetProfile: MushroomWeatherProfileId;
+  dayMode: 'today' | 'tomorrow';
+  score: number;
+  label: string;
+  scorerId: MushroomWeatherProfileId;
+  scorerVersion: string;
+  scorerConfig: Record<string, unknown>;
+  inputPolicyVersion: string;
+  location: { latitude: number; longitude: number; areaId?: string; weatherPointId: string;
+    samplingLatitude: number; samplingLongitude: number };
+  weather: Omit<NonNullable<MushroomWeatherSummary['historical']>, 'days'> & {
+    soilMoisture0To7Cm?: number; soilMoisture7To28Cm?: number; soilTime?: string;
+  };
+  normalizedComponents: MushroomScoreComponent[];
+  habitat: { classification: 'candidate' | 'unknown' | 'outside-model';
+    properties?: import('./heatmap/types').HeatmapHabitatProperties; source: string; vintage: string;
+    treeCompositionSource?: string; treeCompositionFetchedAt?: string };
+  inputCompleteness: 'complete' | 'limited';
+  modelledHistoryDays: number;
+  weatherSource: 'open-meteo';
+  weatherFetchedAt: string;
+  stale: boolean;
 }
 
 export interface HotspotWithHistory extends Hotspot {

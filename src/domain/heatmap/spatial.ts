@@ -54,6 +54,11 @@ export function createHabitatSpatialIndex(features: HeatmapHabitatFeature[]) {
   });
   return {
     byId: new Map(features.map(f => [f.properties.id, f])),
+    atPoint(point: [number, number]) {
+      return entries.find(e => point[0] >= e.bounds[0] && point[0] <= e.bounds[2]
+        && point[1] >= e.bounds[1] && point[1] <= e.bounds[3]
+        && containsPoint(e.feature.geometry, point))?.feature;
+    },
     visible(bounds: Bounds, selectedId?: string, buffer = .2) {
       // 20% viewport overscan for render and weather selection; never changes cell scores.
       const dx = (bounds[2] - bounds[0]) * buffer, dy = (bounds[3] - bounds[1]) * buffer;

@@ -10,9 +10,11 @@ import type {
   RecordingDraft,
   SyncState,
   WeatherSnapshot,
+  ConditionsSnapshot,
 } from '../domain/types';
+import { withoutLocalConditions } from '../domain/conditionsSnapshot';
 
-const DATABASE_VERSION = 2;
+const DATABASE_VERSION = 3;
 export const LOCAL_PROFILE_ID = 'local:device';
 
 type HotspotRow = Omit<Hotspot, 'accuracyM' | 'serverRevision' | 'locationName' | 'locationAdmin1' | 'locationAdmin2' | 'locationCountry'> & {
@@ -24,7 +26,8 @@ type HotspotRow = Omit<Hotspot, 'accuracyM' | 'serverRevision' | 'locationName' 
   locationCountry: string | null;
 };
 
-type FindRow = Omit<FindRecord, 'items' | 'photos' | 'weather' | 'observationAccuracyM' | 'serverRevision' | 'shareExactCommunityLocation'> & {
+type FindRow = Omit<FindRecord, 'items' | 'photos' | 'weather' | 'conditionsSnapshot' | 'observationAccuracyM' | 'serverRevision' | 'shareExactCommunityLocation'> & {
+  conditionsSnapshotJson: string | null;
   observationAccuracyM: number | null;
   weatherJson: string;
   serverRevision: number | null;
@@ -169,6 +172,10 @@ export async function migrateDatabase(db: SQLiteDatabase): Promise<void> {
       if (!columns.has(column)) await db.execAsync(`ALTER TABLE hotspots ADD COLUMN ${column} TEXT`);
     }
   }
+  if ((version?.user_version ?? 0) < 3) {
+    const columns = new Set((await db.getAllAsync<{ name: string }>('PRAGMA table_info(finds)')).map(column => column.name));
+    if (!columns.has('conditionsSnapshotJson')) await db.execAsync('ALTER TABLE finds ADD COLUMN conditionsSnapshotJson TEXT');
+  }
   const createdAt = nowIso();
   await db.runAsync(
     `INSERT OR IGNORE INTO local_profiles (id, mode, createdAt, active) VALUES (?, 'local', ?, 1)`,
@@ -192,8 +199,10 @@ function mapHotspot(row: HotspotRow): Hotspot {
 }
 
 function mapFind(row: FindRow, items: ItemRow[], photos: PhotoRow[]): FindRecord {
+  const { conditionsSnapshotJson, ...record } = row;
   return {
-    ...row,
+    ...record,
+    conditionsSnapshot: conditionsSnapshotJson ? JSON.parse(conditionsSnapshotJson) as ConditionsSnapshot : undefined,
     observationAccuracyM: row.observationAccuracyM ?? undefined,
     shareExactCommunityLocation: Boolean(row.shareExactCommunityLocation),
     weather: JSON.parse(row.weatherJson) as WeatherSnapshot,
@@ -312,11 +321,12 @@ export class DiaryRepository {
       }
       const weather = input.find.weather;
       await tx.runAsync(
-        `INSERT INTO finds (id, hotspotId, profileId, observedAt, observationLatitude, observationLongitude, observationAccuracyM, outcome, notes, visibility, shareExactCommunityLocation, weatherJson, createdAt, updatedAt, syncState)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO finds (id, hotspotId, profileId, observedAt, observationLatitude, observationLongitude, observationAccuracyM, outcome, notes, visibility, shareExactCommunityLocation, weatherJson, conditionsSnapshotJson, createdAt, updatedAt, syncState)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         findId, hotspotId, input.profile.id, input.find.observedAt, input.find.observationLatitude, input.find.observationLongitude,
         nullable(input.find.observationAccuracyM), input.find.outcome, nullable(input.find.notes), input.find.visibility,
-        input.find.shareExactCommunityLocation ? 1 : 0, JSON.stringify(weather), timestamp, timestamp, syncState,
+        input.find.shareExactCommunityLocation ? 1 : 0, JSON.stringify(weather),
+        input.find.conditionsSnapshot ? JSON.stringify(input.find.conditionsSnapshot) : null, timestamp, timestamp, syncState,
       );
       const findPayload = { ...input.find, id: findId, hotspotId, profileId: input.profile.id, createdAt: timestamp, updatedAt: timestamp, syncState };
       if (shouldSync) await this.queue(tx, input.profile.accountId!, 'find', findId, 'upsert', findPayload);
@@ -568,7 +578,7 @@ export class DiaryRepository {
     const timestamp = nowIso();
     await db.runAsync(
       `INSERT INTO outbox (operationId, accountId, entity, entityId, action, payload, nextAttemptAt, state, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`,
-      Crypto.randomUUID(), accountId, entity, entityId, action, JSON.stringify(payload), timestamp, timestamp, timestamp,
+      Crypto.randomUUID(), accountId, entity, entityId, action, JSON.stringify(entity === 'find' ? withoutLocalConditions(payload) : payload), timestamp, timestamp, timestamp,
     );
   }
 }

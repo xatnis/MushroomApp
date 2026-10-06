@@ -11,7 +11,8 @@ export type TabsParamList = {
 export type RootStackParamList = {
   Onboarding: undefined;
   Tabs: NavigatorScreenParams<TabsParamList> | undefined;
-  Record: { hotspotId?: string; latitude?: number; longitude?: number; findId?: string } | undefined;
+  Record: { hotspotId?: string; latitude?: number; longitude?: number; findId?: string;
+    conditionsProfile?: import('../domain/types').MushroomWeatherProfileId } | undefined;
   HotspotDetail: { hotspotId: string };
   FindDetail: { findId: string };
   MyFinds: undefined;

@@ -2,7 +2,7 @@ import habitat from '../../data/heatmapRegional/habitat.geojson.json';
 import metadata from '../../data/heatmapRegional/metadata.json';
 import coverage from '../../data/heatmapRegional/coverage.geojson.json';
 import zgs from '../../data/heatmapRegional/zgs-enrichment.json';
-import { buildHeatmapRenderCollection as buildCollection } from './pilot';
+import { buildHeatmapRenderCollection as buildCollection, areaAssessmentFor } from './pilot';
 import { containsPoint, createHabitatSpatialIndex } from './spatial';
 import type { HeatmapHabitatFeatureCollection, HeatmapPilotMetadata, HeatmapPolygonGeometry, HeatmapMultiPolygonGeometry, ZgsEnrichmentArtifact, HeatmapWeatherAssessment, HeatmapTargetDay } from './types';
 import type { MushroomWeatherProfileId } from '../types';
@@ -25,6 +25,18 @@ export const isRegionalPoint = (point: [number, number]) => containsPoint(
   coverage.geometry as HeatmapPolygonGeometry | HeatmapMultiPolygonGeometry, point,
 );
 
+/** Canonical single-cell evaluation, also used by saved locations. No GeoJSON allocation. */
+export function regionalAreaAssessmentFor(feature: import('./types').HeatmapHabitatFeature, weather: HeatmapWeatherAssessment) {
+  const assessment = areaAssessmentFor(feature, weather);
+  applyRegionalProvenance(assessment);
+  return assessment;
+}
+
+function applyRegionalProvenance(assessment: import('./types').HeatmapAreaAssessment) {
+  if (assessment.treeCompositionSource) assessment.treeCompositionFetchedAt = assessment.areaId.startsWith('area-')
+    ? enrichment.legacyFetchedAt ?? enrichment.fetchedAt : enrichment.fetchedAt;
+}
+
 export function buildHeatmapRenderCollection(weather: Record<string, HeatmapWeatherAssessment>,
   features = HEATMAP_HABITAT.features, profileId: MushroomWeatherProfileId = 'generic', targetDay: HeatmapTargetDay = 'today') {
   // Missing weather has an explicit insufficient assessment; static habitat is immediately renderable.
@@ -38,10 +50,7 @@ export function buildHeatmapRenderCollection(weather: Record<string, HeatmapWeat
   }
   const result = buildCollection(available, undefined, features);
   for (const assessment of Object.values(result.assessments)) {
-    if (assessment.treeCompositionSource) {
-      assessment.treeCompositionFetchedAt = assessment.areaId.startsWith('area-')
-        ? enrichment.legacyFetchedAt ?? enrichment.fetchedAt : enrichment.fetchedAt;
-    }
+    applyRegionalProvenance(assessment);
   }
   return result;
 }

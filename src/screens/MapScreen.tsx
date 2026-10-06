@@ -28,6 +28,8 @@ import { INITIAL_HEATMAP_CONTROLS, heatmapControlsReducer, heatmapControlsPanelV
 import { OVERVIEW_PREFETCH, shouldPrefetchOverview, prioritizedOverviewWeatherPointIds, overviewReadyCoverage, createOverviewCoverageDiagnostics } from '../domain/heatmap/overviewLoading';
 import { localDateFor } from '../domain/heatmap/assessment';
 import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
+import { HotspotConditionsMarkers } from '../components/HotspotConditionsMarkers';
+import { HotspotConditionsPopup } from '../components/HotspotConditions';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const SLOVENIA_CENTER: [number, number] = [14.82, 46.12];
@@ -321,6 +323,8 @@ export function MapScreen() {
   useEffect(() => {
     if (!pendingHotspotFocus) return;
     setSelectedId(pendingHotspotFocus.hotspotId); setOwnerFilter('mine'); setMode('map');
+    if (pendingHotspotFocus.conditions) updateHeatmapNavigation({ enabled: true,
+      ...pendingHotspotFocus.conditions, selectedAreaId: undefined });
     setCameraTarget({
       center: [pendingHotspotFocus.longitude, pendingHotspotFocus.latitude],
       zoom: 15,
@@ -540,16 +544,12 @@ export function MapScreen() {
           />
         </GeoJSONSource>
         {locationGranted ? <UserLocation animated accuracy minDisplacement={3} /> : null}
-        {ownerFilter === 'mine' ? filtered.map((hotspot) => <Marker key={hotspot.id} id={hotspot.id} lngLat={[hotspot.longitude, hotspot.latitude]} anchor="bottom" onPress={(event) => {
-          event.stopPropagation();
+        {ownerFilter === 'mine' ? <HotspotConditionsMarkers hotspots={filtered} selectedId={selectedId}
+          enabled={heatmapEnabled} profile={heatmapProfileId} day={heatmapTargetDay} bounds={visibleBounds} onSelect={hotspot => {
           suppressMapPressUntil.current = Date.now() + 300;
           updateHeatmapNavigation({ selectedAreaId: undefined });
           focusHotspot(hotspot);
-        }}>
-          <View style={[styles.markerShell, selectedId === hotspot.id && styles.markerSelected]}>
-            <Image source={require('../../assets/mushroom-icon.png')} style={styles.marker} />
-          </View>
-        </Marker>) : friendHotspots.map((hotspot) => <Marker key={hotspot.id} id={hotspot.id} lngLat={[hotspot.longitude, hotspot.latitude]} anchor="bottom">
+        }} /> : friendHotspots.map((hotspot) => <Marker key={hotspot.id} id={hotspot.id} lngLat={[hotspot.longitude, hotspot.latitude]} anchor="bottom">
           <View style={styles.friendMarker}><Ionicons name="people" size={20} color={colors.white} /></View>
         </Marker>)}
       </Map>
@@ -591,7 +591,8 @@ export function MapScreen() {
       </Pressable> : null}
       {selected ? <Card style={styles.preview}>
         <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{selected.title || 'Rastišče brez naslova'}</Text><Text style={commonStyles.muted}>{finds.filter((find) => find.hotspotId === selected.id).length} obiskov</Text></View><StatusPill state={selected.syncState} /><Pressable accessibilityRole="button" accessibilityLabel="Zapri kartico rastišča" hitSlop={8} onPress={() => setSelectedId(undefined)} style={({ pressed }) => [styles.closeButton, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
-        <AppButton title="Podrobnosti" variant="secondary" onPress={() => navigation.navigate('HotspotDetail', { hotspotId: selected.id })} />
+        {heatmapEnabled ? <HotspotConditionsPopup hotspot={selected} profile={heatmapProfileId} day={heatmapTargetDay} /> : null}
+        <AppButton title="Odpri rastišče" variant="secondary" onPress={() => navigation.navigate('HotspotDetail', { hotspotId: selected.id })} />
       </Card> : null}
       {!selected && heatmapEnabled && heatmapLod === 'detail' && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
         assessment={selectedHeatmapArea}
