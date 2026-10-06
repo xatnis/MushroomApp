@@ -1,13 +1,22 @@
 import { forwardRef, type ReactNode } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type PressableProps, type TextInputProps, type ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radii, spacing, typography } from '../theme';
 import type { SyncState } from '../domain/types';
 import { t } from '../i18n';
 
-export function Screen({ children, scroll = true, style }: { children: ReactNode; scroll?: boolean; style?: ViewStyle }) {
+export function Screen({ children, scroll = true, style, bottomSafeArea = false }: { children: ReactNode; scroll?: boolean; style?: ViewStyle; bottomSafeArea?: boolean }) {
+  const insets = useSafeAreaInsets();
+  // Opt in only for edge-to-edge stack scroll screens; tabs already own their bottom inset.
+  const baseBottom = style?.paddingBottom ?? style?.paddingVertical ?? style?.padding ?? spacing.lg;
+  const bottomStyle = bottomSafeArea && scroll
+    ? { paddingBottom: (typeof baseBottom === 'number' ? baseBottom : spacing.lg) + insets.bottom }
+    : undefined;
   const content = scroll
-    ? <ScrollView contentContainerStyle={[styles.screenContent, style]} keyboardShouldPersistTaps="handled">{children}</ScrollView>
+    ? <ScrollView contentContainerStyle={[styles.screenContent, style, bottomStyle]}
+      contentInsetAdjustmentBehavior={bottomSafeArea ? 'never' : undefined}
+      automaticallyAdjustContentInsets={bottomSafeArea ? false : undefined}
+      keyboardShouldPersistTaps="handled">{children}</ScrollView>
     : <View style={[styles.screenContent, styles.flex, style]}>{children}</View>;
   return <SafeAreaView edges={['left', 'right']} style={styles.safe}><KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>{content}</KeyboardAvoidingView></SafeAreaView>;
 }

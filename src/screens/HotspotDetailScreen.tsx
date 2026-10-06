@@ -31,12 +31,12 @@ export function HotspotDetailScreen() {
     if (value && initialized.current !== key) { initialized.current = key; setConditionsProfile(initialHotspotProfile(value.finds)); setConditionsDay('today'); }
   }, [profile.id, repository, route.params.hotspotId]);
   useFocusEffect(useCallback(() => { void load(); }, [load]));
-  if (!hotspot) return <Screen><EmptyState title="Rastišča ni mogoče najti" message="Morda je bilo izbrisano ali pripada drugemu lokalnemu profilu." /></Screen>;
+  if (!hotspot) return <Screen bottomSafeArea><EmptyState title="Rastišča ni mogoče najti" message="Morda je bilo izbrisano ali pripada drugemu lokalnemu profilu." /></Screen>;
   const species = Array.from(new Set(hotspot.finds.flatMap((find) => find.items.map((item) => speciesName(item.speciesId, item.customName)))));
   const save = async () => { await repository.updateHotspot(profile, { ...hotspot, title: title.trim() || undefined, notes: notes.trim() || undefined }); await refresh(); await load(); setEditing(false); };
   const remove = () => Alert.alert('Izbrišem rastišče?', `Izbrisani bodo tudi vsi obiski (${hotspot.finds.length}) in fotografije bodo označene za odstranitev iz oblaka.`, [{ text: 'Prekliči', style: 'cancel' }, { text: 'Izbriši', style: 'destructive', onPress: async () => { const uris = await repository.deleteHotspot(profile, hotspot.id); await Promise.all(uris.map((uri) => removeLocalPhoto(uri).catch(() => undefined))); await refresh(); navigation.popTo('Tabs'); } }]);
   const openNavigation = () => void Linking.openURL(`geo:${hotspot.latitude},${hotspot.longitude}?q=${hotspot.latitude},${hotspot.longitude}`);
-  return <Screen>
+  return <Screen bottomSafeArea>
     <View style={styles.titleRow}><View style={styles.grow}><Text style={commonStyles.title}>{hotspot.title || 'Rastišče brez naslova'}</Text><Text style={commonStyles.muted}>{hotspot.latitude.toFixed(5)}, {hotspot.longitude.toFixed(5)}</Text></View><StatusPill state={hotspot.syncState} /></View>
     <Notice tone="info">Deljenje lokacije s prijatelji omogoči dostop do točne lokacije in osnovnih podatkov rastišča. Zasebnih obiskov ne objavi.</Notice>
     {editing ? <Card><Field label="Naslov" value={title} onChangeText={setTitle} /><Field label="Opombe" value={notes} onChangeText={setNotes} multiline /><Text style={commonStyles.heading}>Deljenje lokacije</Text><View style={commonStyles.wrap}><Chip label="Zasebno" selected={hotspot.locationSharing === 'private'} onPress={() => setHotspot({ ...hotspot, locationSharing: 'private' })} /><Chip label="S prijatelji" selected={hotspot.locationSharing === 'friends'} onPress={() => setHotspot({ ...hotspot, locationSharing: 'friends' })} /></View><AppButton title="Shrani" onPress={() => void save()} /><AppButton title="Prekliči" variant="ghost" onPress={() => setEditing(false)} /></Card>
