@@ -11,6 +11,39 @@ The compact list header reuses `MUSHROOM_WEATHER_PROFILES` for Splošno, Jesensk
 Navadna lisička and Užitna sirovka, with Danes/Jutri. Ranking defaults to Splošno/Danes.
 The target is a comparison profile for ALL rows, not the species saved at each hotspot.
 
+### Controls presentation polish
+
+Species remain one horizontally scrolling chip row, with a subtle horizontal-arrow cue,
+scroll indicator and accessibility swipe hint. Below it, Danes/Jutri share one segmented
+container; the adjacent sort trigger displays the selected label and chevron. It opens a
+small React Native Modal menu with the same three choices, a selected checkmark, cancel,
+outside-tap dismissal and Android-back dismissal. No new dependency is needed.
+
+The controls row uses wrapping flex layout: its nominal minimum budget is 136 pt for
+day + 156 pt for sort + 8 pt gap. With the list's 32 pt horizontal inset, 360/412 pt screens
+fit both in one row; 320 pt can wrap safely. These are style-budget checks, not measured
+native Yoga/font results. Text is not truncated or reduced; it may wrap under large text
+settings. Chips, segments and menu targets remain at least 44 pt high.
+
+Day/sort now occupy one 44 pt row instead of two on normal phone widths, saving one
+row plus its gap. Header gaps are 4 instead of 8 pt; the shorter disclaimer also reduces
+wrapping. Exact first-card height improvement depends on font scaling and native layout
+and must be checked on the phone. The header says “N ocenjenih · M brez ocene” and
+“Razvrstitev primerja pogoje, ne zagotavlja najdb.” Existing hotspot cards are unchanged.
+
+Menu state belongs to the memoized presentation child, below the conditions hook;
+opening/cancelling it cannot invoke ranking evaluation or transport. Choosing a sort uses
+the original state setter. Ranking/domain, hook inputs, row content and navigation are
+pinned unchanged in `scripts/rankingControlsSmoke.ts`.
+
+Polish verification: TypeScript and 11 focused/regression suites passed, including
+84,248 regional and 15,688 pilot parity cases. The release helper failed with the known
+Gradle loopback error; no old APK was copied. Local build command:
+
+```powershell
+npm run apk -- --name MushroomApp-preview-hotspot-ranking-polish.apk
+```
+
 - **Zadnja sprememba** remains the default, preserving repository `updatedAt DESC` order.
 - **Ime** uses Slovenian name ordering and deterministic ID tie-breaking.
 - **Najboljši pogoji** sorts available scores descending; unavailable scores come last.

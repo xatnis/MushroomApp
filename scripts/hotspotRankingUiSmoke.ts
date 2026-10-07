@@ -49,6 +49,15 @@ mod.require = (id: string) => {
   if (id === 'react-native') return { ...Object.fromEntries(['FlatList', 'ScrollView', 'Pressable', 'Text', 'View', 'ActivityIndicator'].map(x => [x, x])), StyleSheet: { create: (x: any) => x } };
   if (id === '@react-navigation/native') return { useNavigation: () => ({ navigate: (...args: any[]) => navigation.push(args) }) };
   if (id === './ui') return { Card: 'Card', StatusPill: 'StatusPill', commonStyles: {} };
+  // Actual segmented/menu presentation is exercised separately by rankingControlsSmoke.
+  if (id === './HotspotRankingControls') return { HotspotRankingControls: (props: any) => element('View', { children: [
+    ...Object.entries(MUSHROOM_WEATHER_PROFILES).map(([targetProfile, profile]) => element('Pressable', {
+      onPress: () => props.onContext({ ...props.context, targetProfile }), children: element('Text', { children: profile.label }) })),
+    ...['today', 'tomorrow'].map(dayMode => element('Pressable', { onPress: () => props.onContext({ ...props.context, dayMode }),
+      children: element('Text', { children: dayMode === 'today' ? 'Danes' : 'Jutri' }) })),
+    ...[['recent', 'Zadnja sprememba'], ['conditions', 'Najboljši pogoji'], ['name', 'Ime']].map(([id, label]) =>
+      element('Pressable', { onPress: () => props.onSort(id), children: element('Text', { children: label }) })),
+  ] }) };
   if (id.endsWith('/useLocationConditions')) return { useLocationConditions: (...args: any[]) => {
     calls.push(args); return { assessments, loading, error, retry: () => { retries++; } };
   } };
@@ -101,6 +110,8 @@ try {
   deepStrictEqual(ids(), hotspots.map(h => h.id)); ok(text(tree).includes('Pridobivam pogoje')); ok(!text(tree).includes('0 / 100'));
   for (const profile of Object.values(MUSHROOM_WEATHER_PROFILES)) ok(text(tree).includes(profile.label));
   assessments = { h0: score(70), h1: score(90), h2: score(90), h3: score(0), h4: score(null) }; render();
+  ok(text(tree).replace(/\s+/g, ' ').includes('4 ocenjenih · 5 brez ocene'));
+  ok(text(tree).includes('Razvrstitev primerja pogoje, ne zagotavlja najdb.'));
   deepStrictEqual(ids(), hotspots.map(h => h.id), 'progress does not reorder default');
   ok(text(tree).includes('0 / 100'), 'real score zero differs from missing');
   press('Ime'); deepStrictEqual(ids(), [...hotspots].reverse().map(h => h.id));

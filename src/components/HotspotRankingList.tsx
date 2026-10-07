@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/types';
 import { Card, StatusPill, commonStyles } from './ui';
 import { useLocationConditions } from '../services/heatmap/useLocationConditions';
-import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
-import type { Hotspot, FindRecord, MushroomWeatherProfileId } from '../domain/types';
+import { HotspotRankingControls } from './HotspotRankingControls';
+import type { Hotspot, FindRecord } from '../domain/types';
 import { createRankingOrderCoalescer, rankingDetailParams, rankingScore, sortHotspots,
   type ConditionsTargetContext, type HotspotSortMode } from '../domain/hotspotRanking';
 import { colors, radii, spacing } from '../theme';
@@ -42,24 +42,12 @@ export function HotspotRankingList({ hotspots, finds, context, onContext }: {
   return <FlatList style={styles.list} data={rows} keyExtractor={h => h.id}
     keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}
     ListHeaderComponent={<View style={styles.header}>
-      <Text style={styles.label}>POGOJI NA RASTIŠČIH</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choices}>
-        {(Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[]).map(targetProfile => <Choice key={targetProfile}
-          label={MUSHROOM_WEATHER_PROFILES[targetProfile].label} selected={context.targetProfile === targetProfile}
-          onPress={() => onContext({ ...context, targetProfile })} />)}
-      </ScrollView>
-      <View style={styles.choices}><Choice label="Danes" selected={context.dayMode === 'today'} onPress={() => onContext({ ...context, dayMode: 'today' })} />
-        <Choice label="Jutri" selected={context.dayMode === 'tomorrow'} onPress={() => onContext({ ...context, dayMode: 'tomorrow' })} /></View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.choices}>
-        <Choice label="Zadnja sprememba" selected={sort === 'recent'} onPress={() => setSort('recent')} />
-        <Choice label="Najboljši pogoji" selected={sort === 'conditions'} onPress={() => setSort('conditions')} />
-        <Choice label="Ime" selected={sort === 'name'} onPress={() => setSort('name')} />
-      </ScrollView>
-      <Text style={commonStyles.muted}>{ready} z oceno · {hotspots.length - ready} brez ocene</Text>
+      <HotspotRankingControls context={context} onContext={onContext} sort={sort} onSort={setSort} />
+      <Text style={styles.caveat}>{ready} ocenjenih · {hotspots.length - ready} brez ocene</Text>
       {loading ? <View style={styles.choices}><ActivityIndicator size="small" color={colors.primary} /><Text style={commonStyles.muted}>Dopolnjujem pogoje …</Text></View> : null}
       {!loading && !ready ? <Text style={commonStyles.muted}>Trenutno ni mogoče izračunati pogojev za shranjena rastišča.</Text> : null}
       {!loading && (error || ready < hotspots.length) ? <Choice label="Poskusi znova" onPress={retry} /> : null}
-      <Text style={styles.caveat}>Razvrstitev primerja vremenske razmere, ne zagotavlja prisotnosti gob.</Text>
+      <Text style={styles.caveat}>Razvrstitev primerja pogoje, ne zagotavlja najdb.</Text>
     </View>}
     renderItem={({ item }) => {
       const assessment = assessments[item.id], score = rankingScore(assessment);
@@ -81,8 +69,8 @@ function Choice({ label, selected, onPress }: { label: string; selected?: boolea
   </Pressable>;
 }
 const styles = StyleSheet.create({ list: { flex: 1, minHeight: 0 }, content: { gap: spacing.md, paddingBottom: spacing.sm },
-  header: { gap: spacing.sm }, choices: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
-  label: { color: colors.muted, fontSize: 12, fontWeight: '700' }, caveat: { color: colors.muted, fontSize: 13, lineHeight: 18 },
+  header: { gap: spacing.xs }, choices: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
+  caveat: { color: colors.muted, fontSize: 13, lineHeight: 18 },
   choice: { minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: radii.round, paddingHorizontal: spacing.md,
     borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }, selected: { backgroundColor: colors.primary },
   choiceText: { color: colors.text, fontSize: 13, fontWeight: '600' }, selectedText: { color: colors.white },
