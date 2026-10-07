@@ -27,9 +27,12 @@ function compile(relative: string) {
   mod.filename = filename; mod.paths = Module._nodeModulePaths(resolve('src/components'));
   const original = mod.require.bind(mod);
   mod.require = (id: string) => {
-    if (id === 'react') return { useMemo: (fn: () => unknown) => fn() };
+    if (id === 'react') return { useMemo: (fn: () => unknown) => fn(), useState: (initial: any) => [typeof initial === 'function' ? initial() : initial, () => undefined], useEffect: () => undefined };
     if (id === 'react/jsx-runtime') return { jsx: element, jsxs: element, Fragment: 'Fragment' };
-    if (id === 'react-native') return { View: 'View', Text: 'Text', Image: 'Image', ActivityIndicator: 'ActivityIndicator', StyleSheet: { create: (x: unknown) => x } };
+    if (id === 'react-native') return { View: 'View', Text: 'Text', Image: 'Image', FlatList: 'FlatList', Pressable: 'Pressable', ScrollView: 'ScrollView', ActivityIndicator: 'ActivityIndicator', StyleSheet: { create: (x: unknown) => x } };
+    if (id === '@react-navigation/native') return { useNavigation: () => ({ navigate: () => undefined }) };
+    if (id === '@expo/vector-icons') return { Ionicons: 'Ionicons' };
+    if (id === './HotspotRankingControls') return { HotspotRankingControls: 'HotspotRankingControls' };
     if (id === '@maplibre/maplibre-react-native') return { Marker: 'Marker' };
     if (id === './ui') return { ...ui, commonStyles: {} };
     if (id.endsWith('/useLocationConditions')) return { useLocationConditions: (_locations: unknown, profile: MushroomWeatherProfileId, day: string, enabled?: boolean) => {
@@ -44,11 +47,13 @@ function compile(relative: string) {
 }
 const { HotspotConditionsCard, LocationConditionsSummary, HotspotConditionsPopup } = compile('src/components/HotspotConditions.tsx');
 const { HotspotConditionsMarkers } = compile('src/components/HotspotConditionsMarkers.tsx');
+const { HotspotRankingList } = compile('src/components/HotspotRankingList.tsx');
 function walk(node: unknown): Element[] {
   if (Array.isArray(node)) return node.flatMap(walk);
   if (!node || typeof node !== 'object' || !('props' in node)) return [];
   const n = node as Element;
-  return [n, ...walk(typeof n.type === 'function' ? n.type(n.props) : n.props.children)];
+  return [n, ...walk(n.type === 'FlatList' ? [n.props.ListHeaderComponent, ...n.props.data.map((item: any) => n.props.renderItem({ item }))]
+    : typeof n.type === 'function' ? n.type(n.props) : n.props.children)];
 }
 const text = (node: unknown) => walk(node).filter(n => n.type === 'Text').map(n => n.props.children).flat(Infinity).join(' ');
 const findButton = (node: unknown, name: string) => walk(node).find(n => n.type === 'AppButton' && n.props.title === name)!;
@@ -87,6 +92,10 @@ for (const profile of ['generic', 'boletusEdulis', 'cantharellusCibarius', 'lact
     strictEqual(calls.at(-1)!.profile, profile); strictEqual(calls.at(-1)!.day, day, 'badge owns map selection, not stored species');
     const popup = HotspotConditionsPopup({ hotspot, profile, day });
     ok(text(popup).includes(assessment.classLabel));
+    const ranking = HotspotRankingList({ hotspots: [hotspot], finds: [], context: { targetProfile: profile, dayMode: day },
+      sort: 'recent', onSort: () => undefined, onShowMap: () => undefined, onContext: () => undefined });
+    for (const surface of [tree, popup, ranking]) ok(text(surface).includes(String(assessment.score)), 'same production score in card/popup/ranking');
+    ok(text(markerTree).includes(String(assessment.score)), 'same production score in badge');
   }
 }
 strictEqual(opened, 8);
@@ -98,6 +107,9 @@ assessment = undefined;
 const noScore = HotspotConditionsMarkers({ hotspots: [hotspot], enabled: true, profile: 'generic', day: 'today', onSelect: () => undefined });
 strictEqual(walk(noScore).filter(n => n.type === 'Marker').length, 1, 'marker survives missing weather');
 strictEqual(walk(noScore).filter(n => n.type === 'Text').length, 0, 'no fake score badge');
+const hidden = HotspotConditionsMarkers({ hotspots: [hotspot], enabled: true, visible: false, profile: 'generic', day: 'today', onSelect: () => undefined });
+strictEqual(hidden, null); strictEqual(calls.at(-1)!.enabled, false, 'display toggle hides annotations and avoids acquisition');
+strictEqual(walk(HotspotConditionsMarkers({ hotspots: [hotspot], enabled: true, visible: true, profile: 'generic', day: 'today', onSelect: () => undefined })).filter(n => n.type === 'Marker').length, 1, 'ON restores missing-score marker');
 const stale = regionalAreaAssessmentFor(feature, assessHeatmapWeather({ ...point, baseLocalDate: date, fetchedAt: new Date().toISOString(),
   errors: {}, stale: true, days: [{ date: shiftLocalDate(date, -1), kind: 'historical', precipitationMm: 20, temperatureMeanC: 13 }] }, 'generic', 'today'));
 ok(text(LocationConditionsSummary({ assessment: { ...stale, score: 80 }, loading: false })).includes('starejša ocena'));

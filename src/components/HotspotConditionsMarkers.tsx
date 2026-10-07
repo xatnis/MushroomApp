@@ -8,13 +8,14 @@ import { useLocationConditions } from '../services/heatmap/useLocationConditions
 import { colors } from '../theme';
 
 /** Native view annotations stay above fills; their weather updates cannot rebuild Map's sources. */
-export function HotspotConditionsMarkers({ hotspots, selectedId, enabled, profile, day, bounds, onSelect }: {
+export function HotspotConditionsMarkers({ hotspots, selectedId, enabled, profile, day, bounds, onSelect, visible: showMarkers = true }: {
   hotspots: Hotspot[]; selectedId?: string; enabled: boolean; profile: MushroomWeatherProfileId;
-  day: HeatmapTargetDay; bounds?: Bounds; onSelect: (hotspot: Hotspot) => void;
+  day: HeatmapTargetDay; bounds?: Bounds; onSelect: (hotspot: Hotspot) => void; visible?: boolean;
 }) {
   const visible = useMemo(() => hotspots.filter(h => h.id === selectedId || (bounds && h.longitude >= bounds[0]
     && h.longitude <= bounds[2] && h.latitude >= bounds[1] && h.latitude <= bounds[3])), [hotspots, selectedId, bounds]);
-  const { assessments } = useLocationConditions(visible, profile, day, enabled, 250);
+  const { assessments } = useLocationConditions(visible, profile, day, enabled && showMarkers, 250);
+  if (!showMarkers) return null;
   return <>{hotspots.map(hotspot => {
     const score = enabled ? assessments[hotspot.id]?.score : undefined;
     return <Marker key={hotspot.id} id={hotspot.id} lngLat={[hotspot.longitude, hotspot.latitude]} anchor="bottom" onPress={event => {

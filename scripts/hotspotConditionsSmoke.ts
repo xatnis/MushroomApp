@@ -120,7 +120,7 @@ async function run() {
   ok(map.includes('...pendingHotspotFocus.conditions')); ok(map.includes('zoom: 15'));
   ok(map.includes('hotspotId: selected.id')); ok(map.includes('focusHotspot(hotspot)'));
   const marker = readFileSync('src/components/HotspotConditionsMarkers.tsx', 'utf8');
-  ok(marker.includes('profile, day, enabled, 250')); ok(marker.includes('score != null'));
+  ok(marker.includes('profile, day, enabled && showMarkers, 250')); ok(marker.includes('score != null'));
   ok(!/GeoJSON|useHeatmapVisuals|heatmapLod/.test(marker.replace(/\/\*\*.*?\*\//gs, '')), 'badge cannot rebuild or remount a heatmap source');
   const hook = readFileSync('src/services/heatmap/useLocationConditions.ts', 'utf8');
   ok(hook.includes('[db, key, baseDate, active, attempt, foreground, debounceMs]'), 'transport effect excludes profile/day');

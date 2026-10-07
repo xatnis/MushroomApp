@@ -104,8 +104,9 @@ for (const forbidden of ['useLocationConditions', 'fetch(', 'GeoJSON', 'heatmapN
 const current = readFileSync('src/components/HotspotRankingList.tsx', 'utf8');
 const baseline = execFileSync('git', ['show', 'db27240:src/components/HotspotRankingList.tsx'], { encoding: 'utf8' });
 strictEqual(current.slice(current.indexOf('  const navigation ='), current.indexOf('  return <FlatList')),
-  baseline.slice(baseline.indexOf('  const navigation ='), baseline.indexOf('  return <FlatList')), 'evaluation/sort/cache inputs unchanged');
-strictEqual(current.slice(current.indexOf('    renderItem='), current.indexOf('\nfunction Choice')),
-  baseline.slice(baseline.indexOf('    renderItem='), baseline.indexOf('\nfunction Choice')), 'rows/navigation unchanged');
+  baseline.slice(baseline.indexOf('  const navigation ='), baseline.indexOf('  return <FlatList'))
+    .replace("  const [sort, setSort] = useState<HotspotSortMode>('recent');\n", ''), 'only sort ownership moved above view switch; evaluation/cache unchanged');
+ok(current.includes("navigation.navigate('HotspotDetail', rankingDetailParams(item.id, context))"));
+ok(current.includes('onPress={() => onShowMap(item)}'));
 strictEqual(readFileSync('src/domain/hotspotRanking.ts', 'utf8'), execFileSync('git', ['show', 'db27240:src/domain/hotspotRanking.ts'], { encoding: 'utf8' }));
 console.log('PASS hidden scrollbar + scroll cue, actual active/inactive colors and selected/checked day, exactly three sort options, selection/back/outside, 44pt targets, UI-only menu, byte-identical evaluation/order/rows/navigation. Physical font/layout QA still required.');

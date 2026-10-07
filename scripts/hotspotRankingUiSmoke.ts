@@ -38,6 +38,8 @@ const hotspots: Hotspot[] = Array.from({ length: 9 }, (_, i) => ({ id: `h${i}`, 
   profileId: 'local:device', latitude: 46.47, longitude: 14.85, locationSource: 'manual', locationSharing: 'private',
   createdAt: '', updatedAt: '', syncState: 'local' }));
 let context: ConditionsTargetContext = { targetProfile: 'generic', dayMode: 'today' };
+let sort = 'recent';
+const mapActions: Hotspot[] = [];
 let assessments: Record<string, any> = {}, loading = true, error: string | undefined, retries = 0;
 const calls: any[] = [], navigation: any[] = [];
 const filename = resolve('src/components/HotspotRankingList.tsx'), mod = new Module(filename);
@@ -49,6 +51,7 @@ mod.require = (id: string) => {
   if (id === 'react-native') return { ...Object.fromEntries(['FlatList', 'ScrollView', 'Pressable', 'Text', 'View', 'ActivityIndicator'].map(x => [x, x])), StyleSheet: { create: (x: any) => x } };
   if (id === '@react-navigation/native') return { useNavigation: () => ({ navigate: (...args: any[]) => navigation.push(args) }) };
   if (id === './ui') return { Card: 'Card', StatusPill: 'StatusPill', commonStyles: {} };
+  if (id === '@expo/vector-icons') return { Ionicons: 'Ionicons' };
   // Actual segmented/menu presentation is exercised separately by rankingControlsSmoke.
   if (id === './HotspotRankingControls') return { HotspotRankingControls: (props: any) => element('View', { children: [
     ...Object.entries(MUSHROOM_WEATHER_PROFILES).map(([targetProfile, profile]) => element('Pressable', {
@@ -72,7 +75,8 @@ function render() {
   do {
     dirty = false; cursor = 0;
     const before = calls.length;
-    tree = HotspotRankingList({ hotspots, finds: [{ hotspotId: 'h0' }], context, onContext: (next: ConditionsTargetContext) => { context = next; } });
+    tree = HotspotRankingList({ hotspots, finds: [{ hotspotId: 'h0' }], context, sort, onSort: (value: string) => { sort = value; },
+      onShowMap: (value: Hotspot) => mapActions.push(value), onContext: (next: ConditionsTargetContext) => { context = next; } });
     strictEqual(calls.length - before, 1, 'one grouped hook per render, not one per row');
     strictEqual(calls.at(-1)[0], hotspots, 'request locations stay in original order');
     strictEqual(calls.at(-1)[4], 250);
@@ -129,6 +133,9 @@ try {
   press('Navadna lisička'); press('Užitna sirovka'); strictEqual(calls.at(-1)[1], 'lactariusDeliciosus');
   const row = walk(tree).find(n => n.type === 'Pressable' && n.props.accessibilityLabel === 'Odpri rastišče I')!;
   row.props.onPress(); deepStrictEqual(navigation.at(-1), ['HotspotDetail', { hotspotId: 'h0', conditionsContext: context }]);
+  const mapAction = walk(tree).find(n => n.type === 'Pressable' && n.props.accessibilityLabel === 'Prikaži I na zemljevidu')!;
+  ok(mapAction); mapAction.props.onPress(); strictEqual(mapActions.at(-1), hotspots[0]);
+  strictEqual(navigation.length, 1, 'secondary sibling map action does not trigger detail tap');
   loading = false; assessments = {}; error = 'fixture failure'; render();
   ok(text(tree).includes('Trenutno ni mogoče izračunati pogojev')); ok(text(tree).includes('Ni ocene'));
   ok(!text(tree).includes('0 / 100')); strictEqual(tree.props.data.length, 9);
@@ -137,5 +144,9 @@ try {
   // Simulate leaving the list: pending publications must not update an unmounted child.
   const pending = timers.at(-1)!; slots.forEach(s => s?.cleanup?.()); const count = slots.filter(Boolean).length;
   pending.fn(); strictEqual(slots.filter(Boolean).length, count); ok(pending.cancelled);
+  slots.length = 0; assessments = { h0: score(70) }; render();
+  strictEqual(sort, 'conditions', 'sort lives above remount for list-map-list roundtrip');
+  strictEqual(context.targetProfile, 'lactariusDeliciosus'); strictEqual(context.dayMode, 'tomorrow');
+  slots.forEach(s => s?.cleanup?.());
   console.log('PASS actual ranking UI: grouped 9-location hook, immediate list, profiles/days, three sorts, progressive order coalescing, unavailable/real zero/retry/stale, latest context, navigation, cleanup. Native phone layout remains physical QA.');
 } finally { global.setTimeout = realSet; global.clearTimeout = realClear; }

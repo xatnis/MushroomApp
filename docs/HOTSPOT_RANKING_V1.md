@@ -1,5 +1,9 @@
 # Hotspot Ranking V1
 
+V1 behavior below is historical. [Hotspot ↔ Heatmap Integration V2](HOTSPOT_HEATMAP_INTEGRATION_V2.md)
+now shares the existing heatmap profile/day, preserves list sort, keeps the map mounted
+and adds a secondary row map action plus the own-marker display toggle.
+
 The saved-location **Seznam** view answers “Which of my saved locations currently
 has the best model conditions?” It does not rank mushroom abundance or finding probability.
 Only the current local user's saved locations are evaluated; the existing friends list

@@ -20,12 +20,12 @@ visit(ast);
 const state: any = { isFocused: true, pendingHotspotFocus: {
   requestId: 'entry-1', hotspotId: 'pikovo', longitude: 14.82, latitude: 46.42,
   conditions: { profileId: 'lactariusDeliciosus', targetDay: 'tomorrow' },
-}, consumedHotspotFocus: { current: undefined }, controls: INITIAL_HEATMAP_CONTROLS,
+}, consumedHotspotFocus: { current: undefined }, mapWasMoved: { current: false }, controls: INITIAL_HEATMAP_CONTROLS,
   heatmapEnabled: true, heatmapAreaCardOpen: false, selectedId: undefined,
   locationRequestGate: { cancel() {} }, navigationContext: { enabled: false }, cleared: [] };
 state.dispatchHeatmapControls = (action: HeatmapControlsAction) => { state.controls = heatmapControlsReducer(state.controls, action); };
 for (const [setter, key] of [['setSelectedId', 'selectedId'], ['setOwnerFilter', 'ownerFilter'], ['setMode', 'mode'],
-  ['setCameraTarget', 'cameraTarget'], ['setPopupLayout', 'popupLayout'], ['setContextBottom', 'contextBottom'], ['setLocating', 'locating']]) {
+  ['setCameraTarget', 'cameraTarget'], ['setPopupLayout', 'popupLayout'], ['setContextBottom', 'contextBottom'], ['setLocating', 'locating'], ['setShowMyHotspots', 'showMyHotspots']]) {
   state[setter] = (value: any) => { state[key] = value; };
 }
 state.updateHeatmapNavigation = (patch: any) => { state.navigationContext = { ...state.navigationContext, ...patch }; };
@@ -96,6 +96,6 @@ const baseline = execFileSync('git', ['show', '01b2038:src/screens/MapScreen.tsx
 const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b));
 strictEqual(slice(source, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'),
   slice(baseline, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'), 'native sources/layers unchanged');
-strictEqual(slice(source, '  const { enabled: heatmapEnabled', '  const heatmapAreaLocality'),
-  slice(baseline, '  const { enabled: heatmapEnabled', '  const heatmapAreaLocality'), 'weather/GeoJSON/LOD pipeline unchanged');
+strictEqual(slice(source, '  const [heatmapBundle', '  const heatmapAreaLocality').replace("    if (mode !== 'map') return;\n", ''),
+  slice(baseline, '  const [heatmapBundle', '  const heatmapAreaLocality'), 'weather/GeoJSON/LOD pipeline unchanged apart from hidden camera event guard');
 console.log('PASS: real entry/marker/blur handlers, preserved coordinates/profile/day, compact existing filter, exclusive/restorable popup, close/context, transient cleanup, measured padding, unchanged weather/LOD/native sources. Physical layout still needs Android QA.');

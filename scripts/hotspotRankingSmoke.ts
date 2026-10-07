@@ -79,18 +79,22 @@ async function run() {
       }
       strictEqual(sortHotspots(nine.map(m => ({ id: m.id, title: m.id })), assessments, 'conditions').length, 9);
     }
-    strictEqual(batches, 1, 'warm/species/day adds no transport');
+    // Ranking -> visible map markers -> focused popup -> ranking, same shared weather loader.
+    await loader(db, points.slice(0, 2), date);
+    await loader(db, [nine[0].weatherPoint], date);
+    await loader(db, points, date);
+    strictEqual(batches, 1, 'warm/species/day and list-map-list adds no transport');
     console.log('Ranking 9-hotspot MOCK TRANSPORT', { hotspots: 9, uniquePoints: count, batches,
-      coldHttp: batches * 2, inFlightDuplicateExtraHttp: 0, warmExtraHttp: 0, speciesDayExtraHttp: 0 });
+      coldHttp: batches * 2, inFlightDuplicateExtraHttp: 0, warmExtraHttp: 0, speciesDayExtraHttp: 0, listMapListExtraHotspotHttp: 0 });
   }
   const screen = readFileSync('src/screens/MapScreen.tsx', 'utf8');
   const baseline = execFileSync('git', ['show', '4d20a3d:src/screens/MapScreen.tsx'], { encoding: 'utf8' });
   const segment = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b));
-  strictEqual(segment(screen, '  const { enabled: heatmapEnabled', '  const heatmapAreaLocality'),
-    segment(baseline, '  const { enabled: heatmapEnabled', '  const heatmapAreaLocality'));
+  strictEqual(segment(screen, '  const [heatmapBundle', '  const heatmapAreaLocality').replace("    if (mode !== 'map') return;\n", ''),
+    segment(baseline, '  const [heatmapBundle', '  const heatmapAreaLocality'));
   strictEqual(segment(screen, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'),
     segment(baseline, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'));
-  ok(screen.includes('context={rankingContext} onContext={setRankingContext}'));
+  ok(screen.includes('context={conditionsContext} onContext={setConditionsContext}'));
   const child = readFileSync('src/components/HotspotRankingList.tsx', 'utf8');
   ok(child.includes('useLocationConditions(hotspots, context.targetProfile, context.dayMode, true, 250)'));
   for (const forbidden of ['loadHeatmapPilot(', 'fetch(', 'updateHeatmapNavigation(', 'GeoJSONSource', 'Supabase', 'updateHotspot(']) ok(!child.includes(forbidden), forbidden);
