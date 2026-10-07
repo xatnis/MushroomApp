@@ -6,6 +6,7 @@ import { resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import ts from 'typescript';
 import { MUSHROOM_WEATHER_PROFILES } from '../src/domain/mushroomWeather';
+import { colors } from '../src/theme';
 import type { ConditionsTargetContext, HotspotSortMode } from '../src/domain/hotspotRanking';
 
 // Actual controls/handlers and style contracts, not a native font/Yoga renderer.
@@ -46,22 +47,36 @@ render();
 strictEqual(trigger().props.accessibilityLabel, 'Razvrsti: Zadnja sprememba');
 strictEqual(walk(tree).filter(n => n.type === 'Pressable').length, 7, 'four chips + two segments + ONE sort trigger');
 const scroll = walk(tree).find(n => n.type === 'ScrollView');
-ok(scroll.props.horizontal); ok(scroll.props.showsHorizontalScrollIndicator); ok(scroll.props.accessibilityHint.includes('podrsajte'));
+ok(scroll.props.horizontal); strictEqual(scroll.props.showsHorizontalScrollIndicator, false); ok(scroll.props.accessibilityHint.includes('podrsajte'));
+ok(walk(tree).some(n => n.type === 'Ionicons' && n.props.name === 'swap-horizontal-outline'), 'scroll discovery cue preserved');
 const chips = walk(scroll).filter(n => n.type === 'Pressable');
 deepStrictEqual(chips.map(text), Object.values(MUSHROOM_WEATHER_PROFILES).map(p => p.label));
 strictEqual(chips.filter(n => n.props.accessibilityState.selected).length, 1);
 const segmented = walk(tree).find(n => n.props.accessibilityRole === 'radiogroup');
 const days = walk(segmented).filter(n => n.type === 'Pressable');
 strictEqual(days.length, 2); strictEqual(days[0].props.accessibilityState.checked, true);
+function assertDayStyles() {
+  for (const [day, label] of [['today', 'Danes'], ['tomorrow', 'Jutri']]) {
+    const segment = button(label), selected = context.dayMode === day;
+    strictEqual(segment.props.accessibilityState.selected, selected, 'visual/accessible selection matches dayMode');
+    strictEqual(segment.props.accessibilityState.checked, selected);
+    strictEqual(flat(segment.props.style).backgroundColor, selected ? colors.primary : colors.surface);
+    const caption = walk(segment).find(n => n.type === 'Text');
+    strictEqual(flat(caption.props.style).color, selected ? colors.white : colors.text);
+  }
+}
+assertDayStyles();
 for (const n of [...chips, ...days, trigger()]) ok(flat(n.props.style).minHeight >= 44);
 press('Jutri'); strictEqual(context.dayMode, 'tomorrow');
 strictEqual(button('Jutri').props.accessibilityState.checked, true);
+assertDayStyles(); press('Danes'); assertDayStyles(); press('Jutri'); assertDayStyles();
 press('Jesenski goban'); strictEqual(context.targetProfile, 'boletusEdulis');
 strictEqual(button('Jesenski goban').props.accessibilityState.selected, true);
 const before = changes; trigger().props.onPress(); render(); strictEqual(changes, before, 'menu open is UI-only');
 strictEqual(trigger().props.accessibilityState.expanded, true);
 const options = walk(tree).filter(n => n.type === 'Pressable' && n.props.accessibilityRole === 'radio' && !['Danes', 'Jutri'].includes(text(n)));
 deepStrictEqual(options.map(text), ['Zadnja sprememba', 'Najboljši pogoji', 'Ime']);
+strictEqual(options.length, 3); ok(!text(tree).includes('Prekliči'));
 ok(options[0].props.accessibilityState.checked);
 for (const n of options) ok(flat(n.props.style).minHeight >= 44);
 press('Najboljši pogoji'); strictEqual(sort, 'conditions'); ok(!menuOpen);
@@ -70,9 +85,9 @@ trigger().props.onPress(); render(); press('Ime'); strictEqual(sort, 'name');
 trigger().props.onPress(); render(); const count = changes;
 walk(tree).find(n => n.type === 'Modal').props.onRequestClose(); render();
 ok(!menuOpen); strictEqual(changes, count, 'Android back dismisses without changing sort/profile/day');
-trigger().props.onPress(); render(); press('Prekliči'); strictEqual(changes, count);
 trigger().props.onPress(); render();
 walk(tree).find(n => n.props.accessibilityLabel === 'Zapri možnosti razvrščanja').props.onPress(); render(); ok(!menuOpen);
+strictEqual(changes, count); strictEqual(sort, 'name', 'outside dismissal preserves sort');
 // Responsive style contract: normal phone widths share a row; narrower widths wrap, never truncate.
 const row = walk(tree).find(n => n.type === 'View' && flat(n.props.style).flexWrap === 'wrap');
 ok(row); const dayWidth = flat(segmented.props.style).flexBasis, sortStyle = flat(trigger().props.style);
@@ -93,4 +108,4 @@ strictEqual(current.slice(current.indexOf('  const navigation ='), current.index
 strictEqual(current.slice(current.indexOf('    renderItem='), current.indexOf('\nfunction Choice')),
   baseline.slice(baseline.indexOf('    renderItem='), baseline.indexOf('\nfunction Choice')), 'rows/navigation unchanged');
 strictEqual(readFileSync('src/domain/hotspotRanking.ts', 'utf8'), execFileSync('git', ['show', 'db27240:src/domain/hotspotRanking.ts'], { encoding: 'utf8' }));
-console.log('PASS chips/scroll cue, segmented checked day, one sort trigger/menu/default/selected/cancel/back, 44pt targets, flexible wrap contracts, UI-only menu, byte-identical evaluation/order/rows/navigation. Physical font/layout QA still required.');
+console.log('PASS hidden scrollbar + scroll cue, actual active/inactive colors and selected/checked day, exactly three sort options, selection/back/outside, 44pt targets, UI-only menu, byte-identical evaluation/order/rows/navigation. Physical font/layout QA still required.');

@@ -14,9 +14,9 @@ The target is a comparison profile for ALL rows, not the species saved at each h
 ### Controls presentation polish
 
 Species remain one horizontally scrolling chip row, with a subtle horizontal-arrow cue,
-scroll indicator and accessibility swipe hint. Below it, Danes/Jutri share one segmented
+hidden native scroll indicator and accessibility swipe hint. Below it, Danes/Jutri share one segmented
 container; the adjacent sort trigger displays the selected label and chevron. It opens a
-small React Native Modal menu with the same three choices, a selected checkmark, cancel,
+small React Native Modal menu with only the same three choices, a selected checkmark,
 outside-tap dismissal and Android-back dismissal. No new dependency is needed.
 
 The controls row uses wrapping flex layout: its nominal minimum budget is 136 pt for
@@ -36,12 +36,18 @@ opening/cancelling it cannot invoke ranking evaluation or transport. Choosing a 
 the original state setter. Ranking/domain, hook inputs, row content and navigation are
 pinned unchanged in `scripts/rankingControlsSmoke.ts`.
 
-Polish verification: TypeScript and 11 focused/regression suites passed, including
+Final control polish: the dayMode equality check was already correct, but selected day
+used a pale surface against a green-tinted inactive container. Selected now uses the same
+dark green/white active palette as species chips, with a neutral inactive surface.
+`accessibilityState.selected` and `checked` both follow that same equality check. The menu
+has no Cancel row; selecting, tapping outside or Android Back are its dismissal paths.
+
+Final polish verification: TypeScript and 8 focused/regression suites passed, including
 84,248 regional and 15,688 pilot parity cases. The release helper failed with the known
 Gradle loopback error; no old APK was copied. Local build command:
 
 ```powershell
-npm run apk -- --name MushroomApp-preview-hotspot-ranking-polish.apk
+npm run apk -- --name MushroomApp-preview-hotspot-ranking-final-polish.apk
 ```
 
 - **Zadnja sprememba** remains the default, preserving repository `updatedAt DESC` order.

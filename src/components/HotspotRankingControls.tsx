@@ -25,7 +25,7 @@ export const HotspotRankingControls = memo(function HotspotRankingControls({ con
       <Text style={styles.label}>POGOJI NA RASTIŠČIH</Text>
       <Ionicons name="swap-horizontal-outline" size={15} color={colors.muted} accessible={false} />
     </View>
-    <ScrollView horizontal showsHorizontalScrollIndicator={true} contentContainerStyle={styles.species}
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.species}
       accessibilityLabel="Profil pogojev" accessibilityHint="Za več profilov podrsajte levo ali desno.">
       {(Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[]).map(targetProfile =>
         <Pressable key={targetProfile} accessibilityRole="button" accessibilityState={{ selected: context.targetProfile === targetProfile }}
@@ -37,7 +37,7 @@ export const HotspotRankingControls = memo(function HotspotRankingControls({ con
     <View style={styles.controlsRow}>
       <View style={styles.segmented} accessibilityRole="radiogroup" accessibilityLabel="Dan ocene">
         {(['today', 'tomorrow'] as const).map(dayMode => <Pressable key={dayMode} accessibilityRole="radio"
-          accessibilityState={{ checked: context.dayMode === dayMode }} onPress={() => onContext({ ...context, dayMode })}
+          accessibilityState={{ checked: context.dayMode === dayMode, selected: context.dayMode === dayMode }} onPress={() => onContext({ ...context, dayMode })}
           style={[styles.segment, context.dayMode === dayMode && styles.segmentSelected]}>
           <Text style={[styles.text, context.dayMode === dayMode && styles.segmentSelectedText]}>{dayMode === 'today' ? 'Danes' : 'Jutri'}</Text>
         </Pressable>)}
@@ -59,7 +59,6 @@ export const HotspotRankingControls = memo(function HotspotRankingControls({ con
             <Text style={[styles.text, styles.sortText]}>{option.label}</Text>
             {sort === option.id ? <Ionicons name="checkmark" size={20} color={colors.primary} accessible={false} /> : null}
           </Pressable>)}
-          <Pressable accessibilityRole="button" onPress={() => setMenuOpen(false)} style={styles.menuOption}><Text style={styles.text}>Prekliči</Text></Pressable>
         </View>
       </SafeAreaView>
     </Modal>
@@ -77,8 +76,8 @@ const styles = StyleSheet.create({
   controlsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, alignItems: 'center' },
   segmented: { flexDirection: 'row', flexBasis: 136, flexGrow: 0, flexShrink: 0, borderRadius: radii.sm,
     borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceSoft, overflow: 'hidden' },
-  segment: { flex: 1, minHeight: 44, paddingHorizontal: spacing.sm, justifyContent: 'center', alignItems: 'center' },
-  segmentSelected: { backgroundColor: colors.surface }, segmentSelectedText: { color: colors.primary, fontWeight: '800' },
+  segment: { flex: 1, minHeight: 44, paddingHorizontal: spacing.sm, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface },
+  segmentSelected: { backgroundColor: colors.primary }, segmentSelectedText: { color: colors.white, fontWeight: '800' },
   sortControl: { flexBasis: 156, flexGrow: 1, flexShrink: 1, minWidth: 156, minHeight: 44,
     paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, flexDirection: 'row', alignItems: 'center', gap: spacing.xs,
     borderRadius: radii.sm, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
