@@ -93,8 +93,8 @@ ok(source.includes('hiddenMap: { opacity: 0 }'));
 const baseline = execFileSync('git', ['show', '03cf830:src/screens/MapScreen.tsx'], { encoding: 'utf8' });
 const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b));
 strictEqual(slice(source, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'), slice(baseline, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'));
-strictEqual(slice(source, '  const [heatmapBundle', '  const heatmapAreaLocality').replace("    if (mode !== 'map') return;\n", ''),
-  slice(baseline, '  const [heatmapBundle', '  const heatmapAreaLocality'), 'no scoring/visual/LOD rewrite');
-for (const file of ['src/services/heatmap/useLocationConditions.ts', 'src/services/heatmap/regionalWeather.ts', 'src/domain/locationConditions.ts', 'src/state/AppContext.tsx'])
+strictEqual(slice(source, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen').replace("    if (mode !== 'map') return;\n", ''),
+  slice(baseline, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen'), 'no scoring/visual/LOD rewrite');
+for (const file of ['src/services/heatmap/regionalWeather.ts', 'src/domain/locationConditions.ts', 'src/state/AppContext.tsx'])
   strictEqual(readFileSync(file, 'utf8'), execFileSync('git', ['show', `03cf830:${file}`], { encoding: 'utf8' }), file);
 console.log('PASS actual list/map context handlers, row focus intent/current context/exclusive popup, ordinary viewport preservation, sort roundtrip, offscreen render deferral, mounted native sources, untouched evaluation/cache/privacy. Physical Android rendering still requires QA.');

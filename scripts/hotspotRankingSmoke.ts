@@ -90,8 +90,8 @@ async function run() {
   const screen = readFileSync('src/screens/MapScreen.tsx', 'utf8');
   const baseline = execFileSync('git', ['show', '4d20a3d:src/screens/MapScreen.tsx'], { encoding: 'utf8' });
   const segment = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b));
-  strictEqual(segment(screen, '  const [heatmapBundle', '  const heatmapAreaLocality').replace("    if (mode !== 'map') return;\n", ''),
-    segment(baseline, '  const [heatmapBundle', '  const heatmapAreaLocality'));
+  strictEqual(segment(screen, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen').replace("    if (mode !== 'map') return;\n", ''),
+    segment(baseline, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen'));
   strictEqual(segment(screen, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'),
     segment(baseline, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'));
   ok(screen.includes('context={conditionsContext} onContext={setConditionsContext}'));

@@ -24,6 +24,8 @@ const rows = new Map([[regionalWeatherKey([mapping.weatherPoint], date), { paylo
 const db = { getFirstAsync: async (_: string, key: string) => rows.get(key) ?? null,
   runAsync: async (_: string, key: string, payload: string) => rows.set(key, { payload }) } as unknown as SQLiteDatabase;
 let focused = true, loads = 0, foregroundListener: ((state: string) => void) | undefined;
+let holdLoads = false;
+const heldLoads: Array<{ reject: (error: Error) => void }> = [];
 let index = 0;
 const hooks: any[] = [], effects: Array<() => void> = [];
 const equal = (a: unknown[], b: unknown[]) => a?.length === b?.length && a.every((v, i) => v === b[i]);
@@ -45,7 +47,10 @@ mod.require = (id: string) => {
   } } };
   if (id === '@react-navigation/native') return { useIsFocused: () => focused };
   if (id === 'expo-sqlite') return { useSQLiteContext: () => db };
-  if (id === './pilotHeatmap') return { ...service, loadHeatmapPilot: (...args: Parameters<typeof service.loadHeatmapPilot>) => { loads++; return service.loadHeatmapPilot(...args); } };
+  if (id === './pilotHeatmap') return { ...service, loadHeatmapPilot: (...args: Parameters<typeof service.loadHeatmapPilot>) => {
+    loads++;
+    return holdLoads ? new Promise((_, reject) => heldLoads.push({ reject })) : service.loadHeatmapPilot(...args);
+  } };
   return original(id);
 };
 mod._compile(ts.transpileModule(readFileSync(filename, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS,
@@ -61,24 +66,53 @@ async function run() {
   const fetch = globalThis.fetch;
   globalThis.fetch = async () => { http++; throw new Error('Warm selection must never fetch'); };
   try {
-    render(); render('boletusEdulis'); render('cantharellusCibarius', 'tomorrow');
+    strictEqual(render().complete, false, 'initial render is pending BEFORE loading effect commits');
+    render('boletusEdulis'); render('cantharellusCibarius', 'tomorrow');
     await new Promise(resolve => setTimeout(resolve, 25));
     const ready = render('cantharellusCibarius', 'tomorrow');
     strictEqual(loads, 1, 'rapid profile/day updates do not restart transport');
     ok(ready.assessments[p.id]?.score != null);
+    strictEqual(ready.complete, true, 'all attempts settled');
     strictEqual(ready.assessments[p.id]!.speciesId, 'cantharellusCibarius');
     strictEqual(ready.assessments[p.id]!.targetLocalDate, targetLocalDate(date, 'tomorrow'), 'latest selection wins');
     for (const profile of ['generic', 'boletusEdulis', 'cantharellusCibarius', 'lactariusDeliciosus'] as const) for (const day of ['today', 'tomorrow'] as const) render(profile, day);
     await new Promise(resolve => setTimeout(resolve, 10)); strictEqual(loads, 1); strictEqual(http, 0);
     focused = false; render(); await new Promise(resolve => setTimeout(resolve, 10)); strictEqual(loads, 1, 'hidden screen cannot fetch');
-    focused = true; render(); await new Promise(resolve => setTimeout(resolve, 20)); render();
+    focused = true; strictEqual(render().complete, false); await new Promise(resolve => setTimeout(resolve, 20)); render();
     strictEqual(loads, 2); strictEqual(http, 0, 'focus freshness check reuses cache');
-    foregroundListener!('active'); render(); await new Promise(resolve => setTimeout(resolve, 20)); render();
+    foregroundListener!('active'); strictEqual(render().complete, false); await new Promise(resolve => setTimeout(resolve, 20)); render();
     strictEqual(loads, 3); strictEqual(http, 0, 'foreground cache reuse');
     render('generic', 'today', [{ ...p, latitude: NaN }]); await new Promise(resolve => setTimeout(resolve, 10));
     strictEqual(loads, 3, 'transient invalid manual input cannot query weather or crash');
     render('generic', 'today', [p]); render('generic', 'today', []);
     await new Promise(resolve => setTimeout(resolve, 15)); strictEqual(loads, 3, 'cancelled stale coordinate work never starts');
+    const nine = Array.from({ length: 9 }, (_, i) => ({ ...p, id: `top-${i}` }));
+    strictEqual(render('generic', 'today', nine).complete, false);
+    await new Promise(resolve => setTimeout(resolve, 20));
+    const top = render('generic', 'today', nine); strictEqual(top.complete, true); strictEqual(Object.keys(top.assessments).length, 9);
+    const loaded = loads;
+    for (const profile of ['generic', 'boletusEdulis', 'cantharellusCibarius', 'lactariusDeliciosus'] as const) for (const day of ['today', 'tomorrow'] as const) {
+      const next = render(profile, day, nine); strictEqual(next.complete, true);
+      for (const value of Object.values(next.assessments)) strictEqual(value!.speciesId, profile);
+    }
+    render('generic', 'today', nine); render('generic', 'today', nine);
+    strictEqual(loads, loaded, 'closing/reopening retained Top 3 never restarts transport'); strictEqual(http, 0);
+    console.info('Top 3 warm hook fixture', { hotspots: 9, uniqueWeatherPoints: 1, extraHttp: http,
+      speciesDayExtraLoads: loads - loaded, reopenExtraLoads: loads - loaded });
+    holdLoads = true;
+    const oldLocations = [{ id: 'old-generation', latitude: 45.1, longitude: 13.1 }];
+    const latestLocations = [{ id: 'latest-generation', latitude: 46.9, longitude: 16.9 }];
+    strictEqual(render('boletusEdulis', 'today', oldLocations).complete, false);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    strictEqual(render('lactariusDeliciosus', 'tomorrow', latestLocations).complete, false);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    heldLoads[0].reject(new Error('late obsolete failure')); await new Promise(resolve => setTimeout(resolve, 0));
+    const waiting = render('lactariusDeliciosus', 'tomorrow', latestLocations);
+    strictEqual(waiting.complete, false); strictEqual(waiting.error, undefined, 'stale failure cannot finish/error latest generation');
+    heldLoads[1].reject(new Error('current failure')); await new Promise(resolve => setTimeout(resolve, 0));
+    const failed = render('lactariusDeliciosus', 'tomorrow', latestLocations);
+    strictEqual(failed.complete, true, 'failed attempt completes instead of infinite loading');
+    ok(failed.error); strictEqual(failed.assessments[latestLocations[0].id], undefined, 'failure never fabricates zero');
   } finally { for (const hook of hooks) hook?.cleanup?.(); globalThis.fetch = fetch; }
   strictEqual(foregroundListener, undefined, 'listener cleanup');
   console.info('PASS actual location hook: latest species/day selection, zero refetch, grouped load, focus/foreground cache, invalid input, stale cancellation, cleanup. No Map/GeoJSON/LOD call path.');

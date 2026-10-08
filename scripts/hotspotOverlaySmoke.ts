@@ -152,6 +152,6 @@ const baseline = execFileSync('git', ['show', '01b2038:src/screens/MapScreen.tsx
 const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b));
 strictEqual(slice(source, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'),
   slice(baseline, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'), 'native sources/layers unchanged');
-strictEqual(slice(source, '  const [heatmapBundle', '  const heatmapAreaLocality').replace("    if (mode !== 'map') return;\n", ''),
-  slice(baseline, '  const [heatmapBundle', '  const heatmapAreaLocality'), 'weather/GeoJSON/LOD pipeline unchanged apart from hidden camera event guard');
+strictEqual(slice(source, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen').replace("    if (mode !== 'map') return;\n", ''),
+  slice(baseline, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen'), 'weather/GeoJSON/LOD pipeline unchanged apart from hidden camera event guard');
 console.log('PASS: real entry/marker/blur handlers, preserved coordinates/profile/day, compact existing filter, exclusive/restorable popup, close/context, transient cleanup, measured padding, unchanged weather/LOD/native sources. Physical layout still needs Android QA.');

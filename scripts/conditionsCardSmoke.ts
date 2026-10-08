@@ -101,7 +101,7 @@ const functionText = (text: string, name: string) => {
 const baseline = execFileSync('git', ['show', '8c70834:src/screens/MapScreen.tsx']).toString();
 // Hotspot Conditions V1 legitimately adds focus context and marker views. Keep
 // the existing heatmap computation/native source path pinned, not unrelated routing.
-const heatmapLogic = (s: string) => s.slice(s.indexOf('  const [heatmapBundle'), s.indexOf('  const heatmapAreaLocality')).replace("    if (mode !== 'map') return;\n", '');
+const heatmapLogic = (s: string) => s.slice(s.indexOf('  const selectHeatmapSpecies'), s.indexOf('  const heatmapAreaCardOpen')).replace("    if (mode !== 'map') return;\n", '');
 const heatmapSources = (s: string) => s.slice(s.indexOf('<GeoJSONSource id="regional-overview-source"'), s.indexOf('{locationGranted ?'));
 strictEqual(heatmapLogic(screen), heatmapLogic(baseline), 'heatmap/LOD/weather calculation untouched');
 strictEqual(heatmapSources(screen), heatmapSources(baseline), 'native heatmap sources/layers untouched');

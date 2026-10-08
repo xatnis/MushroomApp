@@ -36,7 +36,7 @@ function compile(relative: string) {
     if (id === '@maplibre/maplibre-react-native') return { Marker: 'Marker' };
     if (id === './ui') return { ...ui, commonStyles: {} };
     if (id.endsWith('/useLocationConditions')) return { useLocationConditions: (_locations: unknown, profile: MushroomWeatherProfileId, day: string, enabled?: boolean) => {
-      calls.push({ profile, day, enabled }); return { assessments: { [hotspot.id]: assessment }, loading, retry: () => { retries++; } };
+      calls.push({ profile, day, enabled }); return { assessments: { [hotspot.id]: assessment }, loading, complete: !loading, retry: () => { retries++; } };
     } };
     if (id.endsWith('.png')) return 'mushroom-icon';
     return original(id);
@@ -48,6 +48,7 @@ function compile(relative: string) {
 const { HotspotConditionsCard, LocationConditionsSummary, HotspotConditionsPopup, HotspotMapCard } = compile('src/components/HotspotConditions.tsx');
 const { HotspotConditionsMarkers } = compile('src/components/HotspotConditionsMarkers.tsx');
 const { HotspotRankingList } = compile('src/components/HotspotRankingList.tsx');
+const { HotspotTopThree } = compile('src/components/HotspotTopThree.tsx');
 function walk(node: unknown): Element[] {
   if (Array.isArray(node)) return node.flatMap(walk);
   if (!node || typeof node !== 'object' || !('props' in node)) return [];
@@ -107,7 +108,9 @@ for (const profile of ['generic', 'boletusEdulis', 'cantharellusCibarius', 'lact
     ok(!cardNodes.some(n => n.type === 'AppButton'), 'no large nested CTA');
     const ranking = HotspotRankingList({ hotspots: [hotspot], finds: [], context: { targetProfile: profile, dayMode: day },
       sort: 'recent', onSort: () => undefined, onShowMap: () => undefined, onContext: () => undefined });
-    for (const surface of [tree, popup, mapCard, ranking]) ok(text(surface).includes(String(assessment.score)), 'same production score in card/popup/ranking');
+    const top = HotspotTopThree({ hotspots: [hotspot], context: { targetProfile: profile, dayMode: day }, enabled: true, visible: true,
+      maxHeight: 160, onClose() {}, onSelect() {} });
+    for (const surface of [tree, popup, mapCard, ranking, top]) ok(text(surface).includes(String(assessment.score)), 'same production score in card/popup/ranking/Top3');
     ok(text(markerTree).includes(String(assessment.score)), 'same production score in badge');
   }
 }

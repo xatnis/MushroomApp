@@ -22,6 +22,8 @@ export function useLocationConditions(locations: ConditionsLocation[], profile: 
   const [foreground, refreshForeground] = useState(0);
   const [error, setError] = useState<string>();
   const baseDate = localDateFor();
+  const loadKey = JSON.stringify([key, baseDate, active, attempt, foreground, debounceMs]);
+  const [settledKey, setSettledKey] = useState<string>();
   const previous = useRef<HeatmapPilotBundle | undefined>(bundle);
   useEffect(() => {
     if (!active || !mappings.length) return;
@@ -42,7 +44,7 @@ export function useLocationConditions(locations: ConditionsLocation[], profile: 
     return () => listener.remove();
   }, []);
   useEffect(() => {
-    if (!active || !mappings.length) { setLoading(false); return; }
+    if (!active || !mappings.length) { setLoading(false); setSettledKey(undefined); return; }
     let current = true;
     const controller = new AbortController();
     setLoading(true); setError(undefined);
@@ -53,16 +55,22 @@ export function useLocationConditions(locations: ConditionsLocation[], profile: 
         .catch(() => { if (current) setError('Ocene trenutno ni mogoče izračunati.'); })
         .finally(() => {
           if (current) {
+            const next = cachedHeatmapBundle(db);
+            previous.current = next; setBundle(next);
+            setSettledKey(loadKey);
             setLoading(false);
             if (__DEV__) console.info('[location conditions]', { locations: mappings.length,
               weatherPoints: points.length, durationMs: Date.now() - started, sharedCacheAndDedupe: true });
           }
         });
     }, debounceMs);
-    return () => { current = false; cancel(); controller.abort(); };
+    return () => { current = false; cancel(); controller.abort(); setSettledKey(undefined); };
     // Profile and target day intentionally absent: one snapshot contains all profiles and both dates.
   }, [db, key, baseDate, active, attempt, foreground, debounceMs]);
   const assessments = useMemo(() => Object.fromEntries(enabled ? mappings.map(m =>
     [m.id, conditionsForLocation(m, bundle, profile, day, baseDate)]) : []), [mappings, bundle, profile, day, baseDate, enabled]);
-  return { assessments, mappings, loading, error, retry: () => retry(value => value + 1) };
+  // False on the FIRST render of a new location/date/load generation, even before
+  // the effect sets loading. Species/day use the same snapshot and don't reset it.
+  const complete = !mappings.length || (active && settledKey === loadKey);
+  return { assessments, mappings, loading, complete, error, retry: () => retry(value => value + 1) };
 }

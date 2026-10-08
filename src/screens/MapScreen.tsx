@@ -1,5 +1,5 @@
 import { startTransition, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
-import { ActivityIndicator, Image, Keyboard, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, BackHandler, Image, Keyboard, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker, UserLocation, type MapRef, type CameraRef, type FillLayerSpecification, type LineLayerSpecification } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
 import { useSQLiteContext } from 'expo-sqlite';
@@ -31,6 +31,7 @@ import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } 
 import { HotspotConditionsMarkers, HOTSPOT_MARKER_HEIGHT } from '../components/HotspotConditionsMarkers';
 import { HotspotMapCard } from '../components/HotspotConditions';
 import { HotspotRankingList } from '../components/HotspotRankingList';
+import { HotspotTopThree } from '../components/HotspotTopThree';
 import { rankingDetailParams, type ConditionsTargetContext, type HotspotSortMode } from '../domain/hotspotRanking';
 import { conditionsContextFromNavigation, conditionsNavigationPatch } from '../domain/hotspotHeatmap';
 
@@ -114,6 +115,8 @@ export function MapScreen() {
   };
   const [listSort, setListSort] = useState<HotspotSortMode>('recent');
   const [showMyHotspots, setShowMyHotspots] = useState(true);
+  const [topThreeRequested, setTopThreeRequested] = useState(false);
+  const [mapControlsBottom, setMapControlsBottom] = useState(0);
   const conditionsContext = useMemo(() => conditionsContextFromNavigation(heatmapNavigation), [heatmapNavigation.profileId, heatmapNavigation.targetDay]);
   const setConditionsContext = (context: ConditionsTargetContext) => updateHeatmapNavigation(conditionsNavigationPatch(context));
   // Defer polygon selection updates while the list is visible; the shared selection itself is never copied into state.
@@ -128,6 +131,17 @@ export function MapScreen() {
   const [heatmapRetry, setHeatmapRetry] = useState(0);
   const [heatmapControls, dispatchHeatmapControls] = useReducer(heatmapControlsReducer, INITIAL_HEATMAP_CONTROLS);
   const heatmapControlsVisible = !heatmapControls.userDismissedPanel;
+  const topThreeVisible = mode === 'map' && heatmapEnabled && Boolean(heatmapControls.topThreeOpen);
+  useEffect(() => {
+    if (!isFocused || !topThreeVisible) return;
+    const listener = BackHandler.addEventListener('hardwareBackPress', () => {
+      dispatchHeatmapControls({ type: 'top-three-close' }); return true;
+    });
+    return () => listener.remove();
+  }, [isFocused, topThreeVisible]);
+  useEffect(() => {
+    if (!heatmapEnabled) dispatchHeatmapControls({ type: 'top-three-close' });
+  }, [heatmapEnabled]);
   const selectHeatmapSpecies = (profileId: MushroomWeatherProfileId) => {
     if (__DEV__) console.info('[heatmap selection tap]', { profileId, receivedAt: performance.now() });
     updateHeatmapNavigation({ profileId });
@@ -235,7 +249,8 @@ export function MapScreen() {
     [selectedHeatmapFeature], heatmapProfileId, heatmapTargetDay,
   ).assessments[selectedHeatmapFeature.properties.id] : undefined,
   [selectedHeatmapFeature, heatmapBundle, heatmapProfileId, heatmapTargetDay]);
-  const heatmapAreaCardOpen = heatmapLod === 'detail' && !selected && heatmapEnabled && Boolean(selectedHeatmapArea && selectedHeatmapFeature);
+  const heatmapAreaCardOpen = heatmapLod === 'detail' && !selected && heatmapEnabled && !topThreeVisible
+    && !(heatmapControls.filterFromTopThree && !heatmapControls.userDismissedPanel) && Boolean(selectedHeatmapArea && selectedHeatmapFeature);
   useEffect(() => {
     if (__DEV__) console.info('[heatmap controls state]', { userDismissedPanel: heatmapControls.userDismissedPanel,
       visible: heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen),
@@ -335,7 +350,7 @@ export function MapScreen() {
   // fire again when two hotspots have equal-sized cards. Never reuse an old request's insets.
   useEffect(() => {
     if (!isFocused || mode !== 'map' || !mapReady || !cameraTarget?.hotspotId || selected?.id !== cameraTarget.hotspotId
-      || !hotspotPopupVisible(true, heatmapEnabled, heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen))) return;
+      || !hotspotPopupVisible(true, heatmapEnabled, heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen), Boolean(heatmapControls.topThreeOpen))) return;
     const target = cameraTarget;
     const layoutKey = `${heatmapProfileId}/${heatmapTargetDay}/${heatmapEnabled}/${mapViewportHeight}/${focusLayoutRevision}`;
     let cancelled = false, popupHeight: number | undefined, controlsBottom: number | undefined;
@@ -357,7 +372,7 @@ export function MapScreen() {
   useEffect(() => {
     if (!isFocused || mode !== 'map' || !mapReady || !cameraTarget || !camera.current || cameraTargetRef.current !== cameraTarget) return;
     const popupExpected = cameraTarget.hotspotId && selected?.id === cameraTarget.hotspotId && hotspotPopupVisible(true, heatmapEnabled,
-      heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen));
+      heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen), Boolean(heatmapControls.topThreeOpen));
     if (cameraTarget.hotspotId && (!popupExpected || focusLayout?.target !== cameraTarget || mapViewportHeight <= 0
       || focusLayout.layoutKey !== `${heatmapProfileId}/${heatmapTargetDay}/${heatmapEnabled}/${mapViewportHeight}/${focusLayoutRevision}`)) return;
     setCameraMoving(true);
@@ -411,7 +426,7 @@ export function MapScreen() {
   };
 
   const switchHotspotView = (next: 'map' | 'list') => {
-    if (next === 'list') { cancelPendingHotspotFocus(); setCameraMoving(false); }
+    if (next === 'list') { cancelPendingHotspotFocus(); setCameraMoving(false); dispatchHeatmapControls({ type: 'top-three-close' }); }
     if (next === 'map' && mode === 'list' && ownerFilter === 'mine') {
       // A view switch is not a camera focus request, including on the untouched initial viewport.
       mapWasMoved.current = true;
@@ -422,6 +437,15 @@ export function MapScreen() {
   };
   const showRankingHotspot = (hotspot: (typeof hotspots)[number]) => {
     requestHotspotFocus(hotspot, conditionsNavigationPatch(conditionsContext));
+  };
+  const openTopThree = () => {
+    cancelPendingHotspotFocus(); setSelectedId(undefined);
+    setTopThreeRequested(true); dispatchHeatmapControls({ type: 'top-three-open' });
+  };
+  const selectTopThreeHotspot = (hotspot: (typeof hotspots)[number]) => {
+    dispatchHeatmapControls({ type: 'top-three-close' });
+    setQuery(''); updateHeatmapNavigation({ selectedAreaId: undefined });
+    focusHotspot(hotspot);
   };
   const toggleMyHotspots = () => {
     cancelPendingHotspotFocus();
@@ -658,13 +682,16 @@ export function MapScreen() {
         </Marker>)}
       </Map>
       <Pressable accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
-      {heatmapEnabled && !heatmapAreaCardOpen && !heatmapControlsVisible ? <View ref={contextView} collapsable={false} onLayout={refreshPendingFocusLayout} style={styles.contextControls}><Pressable
+      {heatmapEnabled && !heatmapAreaCardOpen && !heatmapControlsVisible ? <View ref={contextView} collapsable={false} onLayout={event => {
+        setMapControlsBottom(event.nativeEvent.layout.y + event.nativeEvent.layout.height); refreshPendingFocusLayout();
+      }} style={styles.contextControls}><Pressable
         accessibilityRole="button" accessibilityLabel="Odpri izbiro pogojev"
         onPress={() => { cancelPendingHotspotFocus(); dispatchHeatmapControls({ type: 'open' }); }}
         style={({ pressed }) => [styles.contextControl, pressed && styles.closeButtonPressed]}>
         <Text style={styles.contextText}>{MUSHROOM_WEATHER_PROFILES[heatmapProfileId].label} · {heatmapTargetDay === 'today' ? 'Danes' : 'Jutri'}</Text>
         <Ionicons name="options-outline" size={18} color={colors.primary} />
-      </Pressable><MyHotspotsToggle visible={showMyHotspots} onToggle={toggleMyHotspots} /></View> : null}
+      </Pressable><MyHotspotsToggle visible={showMyHotspots} onToggle={toggleMyHotspots} />
+        <TopThreeEntry onPress={openTopThree} selected={topThreeVisible} /></View> : null}
       {heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen) ? <View style={styles.heatmapControls}>
         {heatmapLod === 'overview' ? <Text style={commonStyles.muted}>{overviewTapped ? 'Približaj zemljevid za podrobnejše pogoje.' : 'Regionalni pregled · Približaj za podrobnejši prikaz'}</Text> : null}
         <View style={styles.heatmapControlsHeader}>
@@ -689,24 +716,30 @@ export function MapScreen() {
         </ScrollView>
         <View style={styles.heatmapDateRow}><Text style={styles.heatmapControlLabel}>DATUM</Text><Chip label="Danes" selected={heatmapTargetDay === 'today'} onPress={() => selectHeatmapDay('today')} /><Chip label="Jutri" selected={heatmapTargetDay === 'tomorrow'} onPress={() => selectHeatmapDay('tomorrow')} /></View>
         <MyHotspotsToggle visible={showMyHotspots} onToggle={toggleMyHotspots} />
+        <TopThreeEntry onPress={openTopThree} selected={false} />
         <View style={styles.heatmapLegend}><View style={[styles.legendDot, { backgroundColor: '#A96B50' }]} /><Text style={styles.legendText}>slabe</Text><View style={[styles.legendDot, { backgroundColor: '#C7A85A' }]} /><View style={[styles.legendDot, { backgroundColor: '#7EA46E' }]} /><View style={[styles.legendDot, { backgroundColor: '#3F7C57' }]} /><View style={[styles.legendDot, { backgroundColor: '#174E3D' }]} /><Text style={styles.legendText}>odlične</Text><View style={[styles.legendDot, { backgroundColor: '#8B9190' }]} /><Text style={styles.legendText}>omejeno/neznano</Text></View>
         <Text style={styles.heatmapAttribution}>Habitat: ESA WorldCover 2021 + Zavod za gozdove Slovenije – podatki o sestojih · Vreme: Open-Meteo · Meja: geoBoundaries</Text>
         {heatmapStatus === 'loading' ? <View pointerEvents="none" style={styles.heatmapStatus}><ActivityIndicator size="small" color={colors.primary} /><Text style={commonStyles.muted}>{readiness.firstUsefulReady ? 'Dopolnjujem podatke za prikazano območje …' : 'Nalagam vreme za prikazano območje …'}</Text></View> : null}
         {heatmapStatus === 'error' ? <View style={styles.heatmapStatus}><Text style={styles.heatmapErrorText}>{heatmapError}</Text><Pressable accessibilityRole="button" onPress={() => setHeatmapRetry((value) => value + 1)}><Text style={styles.retryText}>Poskusi znova</Text></Pressable></View> : null}
       </View> : null}
-      {heatmapEnabled && !selected && !heatmapAreaCardOpen && heatmapStatus === 'out-of-coverage' ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>Podatki o pogojih za to območje še niso pripravljeni.</Text></View> : null}
-      {heatmapEnabled && !selected && heatmapLod === 'overview' && !heatmapControlsVisible && heatmapStatus !== 'out-of-coverage' ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>{overviewTapped ? 'Približaj zemljevid za podrobnejše pogoje.' : 'Regionalni pregled · Približaj za podrobnejši prikaz'}</Text></View> : null}
+      {heatmapEnabled && !topThreeVisible && !selected && !heatmapAreaCardOpen && heatmapStatus === 'out-of-coverage' ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>Podatki o pogojih za to območje še niso pripravljeni.</Text></View> : null}
+      {heatmapEnabled && !topThreeVisible && !selected && heatmapLod === 'overview' && !heatmapControlsVisible && heatmapStatus !== 'out-of-coverage' ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>{overviewTapped ? 'Približaj zemljevid za podrobnejše pogoje.' : 'Regionalni pregled · Približaj za podrobnejši prikaz'}</Text></View> : null}
       {exploreLocation && !selected && !heatmapEnabled ? <Pressable accessibilityRole="button" accessibilityLabel={`Poglej razmere za ${exploreLocation.name}`} onPress={() => navigation.navigate('Tabs', { screen: 'Conditions' })} style={({ pressed }) => [styles.conditionsAction, pressed && styles.searchResultPressed]}>
         <Ionicons name="cloud-outline" size={21} color={colors.primary} />
         <View style={styles.grow}><Text numberOfLines={1} style={styles.conditionsLocation}>{exploreLocation.name}</Text><Text style={styles.conditionsActionText}>Poglej razmere</Text></View>
         <Ionicons name="chevron-forward" size={18} color={colors.primary} />
       </Pressable> : null}
-      {selected && hotspotPopupVisible(true, heatmapEnabled, heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen)) ? <View ref={popupView} collapsable={false} onLayout={refreshPendingFocusLayout} style={styles.preview}>
+      {selected && hotspotPopupVisible(true, heatmapEnabled, heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen), Boolean(heatmapControls.topThreeOpen)) ? <View ref={popupView} collapsable={false} onLayout={refreshPendingFocusLayout} style={styles.preview}>
         <HotspotMapCard hotspot={selected} profile={heatmapProfileId} day={heatmapTargetDay} conditionsEnabled={heatmapEnabled}
           visits={finds.filter(find => find.hotspotId === selected.id).length} onOpen={openSelectedHotspot}
           onClose={() => { cancelPendingHotspotFocus(); setSelectedId(undefined); }} />
       </View> : null}
-      {!selected && heatmapEnabled && heatmapLod === 'detail' && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
+      {topThreeRequested ? <View pointerEvents={topThreeVisible ? 'auto' : 'none'} style={styles.preview}>
+        <HotspotTopThree hotspots={hotspots} context={conditionsContext} enabled={heatmapEnabled && mode === 'map'} visible={topThreeVisible}
+          maxHeight={Math.max(0, Math.min(mapViewportHeight * .5, mapViewportHeight - mapControlsBottom - spacing.lg - spacing.sm))}
+          onClose={() => dispatchHeatmapControls({ type: 'top-three-close' })} onSelect={selectTopThreeHotspot} />
+      </View> : null}
+      {heatmapAreaCardOpen && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
         assessment={selectedHeatmapArea}
         weatherPending={!heatmapBundle?.weather.cells[selectedHeatmapFeature.properties.weatherCellId] && heatmapStatus === 'loading'}
         targetDay={heatmapTargetDay}
@@ -740,6 +773,13 @@ function MyHotspotsToggle({ visible, onToggle }: { visible: boolean; onToggle: (
     onPress={onToggle} style={({ pressed }) => [styles.myHotspotsControl, visible && styles.myHotspotsActive, pressed && styles.closeButtonPressed]}>
     <Ionicons name={visible ? 'layers' : 'layers-outline'} size={23} color={visible ? colors.white : colors.primary} />
     {visible ? <View style={styles.toggleCheck}><Ionicons name="checkmark" size={11} color={colors.primary} /></View> : null}</Pressable>;
+}
+
+function TopThreeEntry({ onPress, selected }: { onPress: () => void; selected: boolean }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel="Top 3 moja rastišča" accessibilityState={{ expanded: selected }}
+    onPress={onPress} style={({ pressed }) => [styles.topThreeEntry, selected && styles.topThreeEntryActive, pressed && styles.closeButtonPressed]}>
+    <Ionicons name="podium-outline" size={19} color={colors.primary} /><Text style={styles.topThreeText}>Top 3</Text>
+  </Pressable>;
 }
 
 function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; weatherPending?: boolean; targetDay: HeatmapTargetDay; maxHeight?: number; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
@@ -934,6 +974,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs,
     borderRadius: radii.round, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, elevation: 4 },
   contextText: { flex: 1, color: colors.primary, fontSize: 13, fontWeight: '600' },
+  topThreeEntry: { minHeight: 44, minWidth: 80, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs,
+    paddingHorizontal: spacing.sm, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  topThreeEntryActive: { backgroundColor: colors.surfaceSoft }, topThreeText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   screen: { flex: 1, minHeight: 0, padding: 0, gap: 0 },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md, gap: spacing.md },
   controls: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.sm },
