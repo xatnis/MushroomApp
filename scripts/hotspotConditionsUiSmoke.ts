@@ -106,6 +106,14 @@ for (const profile of ['generic', 'boletusEdulis', 'cantharellusCibarius', 'lact
     strictEqual(cardNodes.find(n => n.type === 'Text' && n.props.numberOfLines === 2)!.props.ellipsizeMode, 'tail');
     strictEqual(targets[1].props.style({ pressed: false })[0].minHeight, 44);
     ok(!cardNodes.some(n => n.type === 'AppButton'), 'no large nested CTA');
+    let returned = 0;
+    const originCard = HotspotMapCard({ hotspot, profile, day, conditionsEnabled: true, visits: 3,
+      onOpen: () => openedCard++, onClose: () => closedCard++, onBackToTopThree: () => returned++ });
+    const backTarget = walk(originCard).find(n => n.props.accessibilityLabel === 'Nazaj na Top 3')!;
+    ok(backTarget); strictEqual(backTarget.props.style({ pressed: false })[0].minHeight, 44);
+    backTarget.props.onPress(); strictEqual(returned, 1); strictEqual(openedCard, 1); strictEqual(closedCard, 1);
+    walk(originCard).find(n => n.props.accessibilityLabel === 'Zapri kartico rastišča')!.props.onPress(); strictEqual(closedCard, 2); strictEqual(returned, 1);
+    ok(!cardNodes.some(n => n.props.accessibilityLabel === 'Nazaj na Top 3'), 'marker/list/detail origin has no back CTA');
     const ranking = HotspotRankingList({ hotspots: [hotspot], finds: [], context: { targetProfile: profile, dayMode: day },
       sort: 'recent', onSort: () => undefined, onShowMap: () => undefined, onContext: () => undefined });
     const top = HotspotTopThree({ hotspots: [hotspot], context: { targetProfile: profile, dayMode: day }, enabled: true, visible: true,

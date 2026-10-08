@@ -15,8 +15,10 @@ history, factors or duplicate selectors. Long names have two lines and a full ac
 map-action label. Rows and close targets are at least 44 pt.
 
 The bottom panel stays inside the existing map container at its normal design margin.
-Its maximum height is the smaller of 50% of measured map height and space below the
-measured top controls minus bottom margin/breathing room. All contents scroll internally,
+Its maximum height is the smaller of two thirds of measured map height and space below the
+measured top controls minus the existing bottom margin, design gap and actual marker frame
+height. The latter keeps a marker-sized band of map visible. The panel uses intrinsic content
+height, not a fixed full-budget height. All contents scroll internally,
 including the header at extreme font sizes. MainTabs already accounts for system bottom
 insets; no additional navigation/system padding is applied here. Font scaling, Android
 projection and tiny map heights still need physical device QA; this is not a fullscreen modal.
@@ -55,6 +57,46 @@ Opening the filter closes Top 3 and gives the existing filter temporary priority
 any preserved regional selection; dismiss/leave clear that priority. X / Android Back close Top 3 without changing profile,
 day, heatmap mode, list sort or marker visibility. Listener cleanup runs on close/blur.
 Leaving map, switching to list or disabling Pogoji clears the transient open state.
+
+### UX V2: return to Top 3
+
+The existing overlay reducer now stores `topThreeOriginId` only after a Top 3 row
+calls the existing focus helper. It must match the current selected hotspot before
+the compact card displays a separate 44 pt **Nazaj na Top 3** target. Ordinary marker,
+ranking-map and detail-map entries do not display it. Main card surface still opens
+the detail screen; X only dismisses the card and clears the origin.
+
+Return closes selection and reopens Top 3 on the same MapScreen. It cancels any pending
+focus request but never calls camera focus/easeTo or navigation. Shared profile/day,
+list sort and cached evaluations remain intact. If context has changed, current-context
+ranking is used, not a saved copy of old results. The one Android Back listener prioritizes
+the visible global filter, then returns a Top 3-origin popup to Top 3, then dismisses
+Top 3 itself; otherwise existing navigation can handle Back. Each handled press returns
+true and the listener is removed on blur/exit/dependency change.
+
+Origin is cleared by X, open detail, ordinary hotspot entry, explicit filter opening,
+return to Top 3, list switch, Pogoji disable and leaving MapScreen. A selected-ID guard
+also cleans an origin whose hotspot was deselected/deleted/replaced. Rapid synchronous
+selections overwrite the origin with the latest ID. No new global navigation/context store.
+
+### UX V2: density and available space
+
+Content padding is 8 pt instead of 12; section gaps are removed; row vertical padding
+is 4 instead of 8 pt. Font sizes remain 17/15/13/12 pt, explicit line heights keep rows
+predictable, and each row/X has at least a 44 pt touch target. Name remains two lines
+with tail ellipsis and the full name in the accessible label; score cannot flex-shrink.
+Long names, context wrapping and large font scales can expand intrinsic row height.
+The ScrollView, bottom content padding and safe maximum height remain the fallback.
+
+Deterministic style arithmetic (not native text/Yoga measurement): at 360 pt screen
+width and 400 pt measured map height, measured controls bottom 108 pt, existing bottom
+margin 16, gap 8 and real marker height 52, the former maximum was 200 pt; it is now
+216 pt. Three normal one-line rows need approximately 210 pt including header,
+disclaimer, padding and border, so all fit in that fixture. At a 600 pt map the cap is
+400 pt, but normal content still only consumes its intrinsic ~210 pt. Font scaling
+1.5 and two-line names use scrolling when necessary. These are layout contracts, not
+a claim that every Redmi text/font setting has been physically verified. MainTabs
+already owns the bottom system inset; the map adds no duplicate safe-area padding.
 
 Row tap closes Top 3, clears search so the chosen marker is not accidentally filtered out,
 and calls the existing `focusHotspot` with saved coordinates. Existing zoom/padding,
@@ -100,7 +142,7 @@ Existing conditions UI tests compare ranking/detail/badge/popup/**Top 3** scores
 four profiles × two days. V3 focused tests continue exercising native measurement guards,
 padding geometry, manual-gesture cancellation and no second camera snap.
 
-Phone layout/touch/GPU behavior is not proven by desktop smoke tests. Local APK command:
+Phone layout/touch/GPU behavior is not proven by desktop smoke tests. Local UX V2 APK command:
 
 Implementation checks passed: TypeScript and 28 smoke suites; **84,248 regional +
 15,688 pilot** unchanged scorer comparisons. No physical device was attached. The release
@@ -108,7 +150,7 @@ helper was attempted and Gradle failed with `Unable to establish loopback connec
 no old APK was copied and the named output was not created.
 
 ```powershell
-npm run apk -- --name MushroomApp-preview-hotspot-top3-map.apk
+npm run apk -- --name MushroomApp-preview-top3-ux-v2.apk
 ```
 
 Never copy a previous APK after a failed build.

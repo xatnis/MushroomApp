@@ -1,10 +1,13 @@
 /** User intent is separate from temporary detail-card occlusion.
  * No weather/camera/navigation/render action can reopen a dismissed panel. */
-export interface HeatmapControlsState { userDismissedPanel: boolean; beforeHotspotEntry?: boolean; topThreeOpen?: boolean; filterFromTopThree?: boolean }
-export type HeatmapControlsAction = { type: 'open' | 'dismiss' | 'hotspot-entry' | 'leave' | 'top-three-open' | 'top-three-close' };
+export interface HeatmapControlsState { userDismissedPanel: boolean; beforeHotspotEntry?: boolean; topThreeOpen?: boolean; filterFromTopThree?: boolean; topThreeOriginId?: string }
+export type HeatmapControlsAction = { type: 'open' | 'dismiss' | 'hotspot-entry' | 'leave' | 'top-three-open' | 'top-three-close' } | { type: 'top-three-select'; hotspotId: string };
 export const INITIAL_HEATMAP_CONTROLS: HeatmapControlsState = { userDismissedPanel: false };
 export function heatmapControlsReducer(state: HeatmapControlsState, action: HeatmapControlsAction): HeatmapControlsState {
-  if (action.type === 'top-three-open') return { ...state, userDismissedPanel: true, topThreeOpen: true };
+  if (action.type === 'top-three-select') return { ...state, topThreeOriginId: action.hotspotId };
+  const { topThreeOriginId, ...withoutOrigin } = state;
+  if (action.type === 'top-three-open') return { ...withoutOrigin, userDismissedPanel: true, topThreeOpen: true };
+  if (topThreeOriginId) state = withoutOrigin;
   const { topThreeOpen, ...withoutTopThree } = state;
   if (action.type === 'top-three-close') return topThreeOpen ? withoutTopThree : state;
   if (!['open', 'dismiss', 'hotspot-entry', 'leave'].includes(action.type)) return state;
@@ -23,6 +26,12 @@ export function heatmapControlsReducer(state: HeatmapControlsState, action: Heat
   if (action.type !== 'open' && action.type !== 'dismiss') return state;
   const userDismissedPanel = action.type === 'dismiss';
   return state.userDismissedPanel === userDismissedPanel ? state : { ...state, userDismissedPanel };
+}
+
+/** Content sizes itself up to the measured free space. Keep a marker-sized map
+ * band and at least one third of the viewport uncovered by this bottom panel. */
+export function topThreePanelMaxHeight(mapHeight: number, controlsBottom: number, bottom: number, gap: number, markerHeight: number) {
+  return Math.max(0, Math.min(mapHeight * 2 / 3, mapHeight - controlsBottom - bottom - gap - markerHeight));
 }
 export const heatmapControlsPanelVisible = (state: HeatmapControlsState, enabled: boolean, detailCardOpen: boolean) =>
   enabled && !state.userDismissedPanel && !detailCardOpen && !state.topThreeOpen;

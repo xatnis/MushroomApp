@@ -24,7 +24,7 @@ import { createHeatmapRequestGate, scheduleSettledHeatmapLoad, loadHeatmapPilot,
 import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '../services/heatmap/areaLocality';
 import { useHeatmapVisuals } from '../services/heatmap/useHeatmapVisuals';
 import { HEATMAP_NATIVE_RANGES, HEATMAP_VISUAL, shouldPrewarmHeatmapDetail } from '../domain/heatmap/visual';
-import { INITIAL_HEATMAP_CONTROLS, heatmapControlsReducer, heatmapControlsPanelVisible, hotspotPopupVisible, hotspotFocusPadding } from '../domain/heatmap/controlsState';
+import { INITIAL_HEATMAP_CONTROLS, heatmapControlsReducer, heatmapControlsPanelVisible, hotspotPopupVisible, hotspotFocusPadding, topThreePanelMaxHeight } from '../domain/heatmap/controlsState';
 import { OVERVIEW_PREFETCH, shouldPrefetchOverview, prioritizedOverviewWeatherPointIds, overviewReadyCoverage, createOverviewCoverageDiagnostics } from '../domain/heatmap/overviewLoading';
 import { localDateFor } from '../domain/heatmap/assessment';
 import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
@@ -132,13 +132,6 @@ export function MapScreen() {
   const [heatmapControls, dispatchHeatmapControls] = useReducer(heatmapControlsReducer, INITIAL_HEATMAP_CONTROLS);
   const heatmapControlsVisible = !heatmapControls.userDismissedPanel;
   const topThreeVisible = mode === 'map' && heatmapEnabled && Boolean(heatmapControls.topThreeOpen);
-  useEffect(() => {
-    if (!isFocused || !topThreeVisible) return;
-    const listener = BackHandler.addEventListener('hardwareBackPress', () => {
-      dispatchHeatmapControls({ type: 'top-three-close' }); return true;
-    });
-    return () => listener.remove();
-  }, [isFocused, topThreeVisible]);
   useEffect(() => {
     if (!heatmapEnabled) dispatchHeatmapControls({ type: 'top-three-close' });
   }, [heatmapEnabled]);
@@ -446,6 +439,7 @@ export function MapScreen() {
     dispatchHeatmapControls({ type: 'top-three-close' });
     setQuery(''); updateHeatmapNavigation({ selectedAreaId: undefined });
     focusHotspot(hotspot);
+    dispatchHeatmapControls({ type: 'top-three-select', hotspotId: hotspot.id });
   };
   const toggleMyHotspots = () => {
     cancelPendingHotspotFocus();
@@ -461,9 +455,30 @@ export function MapScreen() {
   };
   const openSelectedHotspot = () => {
     cancelPendingHotspotFocus();
+    dispatchHeatmapControls({ type: 'top-three-close' });
     if (selected) navigation.navigate('HotspotDetail', heatmapEnabled
       ? rankingDetailParams(selected.id, conditionsContext) : { hotspotId: selected.id });
   };
+
+  const topThreeOriginPopup = heatmapEnabled && Boolean(selected && heatmapControls.topThreeOriginId === selected.id);
+  useEffect(() => {
+    if (heatmapControls.topThreeOriginId && heatmapControls.topThreeOriginId !== selected?.id)
+      dispatchHeatmapControls({ type: 'top-three-close' });
+  }, [selected?.id, heatmapControls.topThreeOriginId]);
+  // A single listener owns this overlay hierarchy. Returning only swaps overlays;
+  // it never invokes focusHotspot or navigation, nor starts a camera animation.
+  useEffect(() => {
+    if (!isFocused || mode !== 'map' || !heatmapEnabled) return;
+    const listener = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen)) {
+        dispatchHeatmapControls({ type: 'dismiss' }); return true;
+      }
+      if (topThreeOriginPopup) { openTopThree(); return true; }
+      if (topThreeVisible) { dispatchHeatmapControls({ type: 'top-three-close' }); return true; }
+      return false;
+    });
+    return () => listener.remove();
+  }, [isFocused, mode, heatmapEnabled, heatmapControls, heatmapAreaCardOpen, topThreeOriginPopup, topThreeVisible]);
 
   const selectPlace = (place: PlaceSearchResult) => {
     locationRequestGate.cancel(); setLocating(false);
@@ -732,11 +747,12 @@ export function MapScreen() {
       {selected && hotspotPopupVisible(true, heatmapEnabled, heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen), Boolean(heatmapControls.topThreeOpen)) ? <View ref={popupView} collapsable={false} onLayout={refreshPendingFocusLayout} style={styles.preview}>
         <HotspotMapCard hotspot={selected} profile={heatmapProfileId} day={heatmapTargetDay} conditionsEnabled={heatmapEnabled}
           visits={finds.filter(find => find.hotspotId === selected.id).length} onOpen={openSelectedHotspot}
-          onClose={() => { cancelPendingHotspotFocus(); setSelectedId(undefined); }} />
+          onBackToTopThree={topThreeOriginPopup ? openTopThree : undefined}
+          onClose={() => { cancelPendingHotspotFocus(); setSelectedId(undefined); dispatchHeatmapControls({ type: 'top-three-close' }); }} />
       </View> : null}
       {topThreeRequested ? <View pointerEvents={topThreeVisible ? 'auto' : 'none'} style={styles.preview}>
         <HotspotTopThree hotspots={hotspots} context={conditionsContext} enabled={heatmapEnabled && mode === 'map'} visible={topThreeVisible}
-          maxHeight={Math.max(0, Math.min(mapViewportHeight * .5, mapViewportHeight - mapControlsBottom - spacing.lg - spacing.sm))}
+          maxHeight={topThreePanelMaxHeight(mapViewportHeight, mapControlsBottom, spacing.lg, spacing.sm, HOTSPOT_MARKER_HEIGHT)}
           onClose={() => dispatchHeatmapControls({ type: 'top-three-close' })} onSelect={selectTopThreeHotspot} />
       </View> : null}
       {heatmapAreaCardOpen && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
