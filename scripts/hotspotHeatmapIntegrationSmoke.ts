@@ -39,7 +39,7 @@ Object.assign(state, { conditionsContextFromNavigation, conditionsNavigationPatc
 for (const name of ['Mode', 'CameraMoving', 'SelectedId', 'OwnerFilter', 'ShowMyHotspots', 'CameraTarget', 'FocusLayout', 'Locating']) {
   state[`set${name}`] = (value: any) => { const key = name[0].toLowerCase() + name.slice(1); state[key] = typeof value === 'function' ? value(state[key]) : value; };
 }
-const compile = (code: string) => runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, state);
+const compile = (code: string) => runInNewContext(`{ ${ts.transpileModule(code, { fileName: 'fixture.tsx', compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText} }`, state);
 state.cancelPendingHotspotFocus = compile(`(${vars.get('cancelPendingHotspotFocus')})`);
 const select = compile(`(${vars.get('setConditionsContext')})`), switchView = compile(`(${vars.get('switchHotspotView')})`);
 const show = compile(`(${vars.get('showRankingHotspot')})`), entry = compile(`(${effects.find(c => c.includes('consumedHotspotFocus.current = pendingHotspotFocus.requestId'))})`);
@@ -54,7 +54,7 @@ select({ targetProfile: 'cantharellusCibarius', dayMode: 'tomorrow' });
 strictEqual(state.nav.profileId, 'cantharellusCibarius'); strictEqual(state.nav.targetDay, 'tomorrow');
 strictEqual(renderInputs().heatmapProfileId, initialRenderProfile, 'offscreen polygons defer list-only selection');
 const cameraBefore = state.cameraTarget; switchView('map');
-strictEqual(state.nav.enabled, true); strictEqual(state.cameraTarget, cameraBefore, 'ordinary view switch never focuses camera');
+strictEqual(state.nav.enabled, false); strictEqual(state.cameraTarget, cameraBefore, 'ordinary view switch never focuses camera or activates Pogoji');
 strictEqual(renderInputs().heatmapProfileId, 'cantharellusCibarius'); strictEqual(renderInputs().heatmapTargetDay, 'tomorrow');
 species('boletusEdulis'); day('today'); switchView('list');
 strictEqual(renderInputs().conditionsContext.targetProfile, 'boletusEdulis'); strictEqual(state.nav.targetDay, 'today');
@@ -91,6 +91,43 @@ inspect(ast, false); ok(!mapConditional);
 ok(source.includes("pointerEvents={mode === 'map' ? 'auto' : 'none'}"));
 ok(source.includes('hiddenMap: { opacity: 0 }'));
 const baseline = execFileSync('git', ['show', '03cf830:src/screens/MapScreen.tsx'], { encoding: 'utf8' });
+// Both map modes survive repeated view switches, with context/sort and no request.
+for (const enabled of [false, true]) {
+  state.nav = { ...state.nav, enabled }; state.mode = 'map';
+  const beforeNav = state.nav, beforeCamera = state.cameraTarget, beforeRequests = state.requests.length;
+  const beforeSort = state.listSort;
+  switchView('list'); switchView('map');
+  strictEqual(state.nav, beforeNav, 'view switch does not mutate mode/profile/day state');
+  strictEqual(state.nav.enabled, enabled); strictEqual(state.listSort, beforeSort);
+  strictEqual(state.cameraTarget, beforeCamera); strictEqual(state.requests.length, beforeRequests);
+}
+// Evaluate the actual toggle JSX conditional. Null leaves no layout placeholder.
+let modeToggle: ts.JsxElement | undefined;
+function findModeToggle(n: ts.Node) {
+  if (ts.isJsxElement(n) && n.openingElement.attributes.getText(ast).includes('styles.mapModeSwitch')) modeToggle = n;
+  ts.forEachChild(n, findModeToggle);
+}
+findModeToggle(ast); ok(modeToggle);
+const toggleExpression = modeToggle.parent as ts.ConditionalExpression;
+ok(ts.isConditionalExpression(toggleExpression)); strictEqual(toggleExpression.condition.getText(ast), "mode === 'map'");
+const element = (type: any, props: any) => ({ type, props });
+Object.assign(state, { View: 'View', Text: 'Text', Pressable: 'Pressable', Ionicons: 'Icon', styles: {}, colors: { primary: 'green', white: 'white' },
+  exports: {},
+  require: (id: string) => { strictEqual(id, 'react/jsx-runtime'); return { jsx: element, jsxs: element }; } });
+state.mode = 'map'; const toggleTree = compile(`(${toggleExpression.getText(ast)})`);
+strictEqual(toggleTree.props.accessibilityRole, 'tablist');
+deepStrictEqual(Array.from(toggleTree.props.children, (child: any) => child.props.accessibilityLabel), ['Način Rastišča', 'Način Pogoji']);
+state.mode = 'list'; strictEqual(compile(`(${toggleExpression.getText(ast)})`), null, 'no invisible spacer on list');
+const baselineAst = ts.createSourceFile('previous.tsx', execFileSync('git', ['show', '87b7532:src/screens/MapScreen.tsx'], { encoding: 'utf8' }), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+let oldModeToggle = '';
+function oldToggle(n: ts.Node) {
+  if (ts.isJsxElement(n) && n.openingElement.attributes.getText(baselineAst).includes('styles.mapModeSwitch')) oldModeToggle = n.getText(baselineAst);
+  ts.forEachChild(n, oldToggle);
+}
+oldToggle(baselineAst); strictEqual(modeToggle.getText(ast), oldModeToggle, 'map controls and their actions unchanged');
+ok(source.includes("mode === 'list' ? <View style={styles.listOverlay}"));
+ok(source.includes('<HotspotRankingList hotspots={filtered}'));
+strictEqual(readFileSync('src/components/HotspotRankingList.tsx', 'utf8'), execFileSync('git', ['show', '87b7532:src/components/HotspotRankingList.tsx'], { encoding: 'utf8' }), 'list conditions controls/rows untouched');
 const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b));
 strictEqual(slice(source, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'), slice(baseline, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'));
 strictEqual(slice(source, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen').replace("    if (mode !== 'map') return;\n", ''),

@@ -423,8 +423,7 @@ export function MapScreen() {
     if (next === 'map' && mode === 'list' && ownerFilter === 'mine') {
       // A view switch is not a camera focus request, including on the untouched initial viewport.
       mapWasMoved.current = true;
-      if (!heatmapEnabled) dispatchHeatmapControls({ type: 'hotspot-entry' });
-      updateHeatmapNavigation({ enabled: true });
+      // Preserve the chosen map mode; only explicit hotspot focus activates Pogoji.
     }
     setMode(next);
   };
@@ -533,7 +532,7 @@ export function MapScreen() {
     </View>
     <View style={styles.controls}>
       <Field label="Poišči" placeholder="Poišči kraj, rastišče ali vrsto" value={query} onChangeText={setQuery} autoCorrect={false} returnKeyType="search" />
-      <View style={styles.mapModeSwitch} accessibilityRole="tablist">
+      {mode === 'map' ? <View style={styles.mapModeSwitch} accessibilityRole="tablist">
         <Pressable
           accessibilityRole="tab"
           accessibilityState={{ selected: !heatmapEnabled }}
@@ -563,7 +562,7 @@ export function MapScreen() {
           <Ionicons name="layers-outline" size={18} color={heatmapEnabled ? colors.white : colors.primary} />
           <Text style={[styles.mapModeText, heatmapEnabled && styles.mapModeTextActive]}>Pogoji</Text>
         </Pressable>
-      </View>
+      </View> : null}
       {searchOpen ? <View style={styles.searchPanel}>
         <ScrollView style={styles.searchScroll} contentContainerStyle={styles.searchContent} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
           {placeSearchLoading ? <ActivityIndicator color={colors.primary} /> : null}
