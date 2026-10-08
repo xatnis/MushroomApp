@@ -12,7 +12,7 @@ const hook = readFileSync('src/services/heatmap/useHeatmapVisuals.ts', 'utf8');
 const queryCode = hook.slice(hook.indexOf('query: async'), hook.indexOf('nextFrame:'));
 ok(!queryCode.includes('filter:'), 'viewport query must not restrict confirmation to three IDs');
 ok(queryCode.includes('queryRenderedFeatures({'), 'options-only overload queries whole native viewport, not center point');
-ok(map.includes('onRegionIsChanging={(event) => observeCameraZoom(event.nativeEvent.zoom, event.nativeEvent.bounds)}'));
+ok(/onRegionIsChanging=\{\(event\) => \{[^}]*observeCameraZoom\(event.nativeEvent.zoom, event.nativeEvent.bounds\)/.test(map), 'camera zoom observation remains wired during gestures alongside UI-focus cancellation');
 ok(map.includes('onDidFinishRenderingFrame={visual.onFullyRendered}'), 'incoming geometry must not wait for unrelated basemap downloads');
 ok(map.includes('afterId="regional-overview-border"'), 'detail explicitly above outgoing overview');
 ok(map.includes("onPress={visual.interactionLod === 'overview'"));

@@ -1,11 +1,12 @@
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { AppButton, Card, Chip, commonStyles } from './ui';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { AppButton, Card, Chip, StatusPill, commonStyles } from './ui';
 import type { Hotspot, MushroomWeatherProfileId } from '../domain/types';
 import type { HeatmapAreaAssessment, HeatmapTargetDay } from '../domain/heatmap/types';
 import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
 import { cardFactors, cardHabitat } from '../domain/heatmap/cardPresentation';
 import { useLocationConditions } from '../services/heatmap/useLocationConditions';
-import { colors, spacing } from '../theme';
+import { colors, radii, spacing } from '../theme';
 
 export function LocationConditionsSummary({ assessment, loading }: { assessment?: HeatmapAreaAssessment; loading: boolean }) {
   if (assessment?.score == null) return <View style={styles.row}>
@@ -44,14 +45,48 @@ export function HotspotConditionsCard({ hotspot, profile, day, onProfile, onDay,
   </Card>;
 }
 
-export function HotspotConditionsPopup({ hotspot, profile, day }: { hotspot: Hotspot; profile: MushroomWeatherProfileId; day: HeatmapTargetDay }) {
+export function HotspotConditionsPopup({ hotspot, profile, day, compact = false }: { hotspot: Hotspot; profile: MushroomWeatherProfileId; day: HeatmapTargetDay; compact?: boolean }) {
   const { assessments, loading } = useLocationConditions([hotspot], profile, day);
+  const assessment = assessments[hotspot.id];
+  if (compact) return <View style={styles.summary}>
+    <Text style={styles.mapContext}>{MUSHROOM_WEATHER_PROFILES[profile].label} · {day === 'today' ? 'Danes' : 'Jutri'}</Text>
+    <Text style={assessment?.score != null ? styles.mapScore : styles.mapContext}>{assessment?.score != null
+      ? `${assessment.score}/100 · ${assessment.classLabel}` : loading ? 'Pridobivam pogoje ...' : 'Ocene trenutno ni mogoče izračunati.'}</Text>
+    {assessment?.score != null && (assessment.summary.stale || Date.now() - Date.parse(assessment.fetchedAt) > 30 * 60 * 1000)
+      ? <Text style={styles.mapContext}>Starejša ocena iz predpomnilnika</Text> : null}
+  </View>;
   return <View style={styles.summary}><Text style={commonStyles.muted}>{MUSHROOM_WEATHER_PROFILES[profile].label} · {day === 'today' ? 'Danes' : 'Jutri'}</Text>
     <LocationConditionsSummary assessment={assessments[hotspot.id]} loading={loading} />
   </View>;
 }
 
+/** Same point evaluator; map presentation only. Close and open are sibling targets. */
+export function HotspotMapCard({ hotspot, profile, day, conditionsEnabled, visits, onOpen, onClose }: {
+  hotspot: Hotspot; profile: MushroomWeatherProfileId; day: HeatmapTargetDay; conditionsEnabled: boolean;
+  visits: number; onOpen: () => void; onClose: () => void;
+}) {
+  return <View style={styles.mapCard}>
+    <Pressable accessibilityRole="button" accessibilityLabel={`Odpri rastišče ${hotspot.title || 'brez naslova'}`}
+      onPress={onOpen} style={({ pressed }) => [styles.mapOpen, pressed && styles.mapPressed]}>
+      <View style={styles.mapBody}><Text numberOfLines={2} ellipsizeMode="tail" style={styles.mapTitle}>{hotspot.title || 'Rastišče brez naslova'}</Text>
+        {conditionsEnabled ? <HotspotConditionsPopup hotspot={hotspot} profile={profile} day={day} compact />
+          : <Text style={styles.mapContext}>{visits} obiskov</Text>}
+        <StatusPill state={hotspot.syncState} />
+      </View><Ionicons name="chevron-forward" size={22} color={colors.primary} />
+    </Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel="Zapri kartico rastišča" onPress={onClose}
+      style={({ pressed }) => [styles.mapClose, pressed && styles.mapPressed]}><Ionicons name="close" size={22} color={colors.primary} /></Pressable>
+  </View>;
+}
+
 const styles = StyleSheet.create({ row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  mapCard: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, padding: spacing.md,
+    backgroundColor: colors.surface, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border },
+  mapOpen: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  mapBody: { flex: 1, minWidth: 0, gap: spacing.xs }, mapTitle: { fontSize: 18, lineHeight: 22, fontWeight: '700', color: colors.text },
+  mapContext: { fontSize: 13, lineHeight: 18, color: colors.muted }, mapScore: { fontSize: 17, lineHeight: 22, fontWeight: '600', color: colors.primary },
+  mapClose: { minWidth: 44, minHeight: 44, borderRadius: radii.round, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSoft },
+  mapPressed: { opacity: .7 },
   summary: { gap: spacing.xs }, score: { fontSize: 34, fontWeight: '700', color: colors.primary },
   denominator: { fontSize: 18, color: colors.muted }, factor: { flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xs }, status: { color: colors.primary, fontSize: 13, fontWeight: '600', flexShrink: 1 } });

@@ -20,7 +20,9 @@ export const hotspotPopupVisible = (selected: boolean, enabled: boolean, filterV
   selected && (!enabled || !filterVisible);
 
 /** Insets come from actual overlay layouts, not geographic offsets. Leave a touch-sized map area. */
-export function hotspotFocusPadding(mapHeight: number, popupHeight: number, popupBottom: number, contextBottom: number, gap: number) {
-  const top = Math.max(0, contextBottom + gap);
-  return { top, right: 0, left: 0, bottom: Math.max(0, Math.min(popupHeight + popupBottom + gap, mapHeight - top - 44)) };
+export function hotspotFocusPadding(mapHeight: number, popupHeight: number, popupBottom: number, contextBottom: number, gap: number, markerHeight = 0) {
+  // Bottom-anchored annotation extends UP from its coordinate. Reserve its real
+  // frame height above the padded camera center, not an arbitrary geographic offset.
+  const top = Math.max(0, contextBottom + gap + markerHeight);
+  return { top, right: 0, left: 0, bottom: Math.max(0, Math.min(popupHeight + popupBottom + gap, mapHeight - top - (markerHeight > 0 ? 0 : 44))) };
 }

@@ -60,7 +60,8 @@ export function HotspotRankingList({ hotspots, finds, context, onContext, sort, 
           <Text style={commonStyles.muted}>{item.latitude.toFixed(4)}, {item.longitude.toFixed(4)} · {visitCounts.get(item.id) ?? 0} obiskov</Text>
       </Pressable><View style={styles.rowActions}><StatusPill state={item.syncState} />
         <Pressable accessibilityRole="button" accessibilityLabel={`Prikaži ${item.title || 'rastišče'} na zemljevidu`}
-          onPress={() => onShowMap(item)} style={styles.mapAction}><Ionicons name="map-outline" size={21} color={colors.primary} /></Pressable>
+          accessibilityHint="Odpre Pogoji in fokusira to rastišče" onPress={() => onShowMap(item)}
+          style={({ pressed }) => [styles.mapAction, pressed && styles.mapActionPressed]}><Ionicons name="location-outline" size={23} color={colors.primary} /></Pressable>
       </View></View></Card>;
     }} />;
 }
@@ -77,5 +78,6 @@ const styles = StyleSheet.create({ list: { flex: 1, minHeight: 0 }, content: { g
     borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }, selected: { backgroundColor: colors.primary },
   choiceText: { color: colors.text, fontSize: 13, fontWeight: '600' }, selectedText: { color: colors.white },
   row: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' }, grow: { flex: 1, gap: spacing.xs },
-  rowActions: { alignItems: 'flex-end', gap: spacing.xs }, mapAction: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
+  rowActions: { alignItems: 'flex-end', gap: spacing.xs }, mapAction: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center',
+    borderRadius: radii.md, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border }, mapActionPressed: { backgroundColor: colors.border },
   score: { color: colors.primary, fontSize: 16, fontWeight: '600' } });

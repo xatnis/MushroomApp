@@ -3,6 +3,98 @@
 Rastišča → Seznam and Zemljevid are two views of the same current conditions
 selection. Scores describe model conditions, not mushroom abundance or a guaranteed find.
 
+## Focused map presentation V3
+
+Physical V2 testing found too little exposed map: two full-width top control rows,
+a multi-row large-score popup and an additional full-width open button. V3 changes
+presentation only; the selection, grouped weather hook and evaluator below are unchanged.
+
+`HotspotMapCard` now contains a two-line-bounded name, current profile/day, inline
+`score/100 · classLabel`, existing stale/missing/loading state and existing privacy badge.
+The main surface opens detail with current profile/day; a separate sibling 44 pt X
+closes only the popup. A chevron replaces the large CTA. Long names ellipsize after
+two lines but their full name remains in the accessible open label. Profile/score copy
+wraps rather than forcing a tiny font. The same card is used in ordinary map mode,
+where visit count replaces conditions and no conditions hook is mounted.
+
+The compact presentation's short-copy style budget is approximately **120 pt high**:
+18/22 pt title, 13/18 pt metadata, 17/22 pt inline score, existing privacy badge,
+4 pt gaps and 12 pt padding. This is not a measured phone height; names, stale copy,
+missing-state text and font scaling increase it. There is no fixed popup height and
+no extra weather information, charts or technical report in the map card.
+
+The context pill and a **44 × 44 pt** layers toggle now share a wrapping top row.
+“Moja rastišča” no longer occupies a full-width text pill; its accessible label is
+**Prikaži moja rastišča**, checked follows visibility, and ON has a checkmark as well
+as filled/active styling. The context text wraps. The row reserves the existing
+48 pt location button plus its design gap/right inset instead of overlapping it.
+At 320/360/412 pt screen widths, the calculated controls-area widths are
+208/248/300 pt and available pill widths are 160/200/252 pt. These are style-budget
+calculations, not Android Yoga/text measurements. Wrapping permits a fallback under
+larger fonts; extremely small map heights with large text still require device QA.
+
+The ranking map icon is now a contrasted pin with a subtle background/border and
+pressed feedback. It remains a separate sibling 44 pt target, so its action cannot
+invoke the main row's detail press. Row height/state/order/evaluation are unchanged.
+
+### Current-request camera measurements
+
+The existing single camera focus effect still uses saved coordinates and zoom 15.
+After React commits the selected card/context, one RAF requests native `View.measure`
+for both non-collapsible wrapper views. A packet contains card height, measured
+controls bottom, the exact camera-target object and the profile/day/enabled/map-height
+layout key, including a pending-layout revision. Focus waits for both valid measurements.
+If an initial native measurement has zero height, a subsequent `onLayout` notification
+retries the pending packet. Equal-sized cards do not depend on `onLayout` firing again.
+Previous-request or previous-context packets
+cannot move the current camera. Cancellation guards also reject late native callbacks.
+
+`hotspotFocusPadding` reuses these dimensions and the existing 16 pt popup bottom /
+8 pt breathing room. Its optional marker-height argument is the **52 pt actual shared
+annotation frame**, not a geographic pan offset: bottom-anchored markers extend UP
+from the coordinate, so their frame is reserved above the padded center. With that
+reservation, the helper does not force an artificial 44 pt camera-center window into
+the actual bottom card. Padding geometry tests cover 300/400/500 pt map fixtures;
+actual MapLibre screen projection must still be checked on the phone.
+
+Focus executes once and is cleared; later score/text layout changes never re-center
+the user's map. A user gesture (region-will-change or region-is-changing), closing
+the card, opening the filter, hiding markers or switching to list cancels a still
+pending hotspot focus. Native measurement cleanup cancels the RAF; latest focus wins.
+The existing location acquisition gate is cancelled at explicit focused entry too,
+so an older location request cannot subsequently replace that focus.
+
+### Exclusivity, safe area and isolation
+
+The existing overlay reducer still owns popup/filter exclusivity. Opening the filter
+hides the compact card; closing the filter restores it if selected. Bottom coverage
+notices are suppressed while a hotspot is selected rather than appearing beneath it.
+Closing the card keeps Pogoji/profile/day/visible markers. No second overlay/navigation
+or scorer state machine is introduced.
+
+The popup remains absolute INSIDE the measured map container at its existing design
+bottom margin. MainTabs already owns `62 + insets.bottom` tab height and system bottom
+padding, and is not an absolute tab bar. Screen/map do not add that inset again.
+Safe-area, Android 3-button/gesture mode and home-indicator behavior are unchanged.
+
+Map sources/layers, LOD/render-confirmation, weather/cache, score/habitat rules and visit
+snapshots remain unchanged. UI-only toggles do not rebuild polygons; an explicit focus
+zoom can naturally cause the existing LOD pipeline to select detail. Cold popup weather
+still uses the same existing grouped/cached point pipeline, not an added request path.
+Warm nine-hotspot list-map-list scenarios retain zero extra hotspot HTTP (mock transport).
+
+V3 checks: TypeScript plus 27 smoke suites, including `focusedHotspotMapSmoke`, actual
+compact-card/toggle/row handlers, stale measurement/current-context guards, manual-pan
+cancellation, viewport padding, warm dedupe and baseline scoring. Regression counts:
+**84,248 regional + 15,688 pilot** identical comparisons. No physical device was
+attached; native rendering, precise height/font scaling, projection, touch and frame
+health have not been measured. The helper failed with the known loopback error and
+did not copy a previous APK. Local command:
+
+```powershell
+npm run apk -- --name MushroomApp-preview-focused-hotspot-map-v3.apk
+```
+
 ## Shared selection and view lifecycle
 
 Previously the ranking list had its own profile/day state and unmounted the native
@@ -48,7 +140,7 @@ closing the filter restores the selected popup. Closing a popup preserves condit
 
 ## Moja rastišča
 
-A compact checkbox-style **Moja rastišča** control is available beneath the compact
+A compact checkbox-style layers icon for **Moja rastišča** is available alongside the compact
 profile/day control and inside the existing global filter. It defaults ON and persists
 for the mounted MapScreen session, including list/map switches. It is not permanent
 storage. OFF removes only own-marker annotations/badges and closes their popup;

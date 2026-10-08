@@ -117,7 +117,8 @@ strictEqual(weatherAndHabitat(currentCard), weatherAndHabitat(previousCard), 'We
 const sheet = (sourceText: string) => {
   const file = ts.createSourceFile('MapScreen.tsx', sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const declaration = file.statements.find(s => ts.isVariableStatement(s) && s.declarationList.declarations.some(d => d.name.getText(file) === 'styles'))!;
-  return new Function('StyleSheet', 'colors', 'spacing', 'radii', declaration.getText(file) + '\nreturn styles;')({ create: (v: any) => v, hairlineWidth: 1 }, colors, spacing, radii);
+  const recenter = file.statements.find(s => ts.isVariableStatement(s) && s.declarationList.declarations.some(d => d.name.getText(file) === 'RECENTER_SIZE'));
+  return new Function('StyleSheet', 'colors', 'spacing', 'radii', (recenter?.getText(file) ?? '') + '\n' + declaration.getText(file) + '\nreturn styles;')({ create: (v: any) => v, hairlineWidth: 1 }, colors, spacing, radii);
 };
 const actualStyles = sheet(screen), oldStyles = sheet(execFileSync('git', ['show', '75fc7e8:src/screens/MapScreen.tsx']).toString());
 strictEqual(actualStyles.heatmapPreview.maxHeight, oldStyles.heatmapPreview.maxHeight);

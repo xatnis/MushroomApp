@@ -21,6 +21,7 @@ visit(ast);
 const state: any = { mode: 'list', ownerFilter: 'mine', listSort: 'conditions', showMyHotspots: true, isFocused: true,
   nav: { ...DEFAULT_HEATMAP_NAVIGATION_STATE, enabled: false }, controls: INITIAL_HEATMAP_CONTROLS,
   mapWasMoved: { current: false }, consumedHotspotFocus: { current: undefined }, requests: [],
+  cameraTargetRef: { current: undefined }, locationRequestGate: { cancel() {} }, clearHotspotFocus: () => undefined,
   heatmapAreaCardOpen: false, pendingHotspotFocus: undefined, cameraTarget: undefined };
 Object.defineProperties(state, {
   heatmapNavigation: { get: () => state.nav }, heatmapEnabled: { get: () => state.nav.enabled },
@@ -35,10 +36,11 @@ Object.assign(state, { conditionsContextFromNavigation, conditionsNavigationPatc
   requestHotspotFocus: (hotspot: any, conditions: any) => { state.requests.push({ hotspot, conditions }); state.pendingHotspotFocus = {
     requestId: 'focus-v2', hotspotId: hotspot.id, latitude: hotspot.latitude, longitude: hotspot.longitude, conditions }; },
 });
-for (const name of ['Mode', 'CameraMoving', 'SelectedId', 'OwnerFilter', 'ShowMyHotspots', 'CameraTarget']) {
+for (const name of ['Mode', 'CameraMoving', 'SelectedId', 'OwnerFilter', 'ShowMyHotspots', 'CameraTarget', 'FocusLayout', 'Locating']) {
   state[`set${name}`] = (value: any) => { const key = name[0].toLowerCase() + name.slice(1); state[key] = typeof value === 'function' ? value(state[key]) : value; };
 }
 const compile = (code: string) => runInNewContext(ts.transpileModule(code, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText, state);
+state.cancelPendingHotspotFocus = compile(`(${vars.get('cancelPendingHotspotFocus')})`);
 const select = compile(`(${vars.get('setConditionsContext')})`), switchView = compile(`(${vars.get('switchHotspotView')})`);
 const show = compile(`(${vars.get('showRankingHotspot')})`), entry = compile(`(${effects.find(c => c.includes('consumedHotspotFocus.current = pendingHotspotFocus.requestId'))})`);
 const species = compile(`(${vars.get('selectHeatmapSpecies')})`), day = compile(`(${vars.get('selectHeatmapDay')})`);
@@ -77,7 +79,7 @@ deepStrictEqual(conditionsNavigationPatch(conditionsContextFromNavigation(state.
 ok(source.includes("useState<HotspotSortMode>('recent')")); ok(source.includes('useState(true)'));
 ok(!source.includes('setRankingContext')); ok(!source.includes('setMapReady(false)'));
 ok(source.includes('visible={!heatmapEnabled || showMyHotspots}'));
-ok(source.includes('accessibilityRole="checkbox" accessibilityLabel="Moja rastišča" accessibilityState={{ checked: visible }}'));
+ok(source.includes('accessibilityRole="checkbox" accessibilityLabel="Prikaži moja rastišča" accessibilityState={{ checked: visible }}'));
 ok(source.includes('sort={listSort} onSort={setListSort} onShowMap={showRankingHotspot}'));
 // Native source subtree is no longer under a view-switch conditional (no source remount).
 let mapConditional = false;

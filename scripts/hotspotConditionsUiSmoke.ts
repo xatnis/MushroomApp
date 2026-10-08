@@ -15,7 +15,7 @@ const requireHere = createRequire(__filename);
 const Module = requireHere('node:module').Module;
 interface Element { type: string | ((props: any) => Element); props: any }
 const element = (type: Element['type'], props: any): Element => ({ type, props });
-const ui = Object.fromEntries(['AppButton', 'Card', 'Chip'].map(name => [name, name]));
+const ui = Object.fromEntries(['AppButton', 'Card', 'Chip', 'StatusPill'].map(name => [name, name]));
 const hotspot: Hotspot = { id: 'test-hotspot', profileId: 'local:device', latitude: 46.47045, longitude: 14.85009,
   locationSource: 'manual', locationSharing: 'private', createdAt: '', updatedAt: '', syncState: 'local' };
 const date = localDateFor();
@@ -45,7 +45,7 @@ function compile(relative: string) {
     target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true } }).outputText, filename);
   return mod.exports;
 }
-const { HotspotConditionsCard, LocationConditionsSummary, HotspotConditionsPopup } = compile('src/components/HotspotConditions.tsx');
+const { HotspotConditionsCard, LocationConditionsSummary, HotspotConditionsPopup, HotspotMapCard } = compile('src/components/HotspotConditions.tsx');
 const { HotspotConditionsMarkers } = compile('src/components/HotspotConditionsMarkers.tsx');
 const { HotspotRankingList } = compile('src/components/HotspotRankingList.tsx');
 function walk(node: unknown): Element[] {
@@ -92,9 +92,22 @@ for (const profile of ['generic', 'boletusEdulis', 'cantharellusCibarius', 'lact
     strictEqual(calls.at(-1)!.profile, profile); strictEqual(calls.at(-1)!.day, day, 'badge owns map selection, not stored species');
     const popup = HotspotConditionsPopup({ hotspot, profile, day });
     ok(text(popup).includes(assessment.classLabel));
+    let openedCard = 0, closedCard = 0;
+    const mapCard = HotspotMapCard({ hotspot: { ...hotspot, title: 'Dolgo ime rastišča pri Črni na Koroškem' }, profile, day,
+      conditionsEnabled: true, visits: 3, onOpen: () => openedCard++, onClose: () => closedCard++ });
+    ok(text(mapCard).includes(`${assessment.score}/100 · ${assessment.classLabel}`));
+    ok(text(mapCard).includes(day === 'today' ? 'Danes' : 'Jutri'));
+    const cardNodes = walk(mapCard), targets = cardNodes.filter(n => n.type === 'Pressable');
+    strictEqual(targets.length, 2, 'open and X are separate sibling targets');
+    targets[0].props.onPress(); strictEqual(openedCard, 1); strictEqual(closedCard, 0);
+    targets[1].props.onPress(); strictEqual(openedCard, 1); strictEqual(closedCard, 1);
+    strictEqual(cardNodes.find(n => n.type === 'StatusPill')!.props.state, hotspot.syncState);
+    strictEqual(cardNodes.find(n => n.type === 'Text' && n.props.numberOfLines === 2)!.props.ellipsizeMode, 'tail');
+    strictEqual(targets[1].props.style({ pressed: false })[0].minHeight, 44);
+    ok(!cardNodes.some(n => n.type === 'AppButton'), 'no large nested CTA');
     const ranking = HotspotRankingList({ hotspots: [hotspot], finds: [], context: { targetProfile: profile, dayMode: day },
       sort: 'recent', onSort: () => undefined, onShowMap: () => undefined, onContext: () => undefined });
-    for (const surface of [tree, popup, ranking]) ok(text(surface).includes(String(assessment.score)), 'same production score in card/popup/ranking');
+    for (const surface of [tree, popup, mapCard, ranking]) ok(text(surface).includes(String(assessment.score)), 'same production score in card/popup/ranking');
     ok(text(markerTree).includes(String(assessment.score)), 'same production score in badge');
   }
 }
@@ -104,6 +117,15 @@ walk(tree).find(n => n.type === 'Chip' && n.props.label === 'Užitna sirovka')!.
 walk(tree).find(n => n.type === 'Chip' && n.props.label === 'Jutri')!.props.onPress();
 strictEqual(selectedProfile, 'lactariusDeliciosus'); strictEqual(selectedDay, 'tomorrow');
 assessment = undefined;
+for (const isLoading of [true, false]) {
+  loading = isLoading;
+  const compact = HotspotConditionsPopup({ hotspot, profile: 'generic', day: 'today', compact: true });
+  ok(text(compact).includes(isLoading ? 'Pridobivam pogoje' : 'Ocene trenutno ni mogoče izračunati'));
+  ok(!text(compact).includes('0/100'));
+}
+const beforePlainMap = calls.length;
+text(HotspotMapCard({ hotspot, profile: 'generic', day: 'today', conditionsEnabled: false, visits: 3, onOpen() {}, onClose() {} }));
+strictEqual(calls.length, beforePlainMap, 'normal Rastišča popup does not acquire conditions');
 const noScore = HotspotConditionsMarkers({ hotspots: [hotspot], enabled: true, profile: 'generic', day: 'today', onSelect: () => undefined });
 strictEqual(walk(noScore).filter(n => n.type === 'Marker').length, 1, 'marker survives missing weather');
 strictEqual(walk(noScore).filter(n => n.type === 'Text').length, 0, 'no fake score badge');

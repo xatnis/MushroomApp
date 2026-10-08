@@ -6,6 +6,7 @@ import type { HeatmapTargetDay } from '../domain/heatmap/types';
 import type { Bounds } from '../domain/heatmap/spatial';
 import { useLocationConditions } from '../services/heatmap/useLocationConditions';
 import { colors } from '../theme';
+export const HOTSPOT_MARKER_HEIGHT = 52;
 
 /** Native view annotations stay above fills; their weather updates cannot rebuild Map's sources. */
 export function HotspotConditionsMarkers({ hotspots, selectedId, enabled, profile, day, bounds, onSelect, visible: showMarkers = true }: {
@@ -26,7 +27,7 @@ export function HotspotConditionsMarkers({ hotspots, selectedId, enabled, profil
     </View></View></Marker>;
   })}</>;
 }
-const styles = StyleSheet.create({ frame: { width: 54, height: 52, paddingLeft: 4, paddingTop: 4 },
+const styles = StyleSheet.create({ frame: { width: 54, height: HOTSPOT_MARKER_HEIGHT, paddingLeft: 4, paddingTop: 4 },
   shell: { width: 46, height: 46, borderRadius: 23, borderWidth: 3,
     borderColor: colors.white, backgroundColor: colors.white, elevation: 4 },
   selected: { borderColor: colors.secondary, transform: [{ scale: 1.12 }] },

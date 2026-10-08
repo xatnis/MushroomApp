@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { startTransition, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Keyboard, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map, Marker, UserLocation, type MapRef, type CameraRef, type FillLayerSpecification, type LineLayerSpecification } from '@maplibre/maplibre-react-native';
 import * as Location from 'expo-location';
@@ -6,7 +6,7 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
 import { useIsFocused, useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { AppButton, Card, Chip, EmptyState, Field, Notice, Screen, StatusPill, commonStyles } from '../components/ui';
+import { AppButton, Card, Chip, EmptyState, Field, Notice, Screen, commonStyles } from '../components/ui';
 import { useApp } from '../state/AppContext';
 import type { RootStackParamList, TabsParamList } from '../navigation/types';
 import { colors, radii, spacing } from '../theme';
@@ -28,14 +28,15 @@ import { INITIAL_HEATMAP_CONTROLS, heatmapControlsReducer, heatmapControlsPanelV
 import { OVERVIEW_PREFETCH, shouldPrefetchOverview, prioritizedOverviewWeatherPointIds, overviewReadyCoverage, createOverviewCoverageDiagnostics } from '../domain/heatmap/overviewLoading';
 import { localDateFor } from '../domain/heatmap/assessment';
 import { acquireForegroundPosition, accuracyMeters, createLocationRequestGate } from '../services/location';
-import { HotspotConditionsMarkers } from '../components/HotspotConditionsMarkers';
-import { HotspotConditionsPopup } from '../components/HotspotConditions';
+import { HotspotConditionsMarkers, HOTSPOT_MARKER_HEIGHT } from '../components/HotspotConditionsMarkers';
+import { HotspotMapCard } from '../components/HotspotConditions';
 import { HotspotRankingList } from '../components/HotspotRankingList';
 import { rankingDetailParams, type ConditionsTargetContext, type HotspotSortMode } from '../domain/hotspotRanking';
 import { conditionsContextFromNavigation, conditionsNavigationPatch } from '../domain/hotspotHeatmap';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const SLOVENIA_CENTER: [number, number] = [14.82, 46.12];
+const RECENTER_SIZE = 48;
 
 const HEATMAP_FILL_PAINT: FillLayerSpecification['paint'] = {
   'fill-color': ['match', ['get', 'renderState'],
@@ -103,8 +104,14 @@ export function MapScreen() {
   const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
   const [placeSearchError, setPlaceSearchError] = useState<string>();
   const [cameraTarget, setCameraTarget] = useState<{ center: [number, number]; zoom: number; focusRequestId?: string; hotspotId?: string }>();
-  const [popupLayout, setPopupLayout] = useState<{ id: string; height: number }>();
-  const [contextBottom, setContextBottom] = useState(0);
+  const cameraTargetRef = useRef(cameraTarget);
+  useLayoutEffect(() => { cameraTargetRef.current = cameraTarget; }, [cameraTarget]);
+  const popupView = useRef<View>(null), contextView = useRef<View>(null);
+  const [focusLayout, setFocusLayout] = useState<{ target: NonNullable<typeof cameraTarget>; layoutKey: string; popupHeight: number; contextBottom: number }>();
+  const [focusLayoutRevision, setFocusLayoutRevision] = useState(0);
+  const refreshPendingFocusLayout = () => {
+    if (cameraTargetRef.current?.hotspotId) setFocusLayoutRevision(value => value + 1);
+  };
   const [listSort, setListSort] = useState<HotspotSortMode>('recent');
   const [showMyHotspots, setShowMyHotspots] = useState(true);
   const conditionsContext = useMemo(() => conditionsContextFromNavigation(heatmapNavigation), [heatmapNavigation.profileId, heatmapNavigation.targetDay]);
@@ -324,30 +331,56 @@ export function MapScreen() {
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, [query, searchOpen]);
 
+  // One post-commit measurement packet per focus/context. onLayout alone may not
+  // fire again when two hotspots have equal-sized cards. Never reuse an old request's insets.
   useEffect(() => {
-    if (!isFocused || mode !== 'map' || !mapReady || !cameraTarget || !camera.current) return;
+    if (!isFocused || mode !== 'map' || !mapReady || !cameraTarget?.hotspotId || selected?.id !== cameraTarget.hotspotId
+      || !hotspotPopupVisible(true, heatmapEnabled, heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen))) return;
+    const target = cameraTarget;
+    const layoutKey = `${heatmapProfileId}/${heatmapTargetDay}/${heatmapEnabled}/${mapViewportHeight}/${focusLayoutRevision}`;
+    let cancelled = false, popupHeight: number | undefined, controlsBottom: number | undefined;
+    const commit = () => {
+      if (!cancelled && cameraTargetRef.current === target && popupHeight != null && controlsBottom != null)
+        setFocusLayout({ target, layoutKey, popupHeight, contextBottom: controlsBottom });
+    };
+    const frame = requestAnimationFrame(() => {
+      if (cancelled || cameraTargetRef.current !== target) return;
+      popupView.current?.measure((_x, _y, _w, height) => { if (height > 0) { popupHeight = height; commit(); } });
+      if (heatmapEnabled && !heatmapControlsVisible) contextView.current?.measure((_x, y, _w, height) => {
+        if (height > 0) { controlsBottom = y + height; commit(); }
+      });
+      else { controlsBottom = 0; commit(); }
+    });
+    return () => { cancelled = true; cancelAnimationFrame(frame); };
+  }, [cameraTarget, mode, isFocused, mapReady, selected?.id, heatmapEnabled, heatmapControlsVisible, heatmapAreaCardOpen, heatmapProfileId, heatmapTargetDay, mapViewportHeight, focusLayoutRevision]);
+
+  useEffect(() => {
+    if (!isFocused || mode !== 'map' || !mapReady || !cameraTarget || !camera.current || cameraTargetRef.current !== cameraTarget) return;
     const popupExpected = cameraTarget.hotspotId && selected?.id === cameraTarget.hotspotId && hotspotPopupVisible(true, heatmapEnabled,
       heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen));
-    if (popupExpected && (popupLayout?.id !== cameraTarget.hotspotId || mapViewportHeight <= 0)) return;
-    if (popupExpected && heatmapEnabled && !heatmapControlsVisible && contextBottom <= 0) return;
+    if (cameraTarget.hotspotId && (!popupExpected || focusLayout?.target !== cameraTarget || mapViewportHeight <= 0
+      || focusLayout.layoutKey !== `${heatmapProfileId}/${heatmapTargetDay}/${heatmapEnabled}/${mapViewportHeight}/${focusLayoutRevision}`)) return;
     setCameraMoving(true);
-    const padding = popupExpected ? hotspotFocusPadding(mapViewportHeight, popupLayout!.height, spacing.lg, heatmapEnabled ? contextBottom : 0, spacing.sm)
+    const padding = popupExpected ? hotspotFocusPadding(mapViewportHeight, focusLayout!.popupHeight, spacing.lg, heatmapEnabled ? focusLayout!.contextBottom : 0, spacing.sm, HOTSPOT_MARKER_HEIGHT)
       : { top: 0, bottom: 0, left: 0, right: 0 };
+    cameraTargetRef.current = undefined;
     camera.current.easeTo({ center: cameraTarget.center, zoom: cameraTarget.zoom, duration: 700, padding });
     if (cameraTarget.focusRequestId) clearHotspotFocus(cameraTarget.focusRequestId);
     setCameraTarget(undefined);
-  }, [cameraTarget, clearHotspotFocus, mapReady, mode, isFocused, popupLayout, mapViewportHeight, contextBottom, heatmapEnabled, heatmapControls, heatmapAreaCardOpen, selected?.id]);
+  }, [cameraTarget, clearHotspotFocus, mapReady, mode, isFocused, focusLayout, mapViewportHeight, heatmapEnabled, heatmapControls, heatmapAreaCardOpen, selected?.id, heatmapProfileId, heatmapTargetDay, focusLayoutRevision]);
 
   useEffect(() => {
     if (isFocused) return;
     if (consumedHotspotFocus.current) clearHotspotFocus(consumedHotspotFocus.current);
     consumedHotspotFocus.current = undefined;
-    setSelectedId(undefined); setCameraTarget(undefined); setPopupLayout(undefined); setContextBottom(0);
+    cameraTargetRef.current = undefined; setFocusLayout(undefined);
+    setSelectedId(undefined); setCameraTarget(undefined);
     dispatchHeatmapControls({ type: 'leave' });
   }, [isFocused, clearHotspotFocus]);
 
   useEffect(() => {
     if (!isFocused || !pendingHotspotFocus) return;
+    locationRequestGate.cancel(); setLocating(false);
     mapWasMoved.current = true;
     consumedHotspotFocus.current = pendingHotspotFocus.requestId;
     setSelectedId(pendingHotspotFocus.hotspotId); setOwnerFilter('mine'); setShowMyHotspots(true); setMode('map');
@@ -378,7 +411,7 @@ export function MapScreen() {
   };
 
   const switchHotspotView = (next: 'map' | 'list') => {
-    if (next === 'list') setCameraMoving(false);
+    if (next === 'list') { cancelPendingHotspotFocus(); setCameraMoving(false); }
     if (next === 'map' && mode === 'list' && ownerFilter === 'mine') {
       // A view switch is not a camera focus request, including on the untouched initial viewport.
       mapWasMoved.current = true;
@@ -391,10 +424,19 @@ export function MapScreen() {
     requestHotspotFocus(hotspot, conditionsNavigationPatch(conditionsContext));
   };
   const toggleMyHotspots = () => {
+    cancelPendingHotspotFocus();
     setShowMyHotspots(value => !value);
     setSelectedId(undefined);
   };
+  const cancelPendingHotspotFocus = () => {
+    const pending = cameraTargetRef.current;
+    if (!pending?.hotspotId) return;
+    cameraTargetRef.current = undefined;
+    if (pending.focusRequestId) clearHotspotFocus(pending.focusRequestId);
+    setCameraTarget(undefined); setFocusLayout(undefined);
+  };
   const openSelectedHotspot = () => {
+    cancelPendingHotspotFocus();
     if (selected) navigation.navigate('HotspotDetail', heatmapEnabled
       ? rankingDetailParams(selected.id, conditionsContext) : { hotspotId: selected.id });
   };
@@ -525,14 +567,18 @@ export function MapScreen() {
             if (bounds?.length === 4 && bounds.every(Number.isFinite)) setVisibleBounds([...bounds] as Bounds);
           }).catch(() => { /* The region event supplies bounds if the native map is not ready yet. */ });
         }}
-        onRegionWillChange={() => {
+        onRegionWillChange={(event) => {
           if (mode !== 'map') return;
+          if (event.nativeEvent.userInteraction) cancelPendingHotspotFocus();
           setOverviewPrefetchBounds(undefined);
           prewarmBand.current = false;
           setDetailPrewarmBounds(undefined);
           setCameraMoving(true);
         }}
-        onRegionIsChanging={(event) => observeCameraZoom(event.nativeEvent.zoom, event.nativeEvent.bounds)}
+        onRegionIsChanging={(event) => {
+          if (mode === 'map' && event.nativeEvent.userInteraction) cancelPendingHotspotFocus();
+          observeCameraZoom(event.nativeEvent.zoom, event.nativeEvent.bounds);
+        }}
         onDidFinishRenderingFrame={visual.onFullyRendered}
         onDidFinishRenderingFrameFully={visual.onFullyRendered}
         onRegionDidChange={(event) => {
@@ -612,12 +658,11 @@ export function MapScreen() {
         </Marker>)}
       </Map>
       <Pressable accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
-      {heatmapEnabled && !heatmapAreaCardOpen && !heatmapControlsVisible ? <View style={styles.contextControls}
-        onLayout={({ nativeEvent }) => setContextBottom(nativeEvent.layout.y + nativeEvent.layout.height)}><Pressable
+      {heatmapEnabled && !heatmapAreaCardOpen && !heatmapControlsVisible ? <View ref={contextView} collapsable={false} onLayout={refreshPendingFocusLayout} style={styles.contextControls}><Pressable
         accessibilityRole="button" accessibilityLabel="Odpri izbiro pogojev"
-        onPress={() => dispatchHeatmapControls({ type: 'open' })}
+        onPress={() => { cancelPendingHotspotFocus(); dispatchHeatmapControls({ type: 'open' }); }}
         style={({ pressed }) => [styles.contextControl, pressed && styles.closeButtonPressed]}>
-        <Text numberOfLines={1} style={styles.contextText}>{MUSHROOM_WEATHER_PROFILES[heatmapProfileId].label} · {heatmapTargetDay === 'today' ? 'Danes' : 'Jutri'}</Text>
+        <Text style={styles.contextText}>{MUSHROOM_WEATHER_PROFILES[heatmapProfileId].label} · {heatmapTargetDay === 'today' ? 'Danes' : 'Jutri'}</Text>
         <Ionicons name="options-outline" size={18} color={colors.primary} />
       </Pressable><MyHotspotsToggle visible={showMyHotspots} onToggle={toggleMyHotspots} /></View> : null}
       {heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen) ? <View style={styles.heatmapControls}>
@@ -649,20 +694,17 @@ export function MapScreen() {
         {heatmapStatus === 'loading' ? <View pointerEvents="none" style={styles.heatmapStatus}><ActivityIndicator size="small" color={colors.primary} /><Text style={commonStyles.muted}>{readiness.firstUsefulReady ? 'Dopolnjujem podatke za prikazano območje …' : 'Nalagam vreme za prikazano območje …'}</Text></View> : null}
         {heatmapStatus === 'error' ? <View style={styles.heatmapStatus}><Text style={styles.heatmapErrorText}>{heatmapError}</Text><Pressable accessibilityRole="button" onPress={() => setHeatmapRetry((value) => value + 1)}><Text style={styles.retryText}>Poskusi znova</Text></Pressable></View> : null}
       </View> : null}
-      {heatmapEnabled && !heatmapAreaCardOpen && heatmapStatus === 'out-of-coverage' ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>Podatki o pogojih za to območje še niso pripravljeni.</Text></View> : null}
-      {heatmapEnabled && heatmapLod === 'overview' && !heatmapControlsVisible && heatmapStatus !== 'out-of-coverage' ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>{overviewTapped ? 'Približaj zemljevid za podrobnejše pogoje.' : 'Regionalni pregled · Približaj za podrobnejši prikaz'}</Text></View> : null}
+      {heatmapEnabled && !selected && !heatmapAreaCardOpen && heatmapStatus === 'out-of-coverage' ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>Podatki o pogojih za to območje še niso pripravljeni.</Text></View> : null}
+      {heatmapEnabled && !selected && heatmapLod === 'overview' && !heatmapControlsVisible && heatmapStatus !== 'out-of-coverage' ? <View pointerEvents="none" style={styles.coverageNotice}><Text style={commonStyles.muted}>{overviewTapped ? 'Približaj zemljevid za podrobnejše pogoje.' : 'Regionalni pregled · Približaj za podrobnejši prikaz'}</Text></View> : null}
       {exploreLocation && !selected && !heatmapEnabled ? <Pressable accessibilityRole="button" accessibilityLabel={`Poglej razmere za ${exploreLocation.name}`} onPress={() => navigation.navigate('Tabs', { screen: 'Conditions' })} style={({ pressed }) => [styles.conditionsAction, pressed && styles.searchResultPressed]}>
         <Ionicons name="cloud-outline" size={21} color={colors.primary} />
         <View style={styles.grow}><Text numberOfLines={1} style={styles.conditionsLocation}>{exploreLocation.name}</Text><Text style={styles.conditionsActionText}>Poglej razmere</Text></View>
         <Ionicons name="chevron-forward" size={18} color={colors.primary} />
       </Pressable> : null}
-      {selected && hotspotPopupVisible(true, heatmapEnabled, heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen)) ? <View style={styles.preview}
-        onLayout={({ nativeEvent }) => setPopupLayout({ id: selected.id, height: nativeEvent.layout.height })}>
-        <Card style={styles.previewDensity}>
-        <View style={styles.previewTop}><View style={styles.grow}><Text style={commonStyles.heading}>{selected.title || 'Rastišče brez naslova'}</Text><Text style={commonStyles.muted}>{finds.filter((find) => find.hotspotId === selected.id).length} obiskov</Text></View><StatusPill state={selected.syncState} /><Pressable accessibilityRole="button" accessibilityLabel="Zapri kartico rastišča" hitSlop={8} onPress={() => setSelectedId(undefined)} style={({ pressed }) => [styles.closeButton, styles.heatmapControlsClose, pressed && styles.closeButtonPressed]}><Ionicons name="close" size={21} color={colors.muted} /></Pressable></View>
-        {heatmapEnabled ? <HotspotConditionsPopup hotspot={selected} profile={heatmapProfileId} day={heatmapTargetDay} /> : null}
-        <AppButton title="Odpri rastišče" variant="secondary" onPress={openSelectedHotspot} />
-        </Card>
+      {selected && hotspotPopupVisible(true, heatmapEnabled, heatmapControlsPanelVisible(heatmapControls, heatmapEnabled, heatmapAreaCardOpen)) ? <View ref={popupView} collapsable={false} onLayout={refreshPendingFocusLayout} style={styles.preview}>
+        <HotspotMapCard hotspot={selected} profile={heatmapProfileId} day={heatmapTargetDay} conditionsEnabled={heatmapEnabled}
+          visits={finds.filter(find => find.hotspotId === selected.id).length} onOpen={openSelectedHotspot}
+          onClose={() => { cancelPendingHotspotFocus(); setSelectedId(undefined); }} />
       </View> : null}
       {!selected && heatmapEnabled && heatmapLod === 'detail' && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
         assessment={selectedHeatmapArea}
@@ -694,9 +736,10 @@ export function MapScreen() {
 }
 
 function MyHotspotsToggle({ visible, onToggle }: { visible: boolean; onToggle: () => void }) {
-  return <Pressable accessibilityRole="checkbox" accessibilityLabel="Moja rastišča" accessibilityState={{ checked: visible }}
-    onPress={onToggle} style={styles.myHotspotsControl}><Ionicons name={visible ? 'checkbox-outline' : 'square-outline'} size={18} color={colors.primary} />
-    <Text style={styles.contextText}>Moja rastišča</Text></Pressable>;
+  return <Pressable accessibilityRole="checkbox" accessibilityLabel="Prikaži moja rastišča" accessibilityState={{ checked: visible }}
+    onPress={onToggle} style={({ pressed }) => [styles.myHotspotsControl, visible && styles.myHotspotsActive, pressed && styles.closeButtonPressed]}>
+    <Ionicons name={visible ? 'layers' : 'layers-outline'} size={23} color={visible ? colors.white : colors.primary} />
+    {visible ? <View style={styles.toggleCheck}><Ionicons name="checkmark" size={11} color={colors.primary} /></View> : null}</Pressable>;
 }
 
 function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; weatherPending?: boolean; targetDay: HeatmapTargetDay; maxHeight?: number; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
@@ -882,12 +925,13 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
 
 const styles = StyleSheet.create({
   views: { flex: 1, minHeight: 0 }, hiddenMap: { opacity: 0 }, listOverlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, backgroundColor: colors.background },
-  previewDensity: { padding: 14, gap: 10 },
-  contextControls: { position: 'absolute', top: 66, left: spacing.sm, right: 60, gap: spacing.xs },
-  myHotspotsControl: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, backgroundColor: colors.surface,
-    borderRadius: radii.round, borderWidth: 1, borderColor: colors.border },
-  contextControl: { minHeight: 44,
-    flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md,
+  contextControls: { position: 'absolute', top: spacing.lg, left: spacing.sm, right: spacing.lg + RECENTER_SIZE + spacing.sm, gap: spacing.xs,
+    flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' },
+  myHotspotsControl: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface,
+    borderRadius: radii.md, borderWidth: 1, borderColor: colors.border }, myHotspotsActive: { backgroundColor: colors.primary },
+  toggleCheck: { position: 'absolute', right: 3, bottom: 3, backgroundColor: colors.surface, borderRadius: 6 },
+  contextControl: { minHeight: 44, minWidth: 120, flexBasis: 120, flexGrow: 1, flexShrink: 1,
+    flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.sm, paddingVertical: spacing.xs,
     borderRadius: radii.round, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, elevation: 4 },
   contextText: { flex: 1, color: colors.primary, fontSize: 13, fontWeight: '600' },
   screen: { flex: 1, minHeight: 0, padding: 0, gap: 0 },
@@ -911,11 +955,11 @@ const styles = StyleSheet.create({
   markerShell: { width: 46, height: 46, borderRadius: 23, borderWidth: 3, borderColor: colors.white, backgroundColor: colors.white, elevation: 4 },
   markerSelected: { borderColor: colors.secondary, transform: [{ scale: 1.12 }] }, marker: { width: 40, height: 40, borderRadius: 20 },
   friendMarker: { width: 40, height: 40, borderRadius: 20, borderWidth: 3, borderColor: colors.white, backgroundColor: colors.secondary, alignItems: 'center', justifyContent: 'center', elevation: 4 },
-  recenter: { position: 'absolute', right: spacing.lg, top: spacing.lg, width: 48, height: 48, borderRadius: 24, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', elevation: 3 },
+  recenter: { position: 'absolute', right: spacing.lg, top: spacing.lg, width: RECENTER_SIZE, height: RECENTER_SIZE, borderRadius: RECENTER_SIZE / 2, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', elevation: 3 },
   conditionsAction: { position: 'absolute', left: spacing.md, top: spacing.md, maxWidth: '68%', minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.xs, borderRadius: radii.round, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, elevation: 3 },
   conditionsLocation: { color: colors.text, fontSize: 13, fontWeight: '700' },
   conditionsActionText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
-  preview: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.lg }, previewTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, closeButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSoft }, closeButtonPressed: { opacity: 0.65 }, grow: { flex: 1 }, locating: { position: 'absolute', alignSelf: 'center', top: spacing.lg, backgroundColor: colors.surface, padding: spacing.sm, borderRadius: radii.round },
+  preview: { position: 'absolute', left: spacing.lg, right: spacing.lg, bottom: spacing.lg }, closeButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceSoft }, closeButtonPressed: { opacity: 0.65 }, grow: { flex: 1 }, locating: { position: 'absolute', alignSelf: 'center', top: spacing.lg, backgroundColor: colors.surface, padding: spacing.sm, borderRadius: radii.round },
   heatmapControls: { position: 'absolute', left: spacing.sm, right: spacing.sm, top: 66, gap: spacing.xs, padding: spacing.sm, borderRadius: radii.md, backgroundColor: 'rgba(255,253,247,0.96)', borderWidth: 1, borderColor: colors.border, elevation: 4 },
   coverageNotice: { position: 'absolute', left: spacing.sm, right: 60, bottom: spacing.xl, padding: spacing.sm, borderRadius: radii.md, backgroundColor: 'rgba(255,253,247,0.96)' },
   heatmapControlsHeader: { minHeight: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
