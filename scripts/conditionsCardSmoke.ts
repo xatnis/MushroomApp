@@ -113,7 +113,10 @@ const withoutScrollHooks = (s: string) => s
   .replace(/      ref=\{scrollRef\}[\s\S]*?      onMomentumScrollEnd=\{[^\n]*\}\r?\n/, '');
 strictEqual(withoutScrollHooks(mainView(currentCard)), mainView(previousCard), 'fixed header and decision view unchanged except scroll wiring');
 const weatherAndHabitat = (s: string) => s.slice(s.indexOf("{section === 'weather' ?"), s.indexOf('</> : <>'));
-strictEqual(weatherAndHabitat(currentCard), weatherAndHabitat(previousCard), 'Weather/Habitat content unchanged');
+const withoutGraph = (s: string) => s
+  .replace("<><WeatherGraphs summary={assessment.summary} weatherCellId={assessment.weatherCellId} locationLabel={`Vremenska točka območja: ${areaLabel}`} />{presentation.factors", 'presentation.factors')
+  .replace("})}</> : section === 'habitat'", "}) : section === 'habitat'");
+strictEqual(withoutGraph(weatherAndHabitat(currentCard)), weatherAndHabitat(previousCard), 'Existing Weather/Habitat technical values unchanged; graph added only inside weather');
 const sheet = (sourceText: string) => {
   const file = ts.createSourceFile('MapScreen.tsx', sourceText, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
   const declaration = file.statements.find(s => ts.isVariableStatement(s) && s.declarationList.declarations.some(d => d.name.getText(file) === 'styles'))!;
@@ -154,7 +157,7 @@ const bindings = {
   requestAnimationFrame: (run: () => void) => { frames.set(++nextFrame, run); return nextFrame; },
   cancelAnimationFrame: (id: number) => frames.delete(id),
   useMemo: (factory: () => any, deps: any[]) => { const slot = cursor++; if (dependenciesChanged(hooks[slot]?.deps, deps)) { calculations++; hooks[slot] = { deps, value: factory() }; } return hooks[slot].value; },
-  Card: 'Card', View: 'View', Text: 'Text', Pressable: 'Pressable', ScrollView: 'ScrollView', AppButton: 'AppButton', Ionicons: 'Icon',
+  Card: 'Card', View: 'View', Text: 'Text', Pressable: 'Pressable', ScrollView: 'ScrollView', AppButton: 'AppButton', Ionicons: 'Icon', WeatherGraphs: 'WeatherGraphs',
   styles: new Proxy({}, { get: (_, key) => key === 'heatmapDetailsContent' ? actualStyles.heatmapDetailsContent : key }), commonStyles: {}, colors: {}, StyleSheet: { flatten: (v: any) => v },
   MUSHROOM_WEATHER_PROFILES, HEATMAP_PILOT_METADATA, cardFactors, cardSummary, cardHabitat, cardReliability, cardTechnicalDetails, compactCardMetadata,
 };

@@ -14,7 +14,15 @@ const baseline = JSON.parse(previousFile('src/data/heatmapPilot/zgs-enrichment.j
 // Exact source regression plus assessment comparison below: no new weather formula.
 // Regional V2 changes orchestration/batching, not these numerical sources.
 for (const path of ['src/domain/mushroomWeather.ts', 'src/services/weather.ts', 'src/domain/heatmap/assessment.ts', 'src/domain/heatmap/config.ts']) {
-  strictEqual(readFileSync(path, 'utf8').replace(/\r\n/g, '\n'), previousFile(path).replace(/\r\n/g, '\n'), path);
+  const current = readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
+  // Ignore only the explicit read-only graph calendar option and mapper export.
+  const productionDefault = path !== 'src/services/weather.ts' ? current : current
+    .replace('  /** Optional calendar anchor for read-only daily charts; scorer callers retain their existing default. */\n  baseLocalDate?: string;\n', '')
+    .replace('export const mapDailyWeather', 'const mapDailyWeather')
+    .replace('const today = options.baseLocalDate ?? dateAtOffset(0);', 'const today = dateAtOffset(0);')
+    .replace('const archiveStart = options.baseLocalDate ? shiftLocalDate(today, -60) : dateAtOffset(-60);', 'const archiveStart = dateAtOffset(-60);')
+    .replace('const archiveEnd = options.baseLocalDate ? shiftLocalDate(today, -8) : dateAtOffset(-8);', 'const archiveEnd = dateAtOffset(-8);');
+  strictEqual(productionDefault, previousFile(path).replace(/\r\n/g, '\n'), path);
 }
 const fixture: ZgsHabitatEnrichment = {
   ...Object.values(baseline.areas).find(a => a.zgsAvailable)!,

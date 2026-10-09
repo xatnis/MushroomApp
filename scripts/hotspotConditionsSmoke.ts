@@ -144,7 +144,14 @@ function regressionTests() {
   const old = baseline.exports as typeof import('../src/domain/heatmap/regional');
   for (const file of ['src/domain/mushroomWeather.ts', 'src/domain/heatmap/assessment.ts', 'src/domain/heatmap/pilot.ts',
     'src/services/weather.ts', 'src/services/heatmap/regionalWeather.ts', 'src/domain/heatmap/lod.ts', 'src/domain/heatmap/visual.ts']) {
-    strictEqual(readFileSync(file, 'utf8').replace(/\r\n/g, '\n'),
+    const current = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+    const productionDefault = file !== 'src/services/weather.ts' ? current : current
+      .replace('  /** Optional calendar anchor for read-only daily charts; scorer callers retain their existing default. */\n  baseLocalDate?: string;\n', '')
+      .replace('export const mapDailyWeather', 'const mapDailyWeather')
+      .replace('const today = options.baseLocalDate ?? dateAtOffset(0);', 'const today = dateAtOffset(0);')
+      .replace('const archiveStart = options.baseLocalDate ? shiftLocalDate(today, -60) : dateAtOffset(-60);', 'const archiveStart = dateAtOffset(-60);')
+      .replace('const archiveEnd = options.baseLocalDate ? shiftLocalDate(today, -8) : dateAtOffset(-8);', 'const archiveEnd = dateAtOffset(-8);');
+    strictEqual(productionDefault,
       execFileSync('git', ['show', `2822a44:${file}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), `production rules/scheduler/LOD unchanged: ${file}`);
   }
   let regionalCases = 0, pilotCases = 0;
@@ -165,7 +172,7 @@ function regressionTests() {
   }
   strictEqual(regionalCases, 84248); strictEqual(pilotCases, 15688);
   console.info('Production assessment regressions', { regionalCases, pilotCases,
-    baseline: '2822a44', scorerWeatherHabitatLodSourcesByteIdentical: true });
+    baseline: '2822a44', scorerHabitatLodSourcesByteIdentical: true, weatherDefaultBehaviorPreserved: true });
 }
 
 async function repositoryTests(snapshot: NonNullable<FindRecord['conditionsSnapshot']>) {

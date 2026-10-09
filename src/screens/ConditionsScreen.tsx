@@ -13,6 +13,7 @@ import { buildGpsExploreLocation, debugGpsLocality, resolveGpsLocality } from '.
 import { BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
 import { assessLocationWeather, type LocationRankingAssessment } from '../domain/locationRanking';
 import { buildGenericWeatherDetails } from '../domain/weatherDetails';
+import { WeatherGraphs } from '../components/WeatherGraphs';
 import { haversineKm, slDateTime, slNumber } from '../domain/format';
 import { speciesCatalogue } from '../domain/species';
 import { colors, radii, spacing } from '../theme';
@@ -338,7 +339,7 @@ export function ConditionsScreen() {
         <View style={styles.scoreRow}><View><Text style={commonStyles.muted}>{weatherProfile.scoreCaption}</Text><Text style={styles.score}>{score.score != null ? `${score.score}` : '—'}</Text></View><View style={styles.scoreCopy}><Text style={commonStyles.heading}>{score.label}</Text><Text style={commonStyles.body}>Trend: {score.trend}</Text><Text style={commonStyles.muted}>{score.coverage}</Text></View></View>{score.reasons.map((reason) => <Text key={reason} style={commonStyles.body}>• {reason}</Text>)}{weatherProfile.seasonNote ? <Text style={commonStyles.muted}>{weatherProfile.seasonNote}</Text> : null}<Text style={commonStyles.muted}>Ocena temelji na vremenskih pogojih in ne zagotavlja pojava gob. Ni verjetnost uspeha ali znanstveno potrjen napovedni model.</Text></Card>
 
       <AppButton title={showWeatherDetails ? 'Skrij podrobnosti' : 'Podrobnosti'} variant="ghost" onPress={() => setShowWeatherDetails((visible) => !visible)} />
-      {showWeatherDetails ? <WeatherProfileScoreDetails profileId={weatherProfileId} summary={weatherSummary} score={score} /> : null}
+      {showWeatherDetails ? <><WeatherGraphs summary={weatherSummary} /><WeatherProfileScoreDetails profileId={weatherProfileId} summary={weatherSummary} score={score} /></> : null}
       <Text style={commonStyles.muted}>Open‑Meteo · posodobljeno {slDateTime(weatherSummary.updatedAt)}{weatherSummary.stale ? ' · predpomnjeni podatki' : ''}</Text>
     </> : null}
     {hotspots.length ? <><SectionTitle>Kam po gobe?</SectionTitle>

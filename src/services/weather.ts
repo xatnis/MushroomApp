@@ -12,6 +12,8 @@ const inFlight = new Map<string, Promise<unknown>>();
 
 export interface MushroomWeatherRequestOptions {
   requestTimeoutMs?: number;
+  /** Optional calendar anchor for read-only daily charts; scorer callers retain their existing default. */
+  baseLocalDate?: string;
 }
 
 export interface PlaceSearchResult {
@@ -229,7 +231,7 @@ export async function getConditions(db: SQLiteDatabase, latitude: number, longit
   };
 }
 
-const mapDailyWeather = (data: MushroomWeatherResponse, kind: DailyWeatherPoint['kind']): DailyWeatherPoint[] => {
+export const mapDailyWeather = (data: MushroomWeatherResponse, kind: DailyWeatherPoint['kind']): DailyWeatherPoint[] => {
   const daily = data.daily;
   return (daily?.time ?? []).map((date, index) => ({
     date,
@@ -334,9 +336,9 @@ export async function getMushroomWeatherSummary(
   }
   const startedAt = Date.now();
   const requestTimeoutMs = options.requestTimeoutMs ?? OPEN_METEO_REQUEST_TIMEOUT_MS;
-  const today = dateAtOffset(0);
-  const archiveStart = dateAtOffset(-60);
-  const archiveEnd = dateAtOffset(-8);
+  const today = options.baseLocalDate ?? dateAtOffset(0);
+  const archiveStart = options.baseLocalDate ? shiftLocalDate(today, -60) : dateAtOffset(-60);
+  const archiveEnd = options.baseLocalDate ? shiftLocalDate(today, -8) : dateAtOffset(-8);
   const coordinateKey = `${roundCoordinate(latitude)}:${roundCoordinate(longitude)}`;
   const archiveParams = new URLSearchParams({
     latitude: String(latitude), longitude: String(longitude), start_date: archiveStart, end_date: archiveEnd,

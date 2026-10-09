@@ -32,6 +32,7 @@ import { HotspotConditionsMarkers, HOTSPOT_MARKER_HEIGHT } from '../components/H
 import { HotspotMapCard } from '../components/HotspotConditions';
 import { HotspotRankingList } from '../components/HotspotRankingList';
 import { HotspotTopThree } from '../components/HotspotTopThree';
+import { WeatherGraphs } from '../components/WeatherGraphs';
 import { rankingDetailParams, type ConditionsTargetContext, type HotspotSortMode } from '../domain/hotspotRanking';
 import { conditionsContextFromNavigation, conditionsNavigationPatch } from '../domain/hotspotHeatmap';
 
@@ -924,7 +925,7 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
             <Text style={styles.heatmapBlockLabel}>{label}</Text><Ionicons name={openSection === section ? 'chevron-down' : 'chevron-forward'} size={18} color={colors.primary} />
           </Pressable>
           {openSection === section ? <View style={styles.heatmapAccordionBody}>
-            {section === 'weather' ? presentation.factors.map(factor => {
+            {section === 'weather' ? <><WeatherGraphs summary={assessment.summary} weatherCellId={assessment.weatherCellId} locationLabel={`Vremenska točka območja: ${areaLabel}`} />{presentation.factors.map(factor => {
               const rows = presentation.technical.filter(row => factor.key === 'rain' ? row.key.startsWith('rain') : row.key === factor.key);
               return <View key={factor.key} style={styles.heatmapTechnicalRow}>
                 <Text style={styles.heatmapBlockLabel}>{factor.label}</Text><Text style={styles.heatmapCardSecondary}>{factor.detailedStatus}</Text>
@@ -935,7 +936,7 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
                 </View>)}
                 {!rows.length || factor.key === 'soilMoisture' || factor.key === 'drying' ? <Text style={commonStyles.muted}>{factor.detail}</Text> : null}
               </View>;
-            }) : section === 'habitat' ? <>
+            })}</> : section === 'habitat' ? <>
               <Text style={styles.heatmapBlockLabel}>{presentation.habitat.title}</Text>
               {/* areaAssessmentFor places the full habitat explanation first, then weather caveats. */}
               <Text style={commonStyles.muted}>{assessment.limitations[0] ?? presentation.habitat.explanation}</Text>
