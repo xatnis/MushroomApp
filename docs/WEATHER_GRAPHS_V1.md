@@ -213,6 +213,90 @@ after location change or unmount. A profile/day rerender updates existing inputs
 not restart the chart request. The child unmounts when the graph view closes. No fetch is wired to
 chart scrolling or tapping. Neither locally saved hotspots nor visits are mutated.
 
+## Weather Graphs V4 — Navigation & Clarity
+
+V4 is presentation/navigation only. Inspection found that today's canonical point was
+already `kind: forecast` / provisional and its precipitation bar already outlined. A
+selected bar's 3 px dark border, especially on a zero/very short bar, could resemble the
+filled historical style. This is a visual ambiguity, not evidence of a source/data bug;
+the physical recording was not reproduced here. Forecast bars now retain a transparent,
+dashed outline even when selected; historical bars remain solid. Temperature forecast
+segments remain dashed. The forecast boundary and today's own date cell are separately
+labelled **Napoved →** and **Danes**; selection retains its underline/triangle. No data
+values or provenance are changed to achieve this distinction.
+
+While mounted and foregrounded, graphs check the Ljubljana calendar at minute boundaries
+and immediately on app resume. At local midnight the existing location/day key advances
+normally, including DST, rather than retaining yesterday's classification indefinitely.
+The presentation timer and AppState listener are removed on close and paused in the
+background. A new calendar day may legitimately load its new canonical series; time
+navigation, point selection and scrolling never do so.
+
+### Timeline shortcuts and section anchors
+
+The dedicated view has non-sticky, wrapping 48 pt minimum controls before chart content:
+
+- **7 dni nazaj:** D−7 through D−1, seven completed dates, never today.
+- **30 dni nazaj:** D−30 through D−1, starting at the oldest historical date.
+- **Napoved 7 dni:** D through D+6, including today's provisional forecast.
+
+Each shortcut selects the first date of its period and moves **both** existing plots to
+that date. Nullable dates remain navigable and say “Ni podatka”; no filtering, zero-fill or
+new requests. All 37 date slots remain at their natural readable widths, including on
+small screens where seven columns still require a short horizontal scroll. Offsets use
+the actual plot viewport width and font-scaled day-cell width and are clamped to content
+bounds. Repeated shortcuts work without remounting either chart. Manual horizontal
+scrolling never silently changes the selected date. The **Izbrani dan** card is explicit;
+if that date scrolls out of view, **Na izbrani dan** centres it again in that plot. Both
+plots share selection, but keep independent manual scroll positions.
+
+**Padavine** / **Temperatura** are anchor buttons, not mutually exclusive tabs. Both
+charts stay in one vertical ScrollView. Native `measureLayout` measures each section
+relative to its content ancestor after a layout frame, including the ancestor's measured
+origin in scroll-content coordinates; the content design padding gives breathing room.
+The fixed modal header and real safe-area insets are already outside the
+scroll viewport and must not be subtracted twice. Native scrolling clamps at content
+limits. Requests made during loading wait for section layout. Generation, location and
+node checks reject late measurements; manual vertical dragging and close cancel pending
+navigation. Android Back still uses only Modal `onRequestClose`, returning to the mounted
+origin with its map viewport, scroll, species/day and location intact.
+
+### Mobile clarity and accessibility
+
+Razmere retains exactly one graph entry after **Trenutno**. The opening action now shares
+its heading row; introductory cards use smaller padding/gaps, the location summary is
+more compact and manual location actions can share a wrapping row. Screen section gaps
+are smaller. Current weather/soil values, GPS status, search, permission/error notices
+and all actions remain. No guarantee of above-the-fold placement is made for unusually
+long location names, warnings or large fonts: content remains scrollable.
+
+Presets announce their selected state and target period; section anchors have explicit
+labels/hints. Text wraps rather than shrinking. Day targets scale with font size and
+remain at least 48 pt. Summaries, legends, exact selected date/value/phase and actual
+forecast/stale retrieval metadata remain accessible, with no color-only classification.
+SafeAreaView owns the native modal's four edges once; no new system/tab offsets are added.
+
+### V4 verification and invariants
+
+TypeScript and 19 focused suites were run, including actual native-component callback
+tests for presets, both plots, selected-day return, measured/stale/latest anchors,
+loading, gesture cancellation, Android Back props, Ljubljana midnight/DST/resume/cleanup
+and 320/360/412 pt plot widths with font scales 1/1.6/2. Weather cache tests retain cold
+2 HTTP, warm/concurrent 0 extra HTTP, partial/offline/timeout/corrupt handling. V4 UI
+navigation tests record **0 HTTP** for presets, anchors, scrolling and selection.
+Regional **84,248** and pilot **15,688** production comparisons are unchanged. Source
+pins also assert that daily model, weather services/cache, scorers, map, ranking,
+navigation and LOD implementation files remain byte-identical to V3.
+
+These are automated contracts, not native Yoga layout, TalkBack or gesture verification.
+No physical phone was attached. Android release was attempted but failed with
+`java.io.IOException: Unable to establish loopback connection`; no old APK was substituted.
+Build and verify locally with:
+
+```powershell
+npm run apk -- --name MushroomApp-preview-weather-graphs-v4.apk
+```
+
 ## Preparation for Seven-Day Conditions V1
 
 The daily representation is reusable, but **Weather Graphs V1 computes no mushroom scores**.

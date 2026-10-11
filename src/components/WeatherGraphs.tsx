@@ -2,16 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSQLiteContext } from 'expo-sqlite';
 import type { MushroomWeatherSummary } from '../domain/types';
-import { buildWeatherDailySeries, summarySeriesInputs, weatherDateLabel, weatherLocalDate, weatherPlotScale, type WeatherDailySeries } from '../domain/weatherSeries';
+import { buildWeatherDailySeries, summarySeriesInputs, weatherDateLabel, weatherPlotScale, type WeatherDailySeries } from '../domain/weatherSeries';
 import { loadWeatherGraphSeries } from '../services/weatherGraphs';
 import { colors, radii, spacing } from '../theme';
-import { forecastDashes, graphDate, graphNumber as number, graphPhase, graphPointValues, graphSummary } from './weatherGraphPresentation';
+import { forecastDashes, graphDate, graphNumber as number, graphPhase, graphPointValues, graphSummary, graphPresetRange, graphScrollOffset, graphSelectionVisible, type WeatherGraphNavigation, type WeatherGraphMetric } from './weatherGraphPresentation';
+import { useWeatherGraphLocalDate } from './useWeatherGraphLocalDate';
 
 /** Mounted only while graphs are visible; interactions never enter transport. */
-export function WeatherGraphs({ summary, location, weatherCellId, locationLabel }: {
+export function WeatherGraphs({ summary, location, weatherCellId, locationLabel, navigation, onSectionLayout }: {
   summary?: MushroomWeatherSummary; location?: { latitude: number; longitude: number }; weatherCellId?: string; locationLabel?: string;
+  navigation?: WeatherGraphNavigation; onSectionLayout?: (metric: WeatherGraphMetric, node: View | null) => void;
 }) {
-  const db = useSQLiteContext(), today = weatherLocalDate();
+  const db = useSQLiteContext(), today = useWeatherGraphLocalDate();
   const { latitude, longitude } = location ?? summary ?? { latitude: NaN, longitude: NaN };
   const key = `${latitude}:${longitude}:${weatherCellId ?? ''}:${today}`;
   const [state, setState] = useState<{ key: string; series?: WeatherDailySeries; loading: boolean; error?: string }>({ key, loading: true });
@@ -40,7 +42,7 @@ export function WeatherGraphs({ summary, location, weatherCellId, locationLabel 
     <Text style={styles.secondary}>Open-Meteo · 30 dni zgodovine in 7 dni napovedi</Text>
     {forecastRetrievedAt ? <Text style={styles.secondary}>Napoved pridobljena {new Date(forecastRetrievedAt).toLocaleString('sl-SI', { timeZone: series.timezone })}{series.stale ? ' · starejši podatki' : ''}</Text> : null}
     {loading ? <View style={styles.loading}><ActivityIndicator size="small" color={colors.primary} /><Text style={styles.secondary}>Pridobivam dnevno vreme …</Text></View> : null}
-    {series.availableRange ? <WeatherGraphPair key={key} series={series} /> : !loading ? <Text style={styles.secondary}>Dnevni vremenski podatki niso na voljo.</Text> : null}
+    {series.availableRange ? <WeatherGraphPair key={key} series={series} navigation={navigation} onSectionLayout={onSectionLayout} /> : !loading ? <Text style={styles.secondary}>Dnevni vremenski podatki niso na voljo.</Text> : null}
     {!loading && (state.error || series.partial || series.stale) ? <>
       <Text style={styles.secondary}>{state.error ?? (series.stale ? 'Prikazani so tudi starejši podatki iz predpomnilnika.' : 'Nekateri dnevi ali vremenske vrednosti niso na voljo.')}</Text>
       <Pressable accessibilityRole="button" onPress={() => setRetry(n => n + 1)} style={styles.retry}><Text style={styles.heading}>Poskusi znova</Text></Pressable>
@@ -49,30 +51,44 @@ export function WeatherGraphs({ summary, location, weatherCellId, locationLabel 
   </View>;
 }
 
-export function WeatherGraphPair({ series }: { series: WeatherDailySeries }) {
+export function WeatherGraphPair({ series, navigation, onSectionLayout }: { series: WeatherDailySeries; navigation?: WeatherGraphNavigation; onSectionLayout?: (metric: WeatherGraphMetric, node: View | null) => void }) {
   const [selectedDate, setSelectedDate] = useState(series.today);
+  useEffect(() => { if (navigation) setSelectedDate(graphPresetRange(series, navigation.preset).selectedDate); }, [navigation?.generation, series.today]);
   return <View style={styles.graphs}>{(['rain', 'temperature'] as const).map(metric =>
-    <DailyWeatherChart key={metric} series={series} metric={metric} selectedDate={selectedDate} onSelect={setSelectedDate} />)}</View>;
+    <DailyWeatherChart key={metric} series={series} metric={metric} selectedDate={selectedDate} onSelect={setSelectedDate} navigation={navigation} onSectionLayout={onSectionLayout} />)}</View>;
 }
 const HEIGHT = 144;
 
-export function DailyWeatherChart({ series, metric, selectedDate, onSelect }: {
+export function DailyWeatherChart({ series, metric, selectedDate, onSelect, navigation, onSectionLayout }: {
   series: WeatherDailySeries; metric: 'rain' | 'temperature'; selectedDate: string; onSelect: (date: string) => void;
+  navigation?: WeatherGraphNavigation; onSectionLayout?: (metric: WeatherGraphMetric, node: View | null) => void;
 }) {
-  const scroll = useRef<ScrollView>(null), positioned = useRef(false);
+  const scroll = useRef<ScrollView>(null), section = useRef<View>(null), positioned = useRef(false), offset = useRef(0);
+  const [viewportWidth, setViewportWidth] = useState(0), [selectionVisible, setSelectionVisible] = useState(true);
   const { fontScale } = useWindowDimensions();
   const CELL = Math.max(48, 48 * fontScale), TOP = Math.max(32, 32 * fontScale), bottom = Math.max(48, 48 * fontScale);
   const plotHeight = HEIGHT * Math.max(1, fontScale);
   const overview = useMemo(() => graphSummary(series, metric), [series, metric]);
   const scale = useMemo(() => weatherPlotScale(series.points, metric), [series, metric]);
   const y = (value: number) => TOP + plotHeight * (1 - (value - scale.min) / (scale.max - scale.min));
-  const selected = series.points.find(p => p.date === selectedDate) ?? series.points[30];
+  const todayIndex = Math.max(0, series.points.findIndex(point => point.date === series.today));
+  const selected = series.points.find(p => p.date === selectedDate) ?? series.points[todayIndex];
+  const selectedIndex = series.points.findIndex(point => point.date === selected.date);
+  const updateVisibility = (x = offset.current, width = viewportWidth) => setSelectionVisible(graphSelectionVisible(selectedIndex, CELL, width, x));
+  const moveTo = (x: number, animated: boolean) => { offset.current = x; scroll.current?.scrollTo({ x, animated }); updateVisibility(x); };
+  useEffect(() => {
+    if (!viewportWidth) return;
+    if (navigation) moveTo(graphScrollOffset(graphPresetRange(series, navigation.preset).startIndex, CELL, viewportWidth, series.points.length), true);
+    else if (!positioned.current) moveTo(graphScrollOffset(todayIndex, CELL, viewportWidth, series.points.length, true), false);
+    positioned.current = true;
+  }, [navigation?.generation, viewportWidth, CELL, series.today]);
+  useEffect(() => { updateVisibility(); }, [selected.date, viewportWidth, CELL]);
   const phase = graphPhase(selected, series.today);
   const title = metric === 'rain' ? 'Padavine' : 'Temperatura';
   const retrieval = selected.fetchedAt && (selected.kind === 'forecast' || selected.stale)
     ? `Pridobljeno: ${new Date(selected.fetchedAt).toLocaleString('sl-SI', { timeZone: series.timezone })}` : null;
   const hasValues = series.points.some(p => metric === 'rain' ? p.precipitationMm != null : [p.temperatureMeanC, p.temperatureMinC, p.temperatureMaxC].some(v => v != null));
-  return <View style={styles.chart} accessible={false}>
+  return <View ref={section} collapsable={false} onLayout={() => onSectionLayout?.(metric, section.current)} style={styles.chart} accessible={false}>
     <Text accessibilityRole="header" accessibilityLabel={`Graf: ${title}`} style={styles.chartTitle}>{title}</Text>
     <Text style={styles.chartSubtitle}>{metric === 'rain' ? 'Dnevne padavine · mm, tudi sneg' : 'Dnevno povprečje in min/max · °C'}</Text>
     <View accessible accessibilityRole="text" accessibilityLabel={`${title}. 30 preteklih dni in 7 dni napovedi. ${overview.description}`}
@@ -92,15 +108,14 @@ export function DailyWeatherChart({ series, metric, selectedDate, onSelect }: {
       <View style={[styles.axis, { width: Math.ceil(44 * Math.max(1, fontScale)), height: TOP + plotHeight + bottom }]} accessible={false} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>{scale.ticks.map(tick => <Text key={tick} style={[styles.tick, { top: y(tick) - 9 * fontScale }]}>{tick.toLocaleString('sl-SI', { maximumFractionDigits: 1 })}</Text>)}</View>
       <ScrollView ref={scroll} horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled
         accessible={false} accessibilityLabel={`${title}: dnevne vrednosti`} accessibilityHint="Pomaknite se med dnevi in izberite datum za podrobnosti."
-        onLayout={event => { if (!positioned.current && event.nativeEvent.layout.width > 0) {
-          positioned.current = true; scroll.current?.scrollTo({ x: Math.max(0, 30 * CELL - event.nativeEvent.layout.width * .45), animated: false });
-        } }} contentContainerStyle={styles.plotScroll}>
-        <View style={{ width: CELL * 37, height: TOP + plotHeight + bottom }}>
+        onLayout={event => setViewportWidth(event.nativeEvent.layout.width)} scrollEventThrottle={64}
+        onScroll={event => { offset.current = event.nativeEvent.contentOffset.x; updateVisibility(); }} contentContainerStyle={styles.plotScroll}>
+        <View style={{ width: CELL * series.points.length, height: TOP + plotHeight + bottom }}>
           <View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={StyleSheet.absoluteFill}>
-          <View pointerEvents="none" style={[styles.forecastZone, { left: CELL * 30, width: CELL * 7, top: TOP, height: plotHeight }]} />
+          <View pointerEvents="none" style={[styles.forecastZone, { left: CELL * todayIndex, width: CELL * (series.points.length - todayIndex), top: TOP, height: plotHeight }]} />
           {scale.ticks.map(tick => <View key={tick} pointerEvents="none" style={[styles.gridline, { top: y(tick) }]} />)}
-          <View pointerEvents="none" style={[styles.todayBoundary, { left: CELL * 30, height: TOP + plotHeight }]} />
-          <Text style={[styles.todayLabel, { left: CELL * 30 + 4 }]}>Danes →</Text>
+          <View pointerEvents="none" style={[styles.todayBoundary, { left: CELL * todayIndex, height: TOP + plotHeight }]} />
+          <Text style={[styles.todayLabel, { left: CELL * todayIndex + 4 }]}>Napoved →</Text>
           {metric === 'temperature' ? series.points.slice(0, -1).map((point, i) => {
             const next = series.points[i + 1];
             if (point.temperatureMeanC == null || next.temperatureMeanC == null) return null;
@@ -124,12 +139,12 @@ export function DailyWeatherChart({ series, metric, selectedDate, onSelect }: {
               onPress={() => onSelect(point.date)} style={[styles.day, { left: i * CELL, width: CELL, height: TOP + plotHeight + bottom }, active && styles.selectedDay]}>
               <View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={StyleSheet.absoluteFill}>
               {active ? <View style={[styles.selectedRail, { top: TOP, height: plotHeight, left: CELL / 2 - 1 }]} /> : null}
-              {metric === 'rain' && value != null ? <View pointerEvents="none" style={[styles.bar, { left: CELL / 2 - 12, top: y(value), height: Math.max(2, TOP + plotHeight - y(value)), backgroundColor: forecast ? colors.surface : color, borderColor: color }, active && styles.activeBar]} /> : null}
+              {metric === 'rain' && value != null ? <View pointerEvents="none" testID={forecast ? 'weather-forecast-bar' : 'weather-history-bar'} style={[styles.bar, { left: CELL / 2 - 12, top: y(value), height: Math.max(2, TOP + plotHeight - y(value)), backgroundColor: forecast ? 'transparent' : color, borderColor: color, borderStyle: forecast ? 'dashed' : 'solid' }, active && !forecast && styles.activeBar]} /> : null}
               {metric === 'temperature' && point.temperatureMinC != null && point.temperatureMaxC != null && point.temperatureMaxC >= point.temperatureMinC ? <View pointerEvents="none" style={[styles.range, { left: CELL / 2 - 2, top: y(point.temperatureMaxC), height: Math.max(2, y(point.temperatureMinC) - y(point.temperatureMaxC)), backgroundColor: color }]} /> : null}
               {metric === 'temperature' ? [point.temperatureMinC, point.temperatureMaxC].map((v, index) => v == null ? null : <View key={index} pointerEvents="none" style={[styles.rangeCap, { left: CELL / 2 - 5, top: y(v), backgroundColor: color }]} />) : null}
               {metric === 'temperature' && value != null ? <View pointerEvents="none" style={[styles.dot, { left: CELL / 2 - (active ? 7 : 5), top: y(value) - (active ? 7 : 5), backgroundColor: forecast ? colors.surface : color, borderColor: color }, active && styles.activeDot]} /> : null}
               {value == null ? <Text style={[styles.missing, { left: CELL / 2 - 8, top: TOP + plotHeight - 22 }]}>—</Text> : null}
-              <Text style={[styles.date, { width: CELL, top: TOP + plotHeight + 8 }, active && styles.activeDate]}>{weatherDateLabel(point.date)}{active ? '\n▲' : ''}</Text>
+              <Text style={[styles.date, { width: CELL, top: TOP + plotHeight + 8 }, active && styles.activeDate]}>{point.date === series.today ? 'Danes' : weatherDateLabel(point.date)}{active ? '\n▲' : ''}</Text>
               </View>
             </Pressable>;
           })}
@@ -137,8 +152,12 @@ export function DailyWeatherChart({ series, metric, selectedDate, onSelect }: {
       </ScrollView>
     </View>
     <Text style={styles.secondary}>Povleci levo/desno · tapni dan za vrednosti</Text>
+    {!selectionVisible ? <Pressable accessibilityRole="button" accessibilityLabel={`Na izbrani dan: ${graphDate(selected.date)}`}
+      accessibilityHint="Premakne ta graf nazaj na označeni datum. Ne spremeni podatkov."
+      onPress={() => moveTo(graphScrollOffset(selectedIndex, CELL, viewportWidth, series.points.length, true), true)} style={styles.retry}><Text style={styles.heading}>Na izbrani dan →</Text></Pressable> : null}
     <View style={styles.selection} accessible accessibilityRole="text" accessibilityLiveRegion="polite"
-      accessibilityLabel={`Izbrano: ${title}. ${graphDate(selected.date)}. ${phase}. ${graphPointValues(selected, metric)}${selected.stale ? ' Starejši podatki iz predpomnilnika.' : ''}${retrieval ? ` ${retrieval}` : ''}`}>
+      accessibilityLabel={`Izbrani dan: ${title}. ${graphDate(selected.date)}. ${phase}. ${graphPointValues(selected, metric)}${selected.stale ? ' Starejši podatki iz predpomnilnika.' : ''}${retrieval ? ` ${retrieval}` : ''}`}>
+      <Text style={styles.secondary}>Izbrani dan</Text>
       <View style={styles.selectionHeader}><Text style={styles.selectionTitle}>{weatherDateLabel(selected.date)} {selected.date.slice(0, 4)}</Text><Text style={styles.phase}>{phase}</Text></View>
       <Text style={styles.value}>{metric === 'rain' ? number(selected.precipitationMm, 'mm') : number(selected.temperatureMeanC, '°C')}<Text style={styles.unitLabel}>{metric === 'rain' ? selected.precipitationMm == null ? '' : ' padavin' : ' · povprečje'}</Text></Text>
       {metric === 'temperature' ? <Text style={styles.temperatureExtras}>Min: {number(selected.temperatureMinC, '°C')} · Max: {number(selected.temperatureMaxC, '°C')}</Text> : null}
@@ -155,7 +174,7 @@ const styles = StyleSheet.create({ graphs: { gap: spacing.lg }, chart: { gap: sp
   summaryValue: { fontSize: 16, fontWeight: '600', color: colors.primary }, trend: { width: '100%', fontSize: 14, color: colors.text },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md }, legendItem: { flexDirection: 'row', maxWidth: '100%', alignItems: 'center', gap: spacing.sm },
   legendText: { flexShrink: 1, fontSize: 14, color: colors.text }, legendBar: { width: 12, height: 14, backgroundColor: colors.primary },
-  legendForecastBar: { width: 12, height: 14, backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.accent },
+  legendForecastBar: { width: 12, height: 14, backgroundColor: 'transparent', borderWidth: 2, borderStyle: 'dashed', borderColor: colors.accent },
   legendLine: { width: 28, height: 3, backgroundColor: colors.primary }, legendDashRow: { flexDirection: 'row', gap: 3 },
   legendDash: { width: 7, height: 3, backgroundColor: colors.accent },
   loading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
@@ -177,4 +196,4 @@ const styles = StyleSheet.create({ graphs: { gap: spacing.lg }, chart: { gap: sp
   selectionTitle: { color: colors.primary, fontSize: 14, fontWeight: '600' }, phase: { flexShrink: 1, fontSize: 13, color: colors.text },
   value: { fontSize: 20, fontWeight: '600', color: colors.primary }, unitLabel: { fontSize: 13, fontWeight: '400', color: colors.text },
   temperatureExtras: { fontSize: 14, color: colors.text },
-  retry: { minHeight: 44, justifyContent: 'center' } });
+  retry: { minHeight: 48, justifyContent: 'center' } });

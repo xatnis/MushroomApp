@@ -248,10 +248,10 @@ export function ConditionsScreen() {
   const weatherProfile = MUSHROOM_WEATHER_PROFILES[weatherProfileId];
   const forecastMaxRain = Math.max(1, ...(weatherSummary?.forecast?.days.map((day) => day.precipitationMm ?? 0) ?? []));
 
-  return <Screen>
+  return <Screen style={styles.screenContent}>
     <Text style={commonStyles.title}>Razmere</Text>
     {!online ? <Notice tone="warning">Ni povezave. Prikazani so lahko zadnji predpomnjeni podatki z označenim časom osvežitve.</Notice> : null}
-    <Card>
+    <Card style={styles.introCard}>
       <SectionTitle>Lokacija</SectionTitle>
       <View style={commonStyles.wrap}>
         <Chip label="Moja lokacija" selected={locationMode === 'gps'} onPress={() => void acquireCurrent()} />
@@ -266,8 +266,10 @@ export function ConditionsScreen() {
         <Text style={commonStyles.muted}>Izbrana lokacija</Text>
         <Text style={commonStyles.heading}>{selectedPlace.name}</Text>
         {placeDetails(selectedPlace) ? <Text style={commonStyles.muted}>{placeDetails(selectedPlace)}</Text> : null}
-        <AppButton title="Prikaži na zemljevidu" variant="secondary" onPress={() => showOnMap(selectedPlace)} />
-        <AppButton title="Spremeni lokacijo" variant="secondary" onPress={() => setPlaceSearchOpen(true)} />
+        <View style={styles.locationActions}>
+          <AppButton title="Prikaži na zemljevidu" variant="secondary" style={styles.locationAction} onPress={() => showOnMap(selectedPlace)} />
+          <AppButton title="Spremeni lokacijo" variant="secondary" style={styles.locationAction} onPress={() => setPlaceSearchOpen(true)} />
+        </View>
       </View> : null}
       {locationMode === 'manual' && placeSearchOpen ? <View style={styles.searchArea}>
         <Field label="Poišči mesto ali kraj" placeholder="Npr. Črna na Koroškem" value={placeQuery} onChangeText={setPlaceQuery} autoCapitalize="words" autoCorrect={false} />
@@ -296,7 +298,7 @@ export function ConditionsScreen() {
     {!weatherLoading && coords && (weatherError || weatherSummary?.errors.historical || weatherSummary?.errors.forecast)
       ? <AppButton title="Poskusi znova" variant="secondary" onPress={() => setWeatherRetry((value) => value + 1)} />
       : null}
-    {weatherSummary?.current ? <Card><SectionTitle>Trenutno</SectionTitle>
+    {weatherSummary?.current ? <Card style={styles.introCard}><SectionTitle>Trenutno</SectionTitle>
         <View style={styles.currentRow}><Text style={styles.currentTemperature}>{weatherSummary.current.temperatureC == null ? '—' : `${slNumber(weatherSummary.current.temperatureC)} °C`}</Text><Text style={commonStyles.heading}>{weatherSummary.current.weatherDescription ?? 'Opis vremena ni na voljo'}</Text></View>
         {weatherSummary.current.soilMoisture0To7Cm != null ? <Text style={commonStyles.body}>Vlaga tal 0–7 cm: {slNumber(weatherSummary.current.soilMoisture0To7Cm, 3)} m³/m³</Text> : null}
         {weatherSummary.current.soilMoisture7To28Cm != null ? <Text style={commonStyles.body}>Vlaga tal 7–28 cm: {slNumber(weatherSummary.current.soilMoisture7To28Cm, 3)} m³/m³</Text> : null}
@@ -481,7 +483,10 @@ function DetailLine({ label, value }: { label: string; value: string }) {
 
 function Metric({ label, value }: { label: string; value: string }) { return <View style={styles.metric}><Text style={commonStyles.muted}>{label}</Text><Text style={commonStyles.heading}>{value}</Text></View>; }
 const styles = StyleSheet.create({
-  locationSummary: { gap: spacing.xs, padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.surfaceSoft },
+  screenContent: { gap: spacing.sm }, introCard: { padding: spacing.md, gap: spacing.sm },
+  locationSummary: { gap: spacing.xs, padding: spacing.sm, borderRadius: radii.md, backgroundColor: colors.surfaceSoft },
+  locationActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  locationAction: { flexGrow: 1, flexShrink: 1, flexBasis: 132, paddingHorizontal: spacing.sm },
   searchArea: { gap: spacing.sm },
   placeResult: { padding: spacing.md, gap: spacing.xs, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, backgroundColor: colors.surfaceSoft },
   placeResultPressed: { opacity: 0.75 },

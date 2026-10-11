@@ -15,8 +15,11 @@ const file = resolve('src/components/WeatherGraphsView.tsx'), nativeRequire = cr
 const Module = nativeRequire('node:module'), mod = new Module(file);
 mod.filename = file; mod.paths = Module._nodeModulePaths(resolve('src/components'));
 let focus = 0;
+// Native frame cancellation exists on Android; this lightweight discovery harness has no frames.
+const originalCancelFrame = globalThis.cancelAnimationFrame;
+globalThis.cancelAnimationFrame = () => {};
 mod.require = (id: string) => {
-  if (id === 'react') return { useRef: () => ({ current: 7 }) };
+  if (id === 'react') return { useRef: (initial: any) => ({ current: initial === null ? 7 : initial }), useState: (initial: any) => [initial, () => {}], useLayoutEffect: () => {} };
   if (id === 'react/jsx-runtime') return { jsx: node, jsxs: node };
   if (id === 'react-native') return { ...Object.fromEntries(['Modal', 'View', 'Text', 'Pressable', 'ScrollView'].map(s => [s, s])),
     StyleSheet: { create: (s: any) => s }, AccessibilityInfo: { setAccessibilityFocus: (n: number) => focus = n }, findNodeHandle: (n: number) => n };
@@ -126,4 +129,5 @@ ok(!source.includes('<WeatherGraphs summary='));
 for (const path of ['src/services/weather.ts', 'src/services/weatherGraphs.ts', 'src/domain/weatherSeries.ts', 'src/domain/mushroomWeather.ts',
   'src/services/heatmap/useLocationConditions.ts', 'src/services/heatmap/useHeatmapVisuals.ts', 'src/domain/hotspotRanking.ts', 'src/domain/heatmap/controlsState.ts', 'src/navigation/AppNavigator.tsx'])
   strictEqual(readFileSync(path, 'utf8').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `7dcc5cb:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), path);
+globalThis.cancelAnimationFrame = originalCancelFrame;
 console.log('PASS graph discovery before historical summaries; open without Podrobnosti; native modal/back/heading/48pt/safe-area props; exact Razmere and map coordinates; missing-location guard; closed charts unmounted; context preserved; shared transport/model/scorers/cache/navigation/LOD pinned. Native layout/TalkBack still require phone QA.');

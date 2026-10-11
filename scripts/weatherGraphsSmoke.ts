@@ -139,6 +139,7 @@ async function uiTests() {
     if (id === 'react/jsx-runtime') return { jsx: element, jsxs: element };
     if (id === 'react-native') return { ...Object.fromEntries(['View', 'Text', 'Pressable', 'ScrollView', 'ActivityIndicator'].map(s => [s, s])), StyleSheet: { create: (s: any) => s, hairlineWidth: 1 }, useWindowDimensions: () => ({ fontScale: scale }) };
     if (id === 'expo-sqlite') return { useSQLiteContext: () => db };
+    if (id === './useWeatherGraphLocalDate') return { useWeatherGraphLocalDate: () => weatherLocalDate() };
     if (id.endsWith('/weatherGraphs')) return { loadWeatherGraphSeries: (_: any, location: any) => new Promise((resolve, reject) => loaders.push({ location, resolve, reject })) };
     return original(id);
   };
@@ -159,7 +160,7 @@ async function uiTests() {
   ok(walk(tree).some(n => n.props.accessibilityRole === 'header' && n.props.accessibilityLabel === 'Graf: Temperatura'));
   ok(walk(tree).some(n => n.props.accessibilityLabel?.startsWith('Temperatura. 30 preteklih dni') && n.props.accessible && n.props.accessibilityHint));
   ok(walk(tree).some(n => n.props.accessibilityLabel?.startsWith('Legenda.') && n.props.accessibilityLabel.includes('črtkana')));
-  const selectedInfo = walk(tree).find(n => n.props.accessibilityLabel?.startsWith('Izbrano:'));
+  const selectedInfo = walk(tree).find(n => n.props.accessibilityLabel?.startsWith('Izbrani dan:'));
   strictEqual(selectedInfo.props.accessibilityLiveRegion, 'polite');
   ok(targets[30].props.style[2]?.borderBottomWidth >= 2, 'selection has non-colour underline and label');
   ok(text(targets[30]).includes('▲'));

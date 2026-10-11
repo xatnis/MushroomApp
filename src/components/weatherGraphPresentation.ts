@@ -1,6 +1,27 @@
 import type { WeatherDailySeries, WeatherSeriesPoint } from '../domain/weatherSeries';
+import { shiftLocalDate } from '../services/weather';
 
 export type WeatherGraphMetric = 'rain' | 'temperature';
+export type WeatherGraphPreset = 'history7' | 'history30' | 'forecast7';
+export interface WeatherGraphNavigation { preset: WeatherGraphPreset; generation: number }
+
+/** Presentation navigation only. Keep every date, including nullable dates, in the series. */
+export function graphPresetRange(series: WeatherDailySeries, preset: WeatherGraphPreset) {
+  const start = preset === 'forecast7' ? series.today : shiftLocalDate(series.today, preset === 'history7' ? -7 : -30);
+  const end = shiftLocalDate(series.today, preset === 'forecast7' ? 6 : -1);
+  const points = series.points.filter(point => point.date >= start && point.date <= end
+    && (preset === 'forecast7' ? point.kind === 'forecast' : point.kind === 'historical' && point.isCompleteDay));
+  return { points, startIndex: Math.max(0, series.points.findIndex(point => point.date === points[0]?.date)), selectedDate: points[0]?.date ?? series.today };
+}
+
+export function graphScrollOffset(index: number, cellWidth: number, viewportWidth: number, count: number, centered = false) {
+  const desired = centered ? (index + .5) * cellWidth - viewportWidth / 2 : index * cellWidth;
+  return Math.max(0, Math.min(desired, Math.max(0, count * cellWidth - viewportWidth)));
+}
+export function graphSelectionVisible(index: number, cellWidth: number, viewportWidth: number, offset: number) {
+  const center = (index + .5) * cellWidth;
+  return viewportWidth <= 0 || (center >= offset && center <= offset + viewportWidth);
+}
 export const graphNumber = (value: number | null, unit: string) => value == null ? 'Ni podatka'
   : `${value.toLocaleString('sl-SI', { maximumFractionDigits: 1 })} ${unit}`;
 export function graphDate(date: string) {
