@@ -7,10 +7,12 @@ import { loadWeatherGraphSeries } from '../services/weatherGraphs';
 import { colors, radii, spacing } from '../theme';
 import { forecastDashes, graphDate, graphNumber as number, graphPhase, graphPointValues, graphSummary } from './weatherGraphPresentation';
 
-/** Mounted only inside expanded weather details; interactions never enter transport. */
-export function WeatherGraphs({ summary, weatherCellId, locationLabel }: { summary: MushroomWeatherSummary; weatherCellId?: string; locationLabel?: string }) {
+/** Mounted only while graphs are visible; interactions never enter transport. */
+export function WeatherGraphs({ summary, location, weatherCellId, locationLabel }: {
+  summary?: MushroomWeatherSummary; location?: { latitude: number; longitude: number }; weatherCellId?: string; locationLabel?: string;
+}) {
   const db = useSQLiteContext(), today = weatherLocalDate();
-  const { latitude, longitude } = summary;
+  const { latitude, longitude } = location ?? summary ?? { latitude: NaN, longitude: NaN };
   const key = `${latitude}:${longitude}:${weatherCellId ?? ''}:${today}`;
   const [state, setState] = useState<{ key: string; series?: WeatherDailySeries; loading: boolean; error?: string }>({ key, loading: true });
   const [retry, setRetry] = useState(0);
@@ -18,18 +20,25 @@ export function WeatherGraphs({ summary, weatherCellId, locationLabel }: { summa
   const seed = useRef(summary); seed.current = summary;
   useEffect(() => {
     let current = true;
+    if (!Number.isFinite(latitude) || Math.abs(latitude) > 90 || !Number.isFinite(longitude) || Math.abs(longitude) > 180) {
+      setState({ key, loading: false, error: 'Lokacija za vremenske grafe ni določena.' });
+      return;
+    }
     setState(previous => ({ key, series: previous.key === key ? previous.series : undefined, loading: true }));
     void loadWeatherGraphSeries(db, { latitude, longitude, weatherCellId }, today, seed.current)
       .then(series => { if (current) setState({ key, series, loading: false }); })
       .catch(() => { if (current) setState({ key, loading: false, error: 'Vremenskih podatkov trenutno ni mogoče pridobiti.' }); });
     return () => { current = false; };
   }, [db, key, retry]);
-  const initial = useMemo(() => buildWeatherDailySeries(latitude, longitude, today, summarySeriesInputs(summary, today)), [summary, today]);
+  const initial = useMemo(() => buildWeatherDailySeries(latitude, longitude, today,
+    summary && summary.latitude === latitude && summary.longitude === longitude ? summarySeriesInputs(summary, today) : []), [summary, latitude, longitude, today]);
   const series = state.key === key && state.series ? state.series : initial;
   const loading = state.key !== key || state.loading;
+  const forecastRetrievedAt = series.points.find(point => point.kind === 'forecast' && point.fetchedAt)?.fetchedAt;
   return <View style={styles.graphs}>
     {locationLabel ? <Text style={styles.secondary}>{locationLabel}</Text> : null}
-    <Text style={styles.secondary}>Pretekli modelski vremenski podatki · 30 dni in 7-dnevna napoved</Text>
+    <Text style={styles.secondary}>Open-Meteo · 30 dni zgodovine in 7 dni napovedi</Text>
+    {forecastRetrievedAt ? <Text style={styles.secondary}>Napoved pridobljena {new Date(forecastRetrievedAt).toLocaleString('sl-SI', { timeZone: series.timezone })}{series.stale ? ' · starejši podatki' : ''}</Text> : null}
     {loading ? <View style={styles.loading}><ActivityIndicator size="small" color={colors.primary} /><Text style={styles.secondary}>Pridobivam dnevno vreme …</Text></View> : null}
     {series.availableRange ? <WeatherGraphPair key={key} series={series} /> : !loading ? <Text style={styles.secondary}>Dnevni vremenski podatki niso na voljo.</Text> : null}
     {!loading && (state.error || series.partial || series.stale) ? <>

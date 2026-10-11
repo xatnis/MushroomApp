@@ -74,7 +74,9 @@ for (const screenWidth of [320, 360, 412]) {
 }
 ok(layout.right >= state.styles.recenter.right + state.styles.recenter.width + spacing.sm, 'reserve actual location-button footprint');
 const old = execFileSync('git', ['show', 'e4cff79:src/screens/MapScreen.tsx'], { encoding: 'utf8' });
-const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b));
+// Graph coordinate capture does not change camera, source data or layers.
+const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b))
+  .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, '');
 strictEqual(slice(source, '  const conditionsContext =', '  const [heatmapBundle'), slice(old, '  const conditionsContext =', '  const [heatmapBundle'));
 strictEqual(slice(source, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen'), slice(old, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen'));
 strictEqual(slice(source, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'), slice(old, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'));

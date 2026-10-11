@@ -170,13 +170,13 @@ async function uiTests() {
   strictEqual(walk(complete).filter(n => n.props.testID === 'weather-history-line').length, 29);
   const futureLines = walk(complete).filter(n => n.props.testID === 'weather-forecast-line');
   strictEqual(futureLines.length, 7); ok(futureLines.every(n => n.props.children.length > 1));
-  for (const file of ['src/services/weather.ts', 'src/services/weatherGraphs.ts', 'src/domain/weatherSeries.ts', 'src/screens/MapScreen.tsx', 'src/screens/ConditionsScreen.tsx'])
+  for (const file of ['src/services/weather.ts', 'src/services/weatherGraphs.ts', 'src/domain/weatherSeries.ts'])
     strictEqual(readFileSync(file, 'utf8').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `dcd8cdf:${file}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), `presentation-only: ${file}`);
   scale = 2; cursor = 0;
   const large = mod.exports.DailyWeatherChart({ series: data, metric: 'rain', selectedDate: '2026-10-08', onSelect() {} });
   strictEqual(walk(large).find(n => n.type === 'Pressable').props.style[1].width, 96); ok(text(large).includes('0 mm'));
-  const map = readFileSync('src/screens/MapScreen.tsx', 'utf8'); ok(map.includes("section === 'weather' ? <><WeatherGraphs"));
-  ok(readFileSync('src/screens/ConditionsScreen.tsx', 'utf8').includes('showWeatherDetails ? <><WeatherGraphs'));
+  const map = readFileSync('src/screens/MapScreen.tsx', 'utf8'); ok(map.includes('<WeatherGraphsEntry compact'));
+  ok(readFileSync('src/screens/ConditionsScreen.tsx', 'utf8').includes('<WeatherGraphsEntry'));
   for (const file of ['src/domain/mushroomWeather.ts', 'src/services/heatmap/useLocationConditions.ts', 'src/services/heatmap/regionalWeather.ts', 'src/domain/hotspotRanking.ts'])
     strictEqual(readFileSync(file, 'utf8'), execFileSync('git', ['show', `b771a23:${file}`], { encoding: 'utf8' }), file);
   // Actual hook effect: context-only rerenders do not load, old location cannot publish.
@@ -200,5 +200,13 @@ async function uiTests() {
   const before = hooks[0].value;
   loaders[2].resolve(data); await Promise.resolve();
   strictEqual(hooks[0].value, before, 'closing details prevents late UI publication');
+  // Explicit selected coordinates override the old grid/GPS seed immediately, not only after the request.
+  hooks.length = 0; effects.length = 0; cursor = 0;
+  const switched = mod.exports.WeatherGraphs({ summary: { ...summary, historical: { days: [input('2026-10-07', 2, -3).day] } }, location: { latitude: 45, longitude: 15 } });
+  effects.splice(0).forEach(f => f());
+  strictEqual(loaders.at(-1)!.location.latitude, 45);
+  strictEqual(loaders.at(-1)!.location.longitude, 15);
+  ok(!walk(switched).some(n => n.type === mod.exports.WeatherGraphPair), 'never show another location seed while loading');
+  hooks.forEach(h => h?.cleanup?.());
 }
 void run().catch(error => { console.error(error); process.exitCode = 1; });

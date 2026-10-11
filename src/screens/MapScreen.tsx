@@ -32,7 +32,7 @@ import { HotspotConditionsMarkers, HOTSPOT_MARKER_HEIGHT } from '../components/H
 import { HotspotMapCard } from '../components/HotspotConditions';
 import { HotspotRankingList } from '../components/HotspotRankingList';
 import { HotspotTopThree } from '../components/HotspotTopThree';
-import { WeatherGraphs } from '../components/WeatherGraphs';
+import { WeatherGraphsEntry, WeatherGraphsModal, type WeatherGraphsLocation } from '../components/WeatherGraphsView';
 import { rankingDetailParams, type ConditionsTargetContext, type HotspotSortMode } from '../domain/hotspotRanking';
 import { conditionsContextFromNavigation, conditionsNavigationPatch } from '../domain/hotspotHeatmap';
 
@@ -92,6 +92,10 @@ export function MapScreen() {
   const mapWasMoved = useRef(false);
   const locationRequestGate = useRef(createLocationRequestGate()).current;
   const suppressMapPressUntil = useRef(0);
+  const graphMapPoint = useRef<{ areaId: string; latitude: number; longitude: number } | undefined>(undefined);
+  useEffect(() => {
+    if (graphMapPoint.current?.areaId !== heatmapNavigation.selectedAreaId) graphMapPoint.current = undefined;
+  }, [heatmapNavigation.selectedAreaId]);
   const consumedHotspotFocus = useRef<string | undefined>(undefined);
   const [mode, setMode] = useState<'map' | 'list'>('map');
   const [query, setQuery] = useState('');
@@ -668,6 +672,8 @@ export function MapScreen() {
             event.stopPropagation();
             const areaId = event.nativeEvent.features[0]?.properties?.id;
             if (typeof areaId === 'string') {
+              const [longitude, latitude] = event.nativeEvent.lngLat;
+              graphMapPoint.current = { areaId, latitude, longitude };
               setSelectedId(undefined);
               updateHeatmapNavigation({ selectedAreaId: areaId });
             }
@@ -757,6 +763,9 @@ export function MapScreen() {
       </View> : null}
       {heatmapAreaCardOpen && selectedHeatmapArea && selectedHeatmapFeature ? <HeatmapAreaCard
         assessment={selectedHeatmapArea}
+        graphLocation={{ name: heatmapAreaLocality?.location.name ?? 'Izbrano območje',
+          latitude: graphMapPoint.current && graphMapPoint.current.areaId === selectedHeatmapAreaId ? graphMapPoint.current.latitude : selectedHeatmapFeature.properties.centerLatitude,
+          longitude: graphMapPoint.current && graphMapPoint.current.areaId === selectedHeatmapAreaId ? graphMapPoint.current.longitude : selectedHeatmapFeature.properties.centerLongitude }}
         weatherPending={!heatmapBundle?.weather.cells[selectedHeatmapFeature.properties.weatherCellId] && heatmapStatus === 'loading'}
         targetDay={heatmapTargetDay}
         maxHeight={mapViewportHeight > 0 ? Math.floor(mapViewportHeight * 0.8) : undefined}
@@ -798,9 +807,10 @@ function TopThreeEntry({ onPress, selected }: { onPress: () => void; selected: b
   </Pressable>;
 }
 
-function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; weatherPending?: boolean; targetDay: HeatmapTargetDay; maxHeight?: number; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
+function HeatmapAreaCard({ assessment, graphLocation, weatherPending, targetDay, maxHeight, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; graphLocation: WeatherGraphsLocation; weatherPending?: boolean; targetDay: HeatmapTargetDay; maxHeight?: number; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [openSection, setOpenSection] = useState<'weather' | 'habitat' | 'reliability' | null>(null);
+  const [graphsOpen, setGraphsOpen] = useState(false);
   const [scrollHeight, setScrollHeight] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   const contentRef = useRef<View>(null!);
@@ -850,6 +860,7 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
     cancelSectionScroll();
     setDetailsExpanded(false);
     setOpenSection(null);
+    setGraphsOpen(false);
     return cancelSectionScroll;
   }, [assessment.areaId]);
   const profile = MUSHROOM_WEATHER_PROFILES[assessment.speciesId];
@@ -891,6 +902,7 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
         <Text style={styles.heatmapSummaryTitle}>{assessment.score == null ? 'ZAKAJ TA OCENA?' : `ZAKAJ ${assessment.score}?`}</Text>
         <Text style={styles.heatmapSummary}>{presentation.summary}</Text>
       </View>
+      <WeatherGraphsEntry compact onPress={() => { cancelSectionScroll(); setGraphsOpen(true); }} />
       <View style={styles.heatmapCardSection}>
         <Text style={styles.heatmapDetailTitle}>GLAVNI DEJAVNIKI</Text>
         {presentation.factors.map(factor => <View key={factor.key} style={styles.heatmapFactor}>
@@ -925,7 +937,7 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
             <Text style={styles.heatmapBlockLabel}>{label}</Text><Ionicons name={openSection === section ? 'chevron-down' : 'chevron-forward'} size={18} color={colors.primary} />
           </Pressable>
           {openSection === section ? <View style={styles.heatmapAccordionBody}>
-            {section === 'weather' ? <><WeatherGraphs summary={assessment.summary} weatherCellId={assessment.weatherCellId} locationLabel={`Vremenska točka območja: ${areaLabel}`} />{presentation.factors.map(factor => {
+            {section === 'weather' ? <>{presentation.factors.map(factor => {
               const rows = presentation.technical.filter(row => factor.key === 'rain' ? row.key.startsWith('rain') : row.key === factor.key);
               return <View key={factor.key} style={styles.heatmapTechnicalRow}>
                 <Text style={styles.heatmapBlockLabel}>{factor.label}</Text><Text style={styles.heatmapCardSecondary}>{factor.detailedStatus}</Text>
@@ -976,6 +988,7 @@ function HeatmapAreaCard({ assessment, weatherPending, targetDay, maxHeight, are
       </View> : null}
       <AppButton title="Odpri celoten pregled razmer" variant="secondary" onPress={onOpenConditions} />
     </ScrollView>
+    <WeatherGraphsModal visible={graphsOpen} location={graphLocation} summary={assessment.summary} weatherCellId={assessment.weatherCellId} onClose={() => setGraphsOpen(false)} />
   </Card>;
 }
 

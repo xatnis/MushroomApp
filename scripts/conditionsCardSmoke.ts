@@ -102,18 +102,21 @@ const baseline = execFileSync('git', ['show', '8c70834:src/screens/MapScreen.tsx
 // Hotspot Conditions V1 legitimately adds focus context and marker views. Keep
 // the existing heatmap computation/native source path pinned, not unrelated routing.
 const heatmapLogic = (s: string) => s.slice(s.indexOf('  const selectHeatmapSpecies'), s.indexOf('  const heatmapAreaCardOpen')).replace("    if (mode !== 'map') return;\n", '');
-const heatmapSources = (s: string) => s.slice(s.indexOf('<GeoJSONSource id="regional-overview-source"'), s.indexOf('{locationGranted ?'));
+const heatmapSources = (s: string) => s.slice(s.indexOf('<GeoJSONSource id="regional-overview-source"'), s.indexOf('{locationGranted ?'))
+  .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, '');
 strictEqual(heatmapLogic(screen), heatmapLogic(baseline), 'heatmap/LOD/weather calculation untouched');
 strictEqual(heatmapSources(screen), heatmapSources(baseline), 'native heatmap sources/layers untouched');
 const previousCard = functionText(execFileSync('git', ['show', '1d737ed:src/screens/MapScreen.tsx']).toString(), 'HeatmapAreaCard');
 const currentCard = functionText(screen, 'HeatmapAreaCard');
 const mainView = (s: string) => s.slice(s.indexOf('return <Card'), s.indexOf('<Pressable accessibilityRole="button" accessibilityState={{ expanded: detailsExpanded }}'));
 const withoutScrollHooks = (s: string) => s
+  .replace(/      <WeatherGraphsEntry compact[^\n]*\/>\r?\n/, '')
   .replace(/onPress=\{\(\) => \{ cancelSectionScroll\(\); setDetailsExpanded\(false\); setOpenSection\(null\); onClose\(\); \}\}/, 'onPress={onClose}')
   .replace(/      ref=\{scrollRef\}[\s\S]*?      onMomentumScrollEnd=\{[^\n]*\}\r?\n/, '');
 strictEqual(withoutScrollHooks(mainView(currentCard)), mainView(previousCard), 'fixed header and decision view unchanged except scroll wiring');
 const weatherAndHabitat = (s: string) => s.slice(s.indexOf("{section === 'weather' ?"), s.indexOf('</> : <>'));
 const withoutGraph = (s: string) => s
+  .replace('<>{presentation.factors', 'presentation.factors')
   .replace("<><WeatherGraphs summary={assessment.summary} weatherCellId={assessment.weatherCellId} locationLabel={`Vremenska točka območja: ${areaLabel}`} />{presentation.factors", 'presentation.factors')
   .replace("})}</> : section === 'habitat'", "}) : section === 'habitat'");
 strictEqual(withoutGraph(weatherAndHabitat(currentCard)), weatherAndHabitat(previousCard), 'Existing Weather/Habitat technical values unchanged; graph added only inside weather');
@@ -157,7 +160,7 @@ const bindings = {
   requestAnimationFrame: (run: () => void) => { frames.set(++nextFrame, run); return nextFrame; },
   cancelAnimationFrame: (id: number) => frames.delete(id),
   useMemo: (factory: () => any, deps: any[]) => { const slot = cursor++; if (dependenciesChanged(hooks[slot]?.deps, deps)) { calculations++; hooks[slot] = { deps, value: factory() }; } return hooks[slot].value; },
-  Card: 'Card', View: 'View', Text: 'Text', Pressable: 'Pressable', ScrollView: 'ScrollView', AppButton: 'AppButton', Ionicons: 'Icon', WeatherGraphs: 'WeatherGraphs',
+  Card: 'Card', View: 'View', Text: 'Text', Pressable: 'Pressable', ScrollView: 'ScrollView', AppButton: 'AppButton', Ionicons: 'Icon', WeatherGraphsEntry: 'WeatherGraphsEntry', WeatherGraphsModal: 'WeatherGraphsModal',
   styles: new Proxy({}, { get: (_, key) => key === 'heatmapDetailsContent' ? actualStyles.heatmapDetailsContent : key }), commonStyles: {}, colors: {}, StyleSheet: { flatten: (v: any) => v },
   MUSHROOM_WEATHER_PROFILES, HEATMAP_PILOT_METADATA, cardFactors, cardSummary, cardHabitat, cardReliability, cardTechnicalDetails, compactCardMetadata,
 };
@@ -167,6 +170,7 @@ const nodes = (node: any): Element[] => Array.isArray(node) ? node.flatMap(nodes
 const text = (node: any): string => Array.isArray(node) ? node.map(text).join(' ') : node && typeof node === 'object' ? text(node.props.children) : typeof node === 'string' || typeof node === 'number' ? String(node) : '';
 let closed = 0, navigated = 0, chosenDay = 'today';
 const props = { assessment, targetDay: 'today', maxHeight: 520, areaLabel: 'Območje pri Črni na Koroškem', areaDetails: 'Koroška, Slovenija',
+  graphLocation: { latitude: 46.45, longitude: 14.86, name: 'Izbrano območje' },
   onClose: () => closed++, onOpenConditions: () => navigated++, onTargetDayChange: (day: string) => { chosenDay = day; } };
 const render = () => { cursor = 0; let tree = card(props); if (effects.length) { effects.splice(0).forEach(e => e()); cursor = 0; tree = card(props); }
   for (const node of nodes(tree)) {
@@ -200,6 +204,16 @@ ok(!nodes(scroll).some(n => n.props.accessibilityRole === 'tab'), 'date remains 
 ok(!nodes(scroll).some(n => n.props.accessibilityLabel === 'Zapri podrobnosti območja'), 'X remains fixed');
 ok(!text(scroll).includes('ne zagotavlja prisotnosti gob.'), 'disclaimer lives in Sources, not duplicated in main');
 const beforeToggleCalculations = calculations;
+const graphEntry = nodes(tree).find(n => n.type === 'WeatherGraphsEntry')!;
+graphEntry.props.onPress(); tree = render();
+let graphModal = nodes(tree).find(n => n.type === 'WeatherGraphsModal')!;
+strictEqual(graphModal.props.visible, true, 'map graphs open without expanding technical details');
+deepStrictEqual(graphModal.props.location, props.graphLocation, 'actual selected map point is propagated');
+strictEqual(graphModal.props.summary, assessment.summary);
+ok(!button(tree, 'Vreme'), 'graphs do not open/reset accordion');
+graphModal.props.onClose(); tree = render();
+strictEqual(nodes(tree).find(n => n.type === 'WeatherGraphsModal')!.props.visible, false);
+strictEqual(calculations, beforeToggleCalculations, 'opening/closing graphs does not rebuild card score/presentation');
 ok(!button(tree, 'Poglej podrobnosti') && !text(tree).includes('Poglej podrobne razmere'), 'old ambiguous CTAs removed');
 button(tree, 'Več informacij').props.onPress(); tree = render();
 strictEqual(calculations, beforeToggleCalculations, 'details toggle does not rebuild even card presentation');

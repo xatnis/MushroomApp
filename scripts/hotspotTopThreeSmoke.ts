@@ -146,7 +146,9 @@ state.controls = heatmapControlsReducer(state.controls, { type: 'top-three-open'
 state.controls = heatmapControlsReducer(state.controls, { type: 'leave' }); strictEqual(state.controls.topThreeOpen, undefined);
 
 const baseline = execFileSync('git', ['show', 'e99921b:src/screens/MapScreen.tsx'], { encoding: 'utf8' });
-const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b));
+// Graph coordinate capture is presentation-only; Top 3/native data paths remain pinned.
+const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b))
+  .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, '');
 strictEqual(slice(mapSource, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'), slice(baseline, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'));
 strictEqual(slice(mapSource, '  const observeCameraZoom', '  const heatmapAreaCardOpen'), slice(baseline, '  const observeCameraZoom', '  const heatmapAreaCardOpen'), 'visual preparation unchanged');
 strictEqual(slice(mapSource, '  useEffect(() => () => heatmapRequestGate', '  // One post-commit'), slice(baseline, '  useEffect(() => () => heatmapRequestGate', '  // One post-commit'), 'regional weather effects unchanged');

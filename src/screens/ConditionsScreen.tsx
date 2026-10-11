@@ -13,7 +13,7 @@ import { buildGpsExploreLocation, debugGpsLocality, resolveGpsLocality } from '.
 import { BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
 import { assessLocationWeather, type LocationRankingAssessment } from '../domain/locationRanking';
 import { buildGenericWeatherDetails } from '../domain/weatherDetails';
-import { WeatherGraphs } from '../components/WeatherGraphs';
+import { WeatherGraphsEntry, WeatherGraphsModal } from '../components/WeatherGraphsView';
 import { haversineKm, slDateTime, slNumber } from '../domain/format';
 import { speciesCatalogue } from '../domain/species';
 import { colors, radii, spacing } from '../theme';
@@ -86,6 +86,7 @@ export function ConditionsScreen() {
   const [locationNotice, setLocationNotice] = useState<string>();
   const [placeSearchError, setPlaceSearchError] = useState<string>();
   const [showWeatherDetails, setShowWeatherDetails] = useState(false);
+  const [graphsOpen, setGraphsOpen] = useState(false);
   const locationRequestId = useRef(0);
   const locationAbortController = useRef<AbortController | undefined>(undefined);
   const weatherRequestId = useRef(0);
@@ -295,12 +296,17 @@ export function ConditionsScreen() {
     {!weatherLoading && coords && (weatherError || weatherSummary?.errors.historical || weatherSummary?.errors.forecast)
       ? <AppButton title="Poskusi znova" variant="secondary" onPress={() => setWeatherRetry((value) => value + 1)} />
       : null}
-    {weatherSummary ? <>
-      {weatherSummary.current ? <Card><SectionTitle>Trenutno</SectionTitle>
+    {weatherSummary?.current ? <Card><SectionTitle>Trenutno</SectionTitle>
         <View style={styles.currentRow}><Text style={styles.currentTemperature}>{weatherSummary.current.temperatureC == null ? '—' : `${slNumber(weatherSummary.current.temperatureC)} °C`}</Text><Text style={commonStyles.heading}>{weatherSummary.current.weatherDescription ?? 'Opis vremena ni na voljo'}</Text></View>
         {weatherSummary.current.soilMoisture0To7Cm != null ? <Text style={commonStyles.body}>Vlaga tal 0–7 cm: {slNumber(weatherSummary.current.soilMoisture0To7Cm, 3)} m³/m³</Text> : null}
         {weatherSummary.current.soilMoisture7To28Cm != null ? <Text style={commonStyles.body}>Vlaga tal 7–28 cm: {slNumber(weatherSummary.current.soilMoisture7To28Cm, 3)} m³/m³</Text> : null}
-      </Card> : null}
+    </Card> : null}
+
+    <WeatherGraphsEntry onPress={() => setGraphsOpen(true)} />
+    <WeatherGraphsModal visible={graphsOpen} location={coords ? { latitude: coords.latitude, longitude: coords.longitude,
+      name: (locationMode === 'gps' ? currentLocationName : selectedPlace?.name) ?? 'Izbrana lokacija' } : undefined}
+      summary={weatherSummary} onClose={() => setGraphsOpen(false)} />
+    {weatherSummary ? <>
 
       {weatherSummary.historical ? <>
         <Card><SectionTitle>Pretekle padavine</SectionTitle><View style={styles.metrics}>
@@ -339,7 +345,7 @@ export function ConditionsScreen() {
         <View style={styles.scoreRow}><View><Text style={commonStyles.muted}>{weatherProfile.scoreCaption}</Text><Text style={styles.score}>{score.score != null ? `${score.score}` : '—'}</Text></View><View style={styles.scoreCopy}><Text style={commonStyles.heading}>{score.label}</Text><Text style={commonStyles.body}>Trend: {score.trend}</Text><Text style={commonStyles.muted}>{score.coverage}</Text></View></View>{score.reasons.map((reason) => <Text key={reason} style={commonStyles.body}>• {reason}</Text>)}{weatherProfile.seasonNote ? <Text style={commonStyles.muted}>{weatherProfile.seasonNote}</Text> : null}<Text style={commonStyles.muted}>Ocena temelji na vremenskih pogojih in ne zagotavlja pojava gob. Ni verjetnost uspeha ali znanstveno potrjen napovedni model.</Text></Card>
 
       <AppButton title={showWeatherDetails ? 'Skrij podrobnosti' : 'Podrobnosti'} variant="ghost" onPress={() => setShowWeatherDetails((visible) => !visible)} />
-      {showWeatherDetails ? <><WeatherGraphs summary={weatherSummary} /><WeatherProfileScoreDetails profileId={weatherProfileId} summary={weatherSummary} score={score} /></> : null}
+      {showWeatherDetails ? <WeatherProfileScoreDetails profileId={weatherProfileId} summary={weatherSummary} score={score} /> : null}
       <Text style={commonStyles.muted}>Open‑Meteo · posodobljeno {slDateTime(weatherSummary.updatedAt)}{weatherSummary.stale ? ' · predpomnjeni podatki' : ''}</Text>
     </> : null}
     {hotspots.length ? <><SectionTitle>Kam po gobe?</SectionTitle>

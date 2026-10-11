@@ -149,7 +149,9 @@ for (const [height, popupHeight, controlsEnd] of [[300, 124, 80], [400, 150, 96]
   ok(projectedCoordinateY < height - popupHeight - 16, 'marker coordinate above card');
 }
 const baseline = execFileSync('git', ['show', '01b2038:src/screens/MapScreen.tsx'], { encoding: 'utf8' });
-const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b));
+// Graph coordinate capture is read-only; all underlying layers/actions stay pinned.
+const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b))
+  .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, '');
 strictEqual(slice(source, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'),
   slice(baseline, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'), 'native sources/layers unchanged');
 strictEqual(slice(source, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen').replace("    if (mode !== 'map') return;\n", ''),

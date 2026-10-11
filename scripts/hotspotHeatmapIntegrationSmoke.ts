@@ -128,7 +128,9 @@ oldToggle(baselineAst); strictEqual(modeToggle.getText(ast), oldModeToggle, 'map
 ok(source.includes("mode === 'list' ? <View style={styles.listOverlay}"));
 ok(source.includes('<HotspotRankingList hotspots={filtered}'));
 strictEqual(readFileSync('src/components/HotspotRankingList.tsx', 'utf8'), execFileSync('git', ['show', '87b7532:src/components/HotspotRankingList.tsx'], { encoding: 'utf8' }), 'list conditions controls/rows untouched');
-const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b));
+// Allow only the graph's read-only tapped-coordinate capture; keep native data/layers and actions pinned.
+const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b))
+  .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, '');
 strictEqual(slice(source, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'), slice(baseline, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'));
 strictEqual(slice(source, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen').replace("    if (mode !== 'map') return;\n", ''),
   slice(baseline, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen'), 'no scoring/visual/LOD rewrite');

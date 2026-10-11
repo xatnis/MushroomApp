@@ -31,14 +31,82 @@ transport/cache/dedupe, mounting locations, scoring, MapLibre/LOD and snapshots 
 Polish verification: TypeScript and 17 focused suites passed, including 84,248 regional and
 15,688 pilot unchanged comparisons. No device was attached; no new APK was built for this polish.
 
+## Weather Graphs Discoverability V3
+
+Razmere now has a full-width, fully tappable **Vremenski grafi** card immediately after
+**Trenutno**, before the historical precipitation/temperature summaries. It says
+“Padavine in temperatura”, “30 dni zgodovine · 7 dni napovedi”, “Odpri grafe →”.
+The entry is also available while weather loads/fails or location is missing; opening
+without coordinates gives a meaningful choose-location message, never unrelated GPS data.
+
+The selected map area's conditions card has the same compact action directly after
+**Zakaj X?**, before the factors/technical accordions. Neither route requires opening
+Podrobnosti/Več informacij or expanding Vreme. The old inline chart copies were removed;
+the technical weather rows and contribution values remain in their original sections.
+Hotspot detail/popup, ranking, Top 3 and global map filter were not expanded in this task.
+
+Both entries open the shared `WeatherGraphsModal` native **full-screen Modal** containing
+the original polished `WeatherGraphs`. Header: back button, heading, selected location.
+One vertical ScrollView contains the precipitation and temperature sections; each plot
+retains its own horizontal scrolling. Concise Open-Meteo provenance and the forecast's
+actual retrieval timestamp (when available) precede the charts; full caveats follow them.
+No new tab, chart library, route or navigation-context mutation.
+
+The Modal deliberately keeps its origin mounted. Close/back only changes local visibility:
+original scroll, map viewport, selected area, species/day and existing accordion state
+remain. Android Back goes through Modal `onRequestClose`, not an additional BackHandler;
+underlying map BackHandler does not receive that same press. The opaque native window
+isolates the graphs from map overlays/gestures. Charts are unmounted on close, but weather
+cache is retained. A new location may replace modal content safely while it is open.
+
+Razmere passes its explicit selected-place/current-GPS coordinate and name (whichever
+location mode is active). Map entry passes the **actual tapped coordinate**, associated
+with the selected area ID; a programmatically selected cell without a recorded tap uses
+that selected cell's centre. A stale tap from another area is cleared. It never substitutes
+GPS, explore-location, or the grid weather representative for the selected map point.
+The seed is used only when its coordinates exactly match the requested point: this applies
+to the immediate display as well as the existing service. Old-location completions cannot
+publish into the new key. Consequently a newly inspected exact point may require the
+existing canonical archive/forecast pair rather than reusing a different grid location's
+weather; warm same-point reopen and concurrent same-point requests reuse existing cache/dedupe.
+If the tapped point exactly matches the assessment's weather coordinates, the existing
+weather cell ID is retained for raw regional batch-cache reuse; otherwise it is omitted.
+Source adapters, daily model, keys, TTL, weather variables and production scoring are unchanged.
+
+Accessibility: entry is one labelled/hinted button, header is a heading, back is a distinct
+48 pt target, native `onShow` focuses the heading for screen readers. Text is not restricted
+to one line; the header location wraps and the content scrolls for larger text/short screens.
+A SafeAreaProvider in the modal window supplies real modal insets; SafeAreaView owns all
+four edges once, independently of the tab bar below it. No tab/system inset is added again
+to the ScrollView. Existing chart summaries, shape distinctions and 48 pt day targets remain.
+
+Focused tests execute both entry/modal JSX and Razmere/map callbacks, plus the real chart
+loading hook. Cache tests retain cold=2 HTTP, concurrent duplicate=0 additional, warm=0,
+and selection/scroll=0. Closed graphs have no acquisition effect. Source pins check the
+transport, daily model, scorers, ranking, navigation and native visual pipeline unchanged.
+Desktop checks do not establish Android Yoga layout, real TalkBack traversal/focus return
+or system-bar appearance: those still need Redmi 13C three-button/gesture QA.
+
+V3 verification: TypeScript and 18 focused suites passed (discovery, graph data/UI/cache,
+conditions card, hotspot/scorer regression, generic details, list/map integration, Top 3,
+focused map, overlays, ranking/data/UI/controls, hotspot UI, location hook, navigation,
+transitions, LOD and overview loading). Regional **84,248** and pilot **15,688** comparisons
+remain identical. Existing native-source pins permit only the two read-only graph-coordinate
+capture lines, whose exact coordinates and selection action are independently executed by
+the new discovery test; source data/layers, camera and visual/request effects remain pinned.
+
+The V3 release helper was attempted with the exact command below. Gradle failed with
+`java.io.IOException: Unable to establish loopback connection`; no new APK was copied.
+`adb devices` returned no attached device. Build/verify locally:
+
+```powershell
+npm run apk -- --name MushroomApp-preview-weather-graphs-v3.apk
+```
+
 ## Placement and interaction
 
-Two native charts are mounted **only** inside MapScreen's expanded **Več informacij →
-Vreme** accordion and Conditions/Razmere's **Podrobnosti** section. The main decision
-card, navigation tabs, compact hotspot card, ranking and Top 3 are unchanged.
-Map graphs use the selected assessment's weather representative coordinates and cell ID,
-not an overview polygon colour as a point score. The caption explicitly says “Vremenska
-točka območja”. The full Razmere screen uses its existing selected-location weather summary.
+Two native charts are mounted only while the dedicated view is open. The existing
+navigation tabs, compact hotspot card, ranking and Top 3 remain unchanged.
 
 Padavine uses solid historical bars and outlined forecast bars; total precipitation includes
 rain/showers/snow, not rain alone. A true zero has a small baseline mark and reads `0 mm`;
@@ -47,16 +115,16 @@ line/dots and an independent min/max range/caps. Missing means break the line, i
 when valid min/max exist. No arithmetic mean, gap interpolation or synthetic weather.
 Negative temperatures remain below zero on an explicitly labelled scale.
 
-Both plots expose the same 37-date axis, history/forecast legend and dashed today boundary.
+Both plots expose the same 37-date axis, history/forecast legend and solid today boundary.
 Tap a date to select it in both charts; the readable detail area shows exact values, phase
 and, for forecasts/stale data, the endpoint's retrieval time. Scroll each plot horizontally: initially recent history
 and the start of the forecast are visible. All 37 slots remain reachable. Each date has a
-44 pt minimum touch target, accessible date/value/phase and selected state. Font scaling
+48 pt minimum touch target, accessible date/value/phase and selected state. Font scaling
 increases cell/axis widths and date-label space rather than shrinking text. Selection
 feedback is not colour-only. No WebView, SVG/native chart dependency or production logging.
 
-Graphs live within existing scroll/safe-area containers. Existing accordion anchors still
-position the newly opened section, and neither chart installs any MapLibre gesture listener.
+Graphs live within the modal scroll/safe-area container. Existing technical accordion anchors
+still position their newly opened sections, and neither chart installs any MapLibre gesture listener.
 Tiny screens/large text require more horizontal/vertical scrolling. Physical Redmi 13C
 three-button navigation QA remains necessary; desktop style tests are not native Yoga/GPU QA.
 
@@ -142,7 +210,7 @@ cache remains usable on error. Corrupt cached JSON is treated as a cache miss.
 
 The component keys state to location/cell/local-day and guards asynchronous publication
 after location change or unmount. A profile/day rerender updates existing inputs but does
-not restart the chart request. The child unmounts when details close. No fetch is wired to
+not restart the chart request. The child unmounts when the graph view closes. No fetch is wired to
 chart scrolling or tapping. Neither locally saved hotspots nor visits are mutated.
 
 ## Preparation for Seven-Day Conditions V1
