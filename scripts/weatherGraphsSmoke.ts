@@ -8,6 +8,8 @@ import { buildWeatherDailySeries, weatherLocalDate, weatherPlotScale, validWeath
 import { loadWeatherGraphSeries, readWeatherGraphCache } from '../src/services/weatherGraphs';
 import { getMushroomWeatherSummary, shiftLocalDate, mapDailyWeather } from '../src/services/weather';
 import { HEATMAP_WEATHER_POLICY_VERSION } from '../src/domain/heatmap/config';
+import { forecastDashes, graphDate, graphNumber, graphPointValues, graphSummary } from '../src/components/weatherGraphPresentation';
+import { colors } from '../src/theme';
 
 const today = '2026-10-09';
 const input = (date: string, rain: any = 0, mean: any = -3) => ({ day: { date, kind: 'historical' as const, precipitationMm: rain,
@@ -35,6 +37,28 @@ strictEqual(buildWeatherDailySeries(46, 14, today, [input(today, '9', Infinity)]
 strictEqual(buildWeatherDailySeries(46, 14, today, [{ ...input(today), fetchedAt: 'invalid' }]).points[30].fetchedAt, null);
 ok(weatherPlotScale(buildWeatherDailySeries(46, 14, today, [input(today, 300)]).points, 'rain').max >= 300);
 ok(weatherPlotScale(series.points, 'temperature').min < 0);
+const full = buildWeatherDailySeries(46, 14, today, Array.from({ length: 37 }, (_, i) => input(shiftLocalDate(today, i - 30), i < 30 ? 2 : 3, i < 30 ? 10 : 12)));
+deepStrictEqual(graphSummary(full, 'rain').signals.map(s => s.value), [14, 9]);
+deepStrictEqual(graphSummary(full, 'temperature').signals.map(s => s.value), [10, 12]);
+strictEqual(graphSummary(full, 'temperature').trend, 'V napovedi povprečno topleje.');
+const beforeSummary = JSON.stringify(full);
+graphSummary(full, 'rain'); graphSummary(full, 'temperature'); strictEqual(JSON.stringify(full), beforeSummary, 'display summary never mutates canonical daily series');
+const zero = { ...full, points: full.points.map(p => ({ ...p, precipitationMm: 0, temperatureMeanC: -2 })) };
+strictEqual(graphSummary(zero, 'rain').signals[0].value, 0);
+strictEqual(graphSummary(zero, 'temperature').trend, 'Podobno povprečje v napovedi.');
+ok(graphSummary({ ...zero, stale: true }, 'rain').description.includes('starejši'));
+strictEqual(graphSummary(series, 'rain').signals[0].value, null, 'incomplete window cannot claim a complete total');
+ok(graphSummary(series, 'rain').description.includes('Ni vseh podatkov'));
+strictEqual(graphDate('2024-02-29'), '29. februar 2024');
+ok(graphPointValues(series.points[30], 'temperature').includes('Povprečje: Ni podatka'));
+for (const length of [48, 96, 144]) { const dashes = forecastDashes(length); ok(dashes.length > 1); ok(dashes.every(d => d.width > 0 && d.left + d.width <= length)); }
+const luminance = (hex: string) => {
+  const rgb = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4);
+  return rgb[0] * .2126 + rgb[1] * .7152 + rgb[2] * .0722;
+};
+const contrast = (a: string, b: string) => (Math.max(luminance(a), luminance(b)) + .05) / (Math.min(luminance(a), luminance(b)) + .05);
+ok(contrast(colors.text, colors.background) >= 4.5); ok(contrast(colors.primary, colors.surfaceSoft) >= 4.5);
+ok(contrast(colors.accent, colors.background) >= 3, 'forecast strokes remain legible');
 
 const rows = new Map<string, any>();
 const db: any = { getFirstAsync: async (sql: string, key: string) => sql.includes('LIKE') ? [...rows.values()].find(row => {
@@ -97,7 +121,7 @@ async function run() {
     deepStrictEqual(await readWeatherGraphCache(db, location, today), []);
   } finally { globalThis.fetch = originalFetch; }
   await uiTests();
-  console.log('PASS daily calendar/DST/leap/37 slots, zero/null/negative/missing/invalid values, cold 2 HTTP, warm point/batch 0 HTTP, dedupe, partial/offline/timeout/corrupt cache, native chart tap/gaps/scales/font sizing, generation/closed isolation. Phone QA separate.');
+  console.log('PASS daily calendar/DST/leap/37 slots, zero/null/negative/missing/invalid values, cold 2 HTTP, warm point/batch 0 HTTP, dedupe, partial/offline/timeout/corrupt cache, display summaries, accessibility/contrast, dashed forecast, selected/tap/font sizing, generation/closed isolation. Phone QA separate.');
 }
 
 async function uiTests() {
@@ -127,12 +151,30 @@ async function uiTests() {
   const tree = mod.exports.DailyWeatherChart({ series: data, metric: 'temperature', selectedDate: today, onSelect: (date: string) => selected = date });
   const targets = walk(tree).filter(n => n.type === 'Pressable'); strictEqual(targets.length, 37);
   targets[29].props.onPress(); strictEqual(selected, '2026-10-08'); ok(targets[30].props.accessibilityState.selected);
-  strictEqual(targets[29].props.style[1].width, 44); ok(text(tree).includes('Danes')); ok(text(tree).includes('min:'));
-  const lines = walk(tree).filter(n => n.type === 'View' && Array.isArray(n.props.style) && n.props.style[0]?.height === 2 && n.props.style[1]?.transform);
+  strictEqual(targets[29].props.style[1].width, 48); ok(text(tree).includes('Danes')); ok(text(tree).includes('Min:'));
+  ok(targets[29].props.accessibilityLabel.includes('Povprečje: Ni podatka'));
+  ok(targets[29].props.accessibilityLabel.includes(`Min: ${graphNumber(-5, '°C')}`));
+  ok(targets[30].props.accessibilityLabel.includes('nedokončan dan'));
+  ok(targets.every(p => p.props.accessibilityRole === 'button' && p.props.accessibilityHint && p.props.style[1].width >= 44));
+  ok(walk(tree).some(n => n.props.accessibilityRole === 'header' && n.props.accessibilityLabel === 'Graf: Temperatura'));
+  ok(walk(tree).some(n => n.props.accessibilityLabel?.startsWith('Temperatura. 30 preteklih dni') && n.props.accessible && n.props.accessibilityHint));
+  ok(walk(tree).some(n => n.props.accessibilityLabel?.startsWith('Legenda.') && n.props.accessibilityLabel.includes('črtkana')));
+  const selectedInfo = walk(tree).find(n => n.props.accessibilityLabel?.startsWith('Izbrano:'));
+  strictEqual(selectedInfo.props.accessibilityLiveRegion, 'polite');
+  ok(targets[30].props.style[2]?.borderBottomWidth >= 2, 'selection has non-colour underline and label');
+  ok(text(targets[30]).includes('▲'));
+  const lines = walk(tree).filter(n => n.props.testID?.endsWith('-line'));
   strictEqual(lines.length, 0, 'no interpolation through missing mean');
+  cursor = 0;
+  const complete = mod.exports.DailyWeatherChart({ series: full, metric: 'temperature', selectedDate: today, onSelect() {} });
+  strictEqual(walk(complete).filter(n => n.props.testID === 'weather-history-line').length, 29);
+  const futureLines = walk(complete).filter(n => n.props.testID === 'weather-forecast-line');
+  strictEqual(futureLines.length, 7); ok(futureLines.every(n => n.props.children.length > 1));
+  for (const file of ['src/services/weather.ts', 'src/services/weatherGraphs.ts', 'src/domain/weatherSeries.ts', 'src/screens/MapScreen.tsx', 'src/screens/ConditionsScreen.tsx'])
+    strictEqual(readFileSync(file, 'utf8').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `dcd8cdf:${file}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), `presentation-only: ${file}`);
   scale = 2; cursor = 0;
   const large = mod.exports.DailyWeatherChart({ series: data, metric: 'rain', selectedDate: '2026-10-08', onSelect() {} });
-  strictEqual(walk(large).find(n => n.type === 'Pressable').props.style[1].width, 88); ok(text(large).includes('0 mm'));
+  strictEqual(walk(large).find(n => n.type === 'Pressable').props.style[1].width, 96); ok(text(large).includes('0 mm'));
   const map = readFileSync('src/screens/MapScreen.tsx', 'utf8'); ok(map.includes("section === 'weather' ? <><WeatherGraphs"));
   ok(readFileSync('src/screens/ConditionsScreen.tsx', 'utf8').includes('showWeatherDetails ? <><WeatherGraphs'));
   for (const file of ['src/domain/mushroomWeather.ts', 'src/services/heatmap/useLocationConditions.ts', 'src/services/heatmap/regionalWeather.ts', 'src/domain/hotspotRanking.ts'])

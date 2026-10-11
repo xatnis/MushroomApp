@@ -1,5 +1,36 @@
 # Weather Graphs V1
 
+## Presentation/accessibility polish
+
+Charts now have separate titles/subtitles, two compact display-only summaries and a
+shape-based wrapping legend. Rain summaries show the sum of the last seven **completed**
+dates and today + the following two forecast dates. Temperature summaries show the same
+windows' mean daily temperatures. A window with any missing value says “Ni vseh podatkov”
+with its coverage, never a falsely complete total/average. The temperature trend compares
+those displayed 0.1°C averages only: warmer/cooler/similar, not ecological thresholds or a
+mushroom score. No dry/wet categories with invented rainfall thresholds were added.
+
+Historical temperature segments are solid; forecast segments are real separated native
+dashes, including the transition to today. Historical bars are filled, forecast bars
+outlined. The forecast region is subtly shaded, today has a strong labelled boundary.
+Selection adds an underline/triangle, heavier bar border or larger outlined point and a
+compact value card. Retrieval time is shown for forecasts/stale selections, not repeated
+for every fresh historical selection. Missing means/min/max remain independently visible.
+
+Each title is an accessibility heading. The chart summary and legend are readable grouped
+text elements; the chart itself is not a single grouped image that hides interactive days.
+Each 48 pt minimum day target announces full local calendar date, phase, values (including
+temperature min/max), stale state, selected state and an action hint. Selection is a polite
+live region. Decorative ticks, lines and marker shapes are hidden from screen readers.
+Legends/summaries/value headers wrap; cell width, plot height and date space scale with
+system fonts rather than shrinking text. TalkBack navigation and real Yoga/font layout on
+Redmi 13C still require physical-device verification.
+
+This polish changes only presentation and focused tests: daily model, source adapters,
+transport/cache/dedupe, mounting locations, scoring, MapLibre/LOD and snapshots are unchanged.
+Polish verification: TypeScript and 17 focused suites passed, including 84,248 regional and
+15,688 pilot unchanged comparisons. No device was attached; no new APK was built for this polish.
+
 ## Placement and interaction
 
 Two native charts are mounted **only** inside MapScreen's expanded **Več informacij →
@@ -18,7 +49,7 @@ Negative temperatures remain below zero on an explicitly labelled scale.
 
 Both plots expose the same 37-date axis, history/forecast legend and dashed today boundary.
 Tap a date to select it in both charts; the readable detail area shows exact values, phase
-and the endpoint's retrieval time. Scroll each plot horizontally: initially recent history
+and, for forecasts/stale data, the endpoint's retrieval time. Scroll each plot horizontally: initially recent history
 and the start of the forecast are visible. All 37 slots remain reachable. Each date has a
 44 pt minimum touch target, accessible date/value/phase and selected state. Font scaling
 increases cell/axis widths and date-label space rather than shrinking text. Selection
