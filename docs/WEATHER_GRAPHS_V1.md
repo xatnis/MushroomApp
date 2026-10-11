@@ -297,6 +297,43 @@ Build and verify locally with:
 npm run apk -- --name MushroomApp-preview-weather-graphs-v4.apk
 ```
 
+## Weather Graphs V4.1 — Final UX Cleanup
+
+Three presentation-only changes, without replacing the physically verified V4 navigation:
+
+- **Period-aware summaries:** a selected preset uses its complete local calendar window:
+  D−7…D−1, D−30…D−1, or D…D+6. `graphPeriodSummary` reuses the shared daily series and
+  existing calendar-range helper; precipitation is summed, daily mean temperatures are
+  averaged. Forecast includes today's provisional value. Selecting a day or manually
+  scrolling does not change the period. Before any preset selection, the existing
+  recent-history/short-forecast overview remains available.
+- **Missing data:** 0 mm counts as valid; null/missing dates do not. A complete rainfall
+  total requires all 7/30 expected dates; otherwise it shows “Podatki za N od M dni” and
+  incomplete/unavailable wording, not a misleading partial sum. Temperature can show
+  an explicitly labelled **delno povprečje** of available daily means with the same
+  coverage. Missing means are never derived from min/max. One value per calendar date;
+  DST changes neither the date count nor the aggregation. No new scorer inputs.
+- **Compact presets and precipitation selection:** visible labels are **7 dni**, **30 dni**,
+  **Napoved**, under “Izberi obdobje”; full accessibility labels keep the original period
+  definitions and selected states. All targets remain at least 48 pt. Font-scaled flex
+  widths allow a single ordinary-size row on 320/360/412 pt screens and wrapping at larger
+  fonts. A selected rain day gets a subtle full-height slot outline/background independent
+  of its bar. Positive bars retain exact scale height, without the previous 2 px minimum;
+  border thickness is capped to that true height. Zero has a separate **0** label and no
+  positive bar; missing data retains **—** and “Ni podatka”.
+
+Both charts, Padavine/Temperatura anchors, measured scrolling, “Na izbrani dan”, Android
+Back, origin/location, safe area, forecast styling/provenance and error handling remain.
+Focused tests pin the V4 anchor callbacks byte-for-byte, verify period coverage and
+selection independence, 0/0.1/0.4/null values and true bar heights. Presets, anchors,
+selection and horizontal scrolling have **0 additional HTTP requests**. Daily model,
+transport/cache/dedupe, scorers, ranking, heatmap/MapLibre/LOD and privacy are unchanged.
+Physical V4.1 layout/TalkBack verification remains separate from automated tests.
+TypeScript and 19 focused suites passed, including **84,248 regional** and **15,688 pilot**
+unchanged scorer comparisons. No device was attached. The V4.1 release build failed with
+`Unable to establish loopback connection`; no older APK was copied. Build locally with
+`npm run apk -- --name MushroomApp-preview-weather-graphs-v4-1.apk`.
+
 ## Preparation for Seven-Day Conditions V1
 
 The daily representation is reusable, but **Weather Graphs V1 computes no mushroom scores**.

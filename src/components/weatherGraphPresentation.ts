@@ -35,8 +35,33 @@ export function graphPointValues(point: WeatherSeriesPoint, metric: WeatherGraph
     : `Povprečje: ${graphNumber(point.temperatureMeanC, '°C')}. Min: ${graphNumber(point.temperatureMinC, '°C')}. Max: ${graphNumber(point.temperatureMaxC, '°C')}.`;
 }
 
+/** Display-only period aggregation. Coverage refers to expected calendar dates, not viewport cells. */
+export function graphPeriodSummary(series: WeatherDailySeries, metric: WeatherGraphMetric, preset: WeatherGraphPreset) {
+  const expected = preset === 'history30' ? 30 : 7;
+  const points = graphPresetRange(series, preset).points;
+  const byDate = new Map(points.map(point => [point.date, point]));
+  const values = [...byDate.values()].map(point => metric === 'rain' ? point.precipitationMm : point.temperatureMeanC)
+    .filter((value): value is number => value != null && Number.isFinite(value));
+  const complete = values.length === expected;
+  const total = values.reduce((sum, value) => sum + value, 0);
+  // Never present a partial precipitation sum as a full-period total. A partial mean is explicit.
+  const value = metric === 'rain' ? complete ? total : null : values.length ? total / values.length : null;
+  const label = metric === 'rain' ? preset === 'forecast7' ? 'Naslednjih 7 dni' : `Zadnjih ${expected} dni`
+    : `${preset === 'forecast7' ? 'Napovedana povprečna temperatura' : 'Povprečna temperatura'} · ${expected} dni`;
+  const coverage = `Podatki za ${values.length} od ${expected} dni`;
+  const text = complete ? graphNumber(value, metric === 'rain' ? 'mm' : '°C')
+    : metric === 'temperature' && value != null ? `${coverage} · delno povprečje: ${graphNumber(value, '°C')}`
+      : `${coverage} · ${values.length ? 'nepopolni podatki' : 'ni podatka'}`;
+  return { label, value, text, complete, availableDays: values.length, expectedDays: expected };
+}
+
 /** Display summaries only. No scorer inputs, thresholds or imputation. */
-export function graphSummary(series: WeatherDailySeries, metric: WeatherGraphMetric) {
+export function graphSummary(series: WeatherDailySeries, metric: WeatherGraphMetric, preset?: WeatherGraphPreset) {
+  if (preset) {
+    const signal = graphPeriodSummary(series, metric, preset);
+    const periodNote = preset === 'forecast7' ? 'Vključuje danes · nedokončan dan.' : undefined;
+    return { signals: [signal], trend: null, periodNote, description: `${signal.label}: ${signal.text}. ${periodNote ?? ''}${series.stale ? ' Vključeni so starejši podatki iz predpomnilnika.' : ''}` };
+  }
   const windows = [series.points.slice(23, 30), series.points.slice(30, 33)];
   const signals = windows.map((points, index) => {
     const values = points.map(p => metric === 'rain' ? p.precipitationMm : p.temperatureMeanC).filter((v): v is number => v != null && Number.isFinite(v));
@@ -53,7 +78,7 @@ export function graphSummary(series: WeatherDailySeries, metric: WeatherGraphMet
     ? next > past ? 'V napovedi povprečno topleje.' : next < past ? 'V napovedi povprečno hladneje.' : 'Podobno povprečje v napovedi.' : null;
   const description = signals.map(s => `${s.label}: ${s.text}.`).join(' ') + (trend ? ` ${trend}` : '')
     + (series.stale ? ' Vključeni so starejši podatki iz predpomnilnika.' : '');
-  return { signals, trend, description };
+  return { signals, trend, description, periodNote: undefined };
 }
 
 /** Native line dash geometry, bounded by the existing day-cell width. */

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Modal, Pressable, ScrollView, StyleSheet, Text, View, findNodeHandle } from 'react-native';
+import { AccessibilityInfo, Modal, Pressable, ScrollView, StyleSheet, Text, View, findNodeHandle, useWindowDimensions } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { MushroomWeatherSummary } from '../domain/types';
@@ -7,8 +7,8 @@ import { colors, radii, spacing } from '../theme';
 import { WeatherGraphs } from './WeatherGraphs';
 import type { WeatherGraphMetric, WeatherGraphNavigation, WeatherGraphPreset } from './weatherGraphPresentation';
 
-const presets: Array<{ preset: WeatherGraphPreset; label: string }> = [
-  { preset: 'history7', label: '7 dni nazaj' }, { preset: 'history30', label: '30 dni nazaj' }, { preset: 'forecast7', label: 'Napoved 7 dni' },
+const presets: Array<{ preset: WeatherGraphPreset; label: string; shortLabel: string }> = [
+  { preset: 'history7', label: '7 dni nazaj', shortLabel: '7 dni' }, { preset: 'history30', label: '30 dni nazaj', shortLabel: '30 dni' }, { preset: 'forecast7', label: 'Napoved 7 dni', shortLabel: 'Napoved' },
 ];
 
 export interface WeatherGraphsLocation { latitude: number; longitude: number; name: string }
@@ -34,6 +34,7 @@ export function WeatherGraphsModal({ visible, location, summary, weatherCellId, 
   visible: boolean; location?: WeatherGraphsLocation; summary?: MushroomWeatherSummary; weatherCellId?: string; onClose: () => void;
 }) {
   const heading = useRef<Text>(null);
+  const { fontScale } = useWindowDimensions();
   const scroll = useRef<ScrollView>(null), content = useRef<View>(null);
   const contentTop = useRef(0);
   const sections = useRef<Partial<Record<WeatherGraphMetric, View>>>({});
@@ -90,12 +91,13 @@ export function WeatherGraphsModal({ visible, location, summary, weatherCellId, 
       <ScrollView ref={scroll} contentContainerStyle={styles.content} onScrollBeginDrag={cancelAnchor} contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false}>
         <View ref={content} collapsable={false} style={styles.body} onLayout={event => { contentTop.current = event.nativeEvent.layout.y; if (pending.current) alignSection(); }}>
         {hasGraphLocation(location) ? <>
+          <Text style={styles.secondary}>Izberi obdobje</Text>
           <View style={styles.navigation} accessibilityLabel="Časovno obdobje grafov">
             {presets.map(item => <Pressable key={item.preset} accessibilityRole="button" accessibilityLabel={item.label}
               accessibilityState={{ selected: navigation?.preset === item.preset }} accessibilityHint="Premakne oba grafa na to obdobje in izbere njegov prvi dan. Brez novih vremenskih zahtev."
               onPress={() => setNavigation(previous => ({ preset: item.preset, generation: (previous?.generation ?? 0) + 1 }))}
-              style={({ pressed }) => [styles.preset, navigation?.preset === item.preset && styles.activeControl, pressed && styles.pressed]}>
-              <Text style={[styles.controlText, navigation?.preset === item.preset && styles.activeText]}>{item.label}</Text>
+              style={({ pressed }) => [styles.preset, { flexBasis: 80 * Math.max(1, fontScale) }, navigation?.preset === item.preset && styles.activeControl, pressed && styles.pressed]}>
+              <Text style={[styles.controlText, navigation?.preset === item.preset && styles.activeText]}>{item.shortLabel}</Text>
             </Pressable>)}
           </View>
           <View style={styles.navigation} accessibilityLabel="Premik do grafa">

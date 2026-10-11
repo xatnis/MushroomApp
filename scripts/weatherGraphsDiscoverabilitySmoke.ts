@@ -22,6 +22,7 @@ mod.require = (id: string) => {
   if (id === 'react') return { useRef: (initial: any) => ({ current: initial === null ? 7 : initial }), useState: (initial: any) => [initial, () => {}], useLayoutEffect: () => {} };
   if (id === 'react/jsx-runtime') return { jsx: node, jsxs: node };
   if (id === 'react-native') return { ...Object.fromEntries(['Modal', 'View', 'Text', 'Pressable', 'ScrollView'].map(s => [s, s])),
+    useWindowDimensions: () => ({ fontScale: 1 }),
     StyleSheet: { create: (s: any) => s }, AccessibilityInfo: { setAccessibilityFocus: (n: number) => focus = n }, findNodeHandle: (n: number) => n };
   if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
   if (id === '@expo/vector-icons') return { Ionicons: 'Icon' };

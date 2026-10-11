@@ -68,7 +68,7 @@ export function DailyWeatherChart({ series, metric, selectedDate, onSelect, navi
   const { fontScale } = useWindowDimensions();
   const CELL = Math.max(48, 48 * fontScale), TOP = Math.max(32, 32 * fontScale), bottom = Math.max(48, 48 * fontScale);
   const plotHeight = HEIGHT * Math.max(1, fontScale);
-  const overview = useMemo(() => graphSummary(series, metric), [series, metric]);
+  const overview = useMemo(() => graphSummary(series, metric, navigation?.preset), [series, metric, navigation?.preset]);
   const scale = useMemo(() => weatherPlotScale(series.points, metric), [series, metric]);
   const y = (value: number) => TOP + plotHeight * (1 - (value - scale.min) / (scale.max - scale.min));
   const todayIndex = Math.max(0, series.points.findIndex(point => point.date === series.today));
@@ -97,6 +97,7 @@ export function DailyWeatherChart({ series, metric, selectedDate, onSelect, navi
         <Text style={styles.summaryLabel}>{signal.label}</Text><Text style={styles.summaryValue}>{signal.text}</Text>
       </View>)}
       {overview.trend ? <Text style={styles.trend}>{overview.trend}</Text> : null}
+      {overview.periodNote ? <Text style={styles.trend}>{overview.periodNote}</Text> : null}
       {series.stale ? <Text style={styles.trend}>Vključeni so starejši podatki.</Text> : null}
     </View>
     <View accessible accessibilityRole="text" accessibilityLabel={`Legenda. Pretekli podatki: ${metric === 'rain' ? 'polni stolpci' : 'polna črta'}. Napoved: ${metric === 'rain' ? 'obrobljeni stolpci' : 'črtkana črta'}. Navpična črta označuje danes.`} style={styles.legend}>
@@ -133,13 +134,17 @@ export function DailyWeatherChart({ series, metric, selectedDate, onSelect, navi
             const active = selected.date === point.date, forecast = point.kind === 'forecast';
             const color = forecast ? colors.accent : colors.primary;
             const value = metric === 'rain' ? point.precipitationMm : point.temperatureMeanC;
+            const barHeight = value != null ? Math.max(0, TOP + plotHeight - y(value)) : 0;
             return <Pressable key={point.date} accessibilityRole="button" accessibilityState={{ selected: active }}
               accessibilityLabel={`${title}, ${graphDate(point.date)}. ${graphPhase(point, series.today)}. ${graphPointValues(point, metric)}${point.stale ? ' Starejši podatki.' : ''}`}
               accessibilityHint="Izbere ta dan v obeh grafih in prikaže njegove vrednosti pod grafom."
               onPress={() => onSelect(point.date)} style={[styles.day, { left: i * CELL, width: CELL, height: TOP + plotHeight + bottom }, active && styles.selectedDay]}>
               <View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={StyleSheet.absoluteFill}>
+              {active && metric === 'rain' ? <View testID="weather-selected-slot" style={[styles.selectedSlot, { top: TOP, height: plotHeight }]} /> : null}
               {active ? <View style={[styles.selectedRail, { top: TOP, height: plotHeight, left: CELL / 2 - 1 }]} /> : null}
-              {metric === 'rain' && value != null ? <View pointerEvents="none" testID={forecast ? 'weather-forecast-bar' : 'weather-history-bar'} style={[styles.bar, { left: CELL / 2 - 12, top: y(value), height: Math.max(2, TOP + plotHeight - y(value)), backgroundColor: forecast ? 'transparent' : color, borderColor: color, borderStyle: forecast ? 'dashed' : 'solid' }, active && !forecast && styles.activeBar]} /> : null}
+              {metric === 'rain' && value != null && value > 0 ? <View pointerEvents="none" testID={forecast ? 'weather-forecast-bar' : 'weather-history-bar'} style={[styles.bar, { left: CELL / 2 - 12, top: y(value), height: barHeight, backgroundColor: forecast ? 'transparent' : color,
+                borderWidth: Math.min(forecast ? 2 : active ? 3 : 2, barHeight / 2), borderColor: active && !forecast ? colors.text : color, borderStyle: forecast ? 'dashed' : 'solid' }]} /> : null}
+              {metric === 'rain' && value === 0 ? <Text testID="weather-zero-rain" style={[styles.zeroRain, { top: TOP + plotHeight - 20, width: CELL }]}>0</Text> : null}
               {metric === 'temperature' && point.temperatureMinC != null && point.temperatureMaxC != null && point.temperatureMaxC >= point.temperatureMinC ? <View pointerEvents="none" style={[styles.range, { left: CELL / 2 - 2, top: y(point.temperatureMaxC), height: Math.max(2, y(point.temperatureMinC) - y(point.temperatureMaxC)), backgroundColor: color }]} /> : null}
               {metric === 'temperature' ? [point.temperatureMinC, point.temperatureMaxC].map((v, index) => v == null ? null : <View key={index} pointerEvents="none" style={[styles.rangeCap, { left: CELL / 2 - 5, top: y(v), backgroundColor: color }]} />) : null}
               {metric === 'temperature' && value != null ? <View pointerEvents="none" style={[styles.dot, { left: CELL / 2 - (active ? 7 : 5), top: y(value) - (active ? 7 : 5), backgroundColor: forecast ? colors.surface : color, borderColor: color }, active && styles.activeDot]} /> : null}
@@ -180,12 +185,14 @@ const styles = StyleSheet.create({ graphs: { gap: spacing.lg }, chart: { gap: sp
   loading: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.sm },
   plotRow: { flexDirection: 'row' }, axis: { width: 44 }, tick: { position: 'absolute', right: 4, fontSize: 13, color: colors.text },
   plotScroll: { flexGrow: 0 }, day: { position: 'absolute', minHeight: 48 }, selectedDay: { borderBottomWidth: 2, borderBottomColor: colors.primary },
+  selectedSlot: { position: 'absolute', left: 4, right: 4, borderWidth: 1, borderColor: colors.secondary, borderRadius: radii.sm, backgroundColor: `${colors.primary}12` },
   selectedRail: { position: 'absolute', width: 2, backgroundColor: colors.border },
+  zeroRain: { position: 'absolute', textAlign: 'center', fontSize: 13, color: colors.text },
   gridline: { position: 'absolute', left: 0, right: 0, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   forecastZone: { position: 'absolute', backgroundColor: colors.background },
   todayBoundary: { position: 'absolute', borderLeftWidth: 2, borderColor: colors.accent },
   todayLabel: { position: 'absolute', top: 4, fontSize: 14, fontWeight: '600', color: colors.primary },
-  bar: { position: 'absolute', width: 24, borderWidth: 2, borderTopLeftRadius: 3, borderTopRightRadius: 3 }, activeBar: { borderColor: colors.text, borderWidth: 3 },
+  bar: { position: 'absolute', width: 24, borderTopLeftRadius: 3, borderTopRightRadius: 3 },
   line: { position: 'absolute', height: 3 }, forecastDash: { position: 'absolute', height: 3, backgroundColor: colors.accent },
   dot: { position: 'absolute', width: 10, height: 10, borderWidth: 2, borderRadius: 5 }, activeDot: { width: 14, height: 14, borderWidth: 3, borderRadius: 7, borderColor: colors.text },
   range: { position: 'absolute', left: 20, width: 4, opacity: .3 }, missing: { position: 'absolute', left: 16, fontSize: 16, color: colors.muted },

@@ -4,9 +4,9 @@ import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import ts from 'typescript';
-import { buildWeatherDailySeries, weatherLocalDate } from '../src/domain/weatherSeries';
+import { buildWeatherDailySeries, weatherLocalDate, weatherPlotScale } from '../src/domain/weatherSeries';
 import { shiftLocalDate } from '../src/services/weather';
-import { graphPresetRange, graphScrollOffset, graphSelectionVisible, graphPhase, type WeatherGraphPreset } from '../src/components/weatherGraphPresentation';
+import { graphPresetRange, graphScrollOffset, graphSelectionVisible, graphPhase, graphPeriodSummary, graphSummary, graphNumber, type WeatherGraphPreset } from '../src/components/weatherGraphPresentation';
 
 const walk = (n: any): any[] => Array.isArray(n) ? n.flatMap(walk) : n?.props ? [n, ...walk(n.props.children)] : [];
 const text = (n: any): string => Array.isArray(n) ? n.map(text).join(' ') : n?.props ? text(n.props.children) : n == null || typeof n === 'boolean' ? '' : String(n);
@@ -110,7 +110,7 @@ tree = chart.render('DailyWeatherChart', chartProps); chart.flush();
 ok(!walk(tree).some(n => n.props.accessibilityLabel?.startsWith('Na izbrani dan:')));
 const forecastBar = walk(tree).find(n => n.props.testID === 'weather-forecast-bar');
 strictEqual(forecastBar.props.style[1].backgroundColor, 'transparent'); strictEqual(forecastBar.props.style[1].borderStyle, 'dashed');
-strictEqual(forecastBar.props.style[2], false, 'selected forecast does not inherit the historical thick active border');
+ok(!forecastBar.props.style[2], 'forecast does not inherit the historical thick active border');
 const historyBar = walk(tree).find(n => n.props.testID === 'weather-history-bar'); strictEqual(historyBar.props.style[1].borderStyle, 'solid');
 const dayTargets = walk(tree).filter(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('Padavine,'));
 ok(text(dayTargets[30]).includes('Danes')); ok(dayTargets[30].props.accessibilityLabel.includes('0 mm'));
@@ -127,6 +127,76 @@ for (const [generation, preset] of ['history30', 'history7', 'forecast7'].entrie
   ok(both.every(n => n.props.navigation === props.navigation));
 }
 pair.close(); strictEqual(JSON.stringify(series), before); strictEqual(http, 0, 'time navigation, scrolling and selection have no acquisition path');
+
+// V4.1: calendar-period summaries are independent of selection and viewport.
+const completeSeries = buildWeatherDailySeries(46, 14, today, Array.from({ length: 37 }, (_, i) => ({
+  day: { date: shiftLocalDate(today, i - 30), kind: 'forecast' as const, precipitationMm: i < 30 ? 2 : 3,
+    temperatureMeanC: i < 30 ? 10 : 12, temperatureMinC: -5, temperatureMaxC: 30 },
+  source: i < 30 ? 'archive' as const : 'forecast' as const, fetchedAt: null, stale: false,
+})));
+for (const [preset, rain, temperature] of [['history7', 14, 10], ['history30', 60, 10], ['forecast7', 21, 12]] as const) {
+  strictEqual(graphPeriodSummary(completeSeries, 'rain', preset).value, rain);
+  strictEqual(graphPeriodSummary(completeSeries, 'temperature', preset).value, temperature);
+  strictEqual(graphSummary(completeSeries, 'rain', preset).signals.length, 1);
+  strictEqual(graphSummary(completeSeries, 'rain', preset).signals[0].value, rain);
+}
+const varied = { ...completeSeries, points: completeSeries.points.map((p, i) => ({ ...p, precipitationMm: i, temperatureMeanC: i - 35 })) };
+deepStrictEqual((['history7', 'history30', 'forecast7'] as const).map(preset => graphPeriodSummary(varied, 'rain', preset).value), [182, 435, 231]);
+strictEqual(graphPeriodSummary(varied, 'temperature', 'forecast7').value, -2, 'average all valid means, including negative and zero temperatures');
+const missing = { ...completeSeries, points: completeSeries.points.filter((_, i) => i !== 31).map((p, i) => i === 32 ? { ...p, precipitationMm: null, temperatureMeanC: null } : p) };
+const partialRain = graphPeriodSummary(missing, 'rain', 'forecast7');
+strictEqual(partialRain.value, null); strictEqual(partialRain.availableDays, 5); strictEqual(partialRain.expectedDays, 7);
+ok(partialRain.text.includes('5 od 7 dni') && partialRain.text.includes('nepopolni'));
+const partialTemperature = graphPeriodSummary(missing, 'temperature', 'forecast7');
+strictEqual(partialTemperature.value, 12); ok(!partialTemperature.complete); ok(partialTemperature.text.includes('delno povprečje'));
+strictEqual(graphPeriodSummary({ ...completeSeries, points: completeSeries.points.filter((_, i) => i !== 0) }, 'rain', 'history30').value, null);
+const zeroForecast = { ...completeSeries, points: completeSeries.points.map(p => ({ ...p, precipitationMm: 0 })) };
+strictEqual(graphPeriodSummary(zeroForecast, 'rain', 'forecast7').value, 0);
+const noMeans = { ...completeSeries, points: completeSeries.points.map(p => ({ ...p, temperatureMeanC: null })) };
+strictEqual(graphPeriodSummary(noMeans, 'temperature', 'forecast7').value, null, 'min/max cannot substitute for missing mean');
+ok(graphPeriodSummary(noMeans, 'temperature', 'forecast7').text.includes('0 od 7 dni'));
+strictEqual(graphPeriodSummary({ ...completeSeries, points: [...completeSeries.points, completeSeries.points[30]] }, 'rain', 'forecast7').value, 21, 'one contribution per date');
+const heavyToday = { ...completeSeries, points: completeSeries.points.map(p => p.date === today ? { ...p, precipitationMm: 100 } : p) };
+strictEqual(graphPeriodSummary(heavyToday, 'rain', 'history7').value, 14); strictEqual(graphPeriodSummary(heavyToday, 'rain', 'forecast7').value, 118);
+for (const date of ['2024-03-01', '2026-03-30', '2026-10-26', '2027-01-01']) {
+  const calendar = { ...completeSeries, today: date, points: completeSeries.points.map((p, i) => ({ ...p, date: shiftLocalDate(date, i - 30) })) };
+  strictEqual(graphPeriodSummary(calendar, 'rain', 'history7').value, 14);
+  strictEqual(graphPeriodSummary(calendar, 'rain', 'history30').value, 60);
+  strictEqual(graphPeriodSummary(calendar, 'temperature', 'forecast7').value, 12);
+}
+const cleanup = harness('src/components/WeatherGraphs.tsx');
+const tinySeries = { ...series, points: series.points.map((p, i) => i >= 30 && i <= 33 ? { ...p, precipitationMm: [0, .1, .4, null][i - 30] } : p) };
+let picked = today;
+for (const index of [30, 31, 32, 33]) {
+  const props = { series: tinySeries, metric: 'rain', selectedDate: tinySeries.points[index].date, onSelect: (date: string) => picked = date, navigation: { preset: 'forecast7', generation: 1 } };
+  const rendered = cleanup.render('DailyWeatherChart', props); cleanup.flush();
+  const points = walk(rendered).filter(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('Padavine,'));
+  const target = points[index], value = tinySeries.points[index].precipitationMm;
+  ok(target.props.accessibilityState.selected); ok(target.props.style[1].width >= 48);
+  const highlight = walk(target).find(n => n.props.testID === 'weather-selected-slot');
+  strictEqual(highlight.props.style[1].height, 144); ok(highlight.props.style[0].borderWidth >= 1);
+  const bar = walk(target).find(n => n.props.testID === 'weather-forecast-bar');
+  if (value != null && value > 0) {
+    const exactHeight = 144 * value / weatherPlotScale(tinySeries.points, 'rain').max;
+    ok(Math.abs(bar.props.style[1].height - exactHeight) < 1e-10); ok(bar.props.style[1].height < 2, 'no artificial minimum bar height');
+    ok(bar.props.style[1].borderWidth <= exactHeight / 2 + 1e-10);
+  } else strictEqual(bar, undefined);
+  strictEqual(walk(target).some(n => n.props.testID === 'weather-zero-rain'), value === 0);
+  if (value == null) ok(text(target).includes('—'));
+  ok(target.props.accessibilityLabel.includes(graphNumber(value, 'mm')));
+  ok(walk(rendered).find(n => n.props.accessibilityLabel?.startsWith('Izbrani dan:')).props.accessibilityLabel.includes(graphNumber(value, 'mm')));
+  target.props.onPress(); strictEqual(picked, tinySeries.points[index].date);
+}
+for (const preset of ['history7', 'history30', 'forecast7'] as WeatherGraphPreset[]) {
+  const props = { series: completeSeries, metric: 'rain', selectedDate: today, onSelect() {}, navigation: { preset, generation: 1 } };
+  let rendered = cleanup.render('DailyWeatherChart', props); cleanup.flush();
+  const summaryLabel = () => walk(rendered).find(n => n.props.accessibilityLabel?.startsWith('Padavine. 30 preteklih dni')).props.accessibilityLabel;
+  const originalSummary = summaryLabel(); ok(originalSummary.includes(graphPeriodSummary(completeSeries, 'rain', preset).text));
+  walk(rendered).find(n => n.type === 'ScrollView').props.onScroll({ nativeEvent: { contentOffset: { x: 0 } } });
+  rendered = cleanup.render('DailyWeatherChart', { ...props, selectedDate: completeSeries.points[0].date }); cleanup.flush();
+  strictEqual(summaryLabel(), originalSummary, 'selected date and manual scrolling cannot change period totals');
+}
+cleanup.close(); strictEqual(http, 0);
 
 // Actual modal callbacks and native measureLayout command: delayed/stale layouts, latest anchor wins.
 const originalFrame = globalThis.requestAnimationFrame, originalCancel = globalThis.cancelAnimationFrame;
@@ -157,8 +227,17 @@ try {
   for (const label of ['7 dni nazaj', '30 dni nazaj', 'Napoved 7 dni']) {
     press(label); view = modal.render('WeatherGraphsModal', props); modal.flush();
     const button = buttons().find(n => n.props.accessibilityLabel === label)!; ok(button.props.accessibilityState.selected); ok(button.props.style({ pressed: false })[0].minHeight >= 48);
+    strictEqual(text(button), label === '7 dni nazaj' ? '7 dni' : label === '30 dni nazaj' ? '30 dni' : 'Napoved');
     graph = walk(view).find(n => n.type === 'WeatherGraphs'); strictEqual(graph.props.navigation.preset, label === '7 dni nazaj' ? 'history7' : label === '30 dni nazaj' ? 'history30' : 'forecast7');
   }
+  ok(text(view).includes('Izberi obdobje'));
+  for (const scale of [1, 1.6, 2]) {
+    fontScale = scale; view = modal.render('WeatherGraphsModal', props); modal.flush();
+    const styles = buttons().find(n => n.props.accessibilityLabel === 'Napoved 7 dni')!.props.style({ pressed: false });
+    strictEqual(styles[1].flexBasis, 80 * scale); ok(styles[0].minHeight >= 48);
+    if (scale === 1) for (const width of [320, 360, 412]) ok(3 * styles[1].flexBasis + 16 <= width - 24, 'short labels fit one normal-size row');
+  }
+  fontScale = 1;
   strictEqual(http, 0); strictEqual(verticalCommands.length, 2, 'time presets do not secretly move the vertical page');
   press('Padavine'); flushFrames();
   scroller.props.onScrollBeginDrag(); measures.at(-1)!.callback(0, 500); strictEqual(verticalCommands.length, 2, 'user drag cancels a pending anchor');
@@ -197,4 +276,12 @@ ok(conditions.indexOf('<WeatherGraphsEntry') > conditions.indexOf('<SectionTitle
 for (const path of ['src/services/weather.ts', 'src/services/weatherGraphs.ts', 'src/domain/weatherSeries.ts', 'src/domain/mushroomWeather.ts',
   'src/screens/MapScreen.tsx', 'src/services/heatmap/useLocationConditions.ts', 'src/services/heatmap/useHeatmapVisuals.ts', 'src/domain/hotspotRanking.ts', 'src/domain/heatmap/controlsState.ts', 'src/navigation/AppNavigator.tsx'])
   strictEqual(readFileSync(path, 'utf8').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `9f3257c:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), `V4 UI-only: ${path}`);
-console.log('PASS V4 canonical today/outline/dashes, Ljubljana midnight/DST/resume/cleanup, 37 dates and 3 presets, 320/360/412 widths and 1/1.6/2 fonts, both chart offsets/selection, manual scrolling/return, measured anchors/loading/stale/latest/gesture/Back, 48pt accessibility, compact Razmere, 0 navigation HTTP and pinned model/cache/map/LOD. Native Yoga/TalkBack QA remains separate.');
+// Anchor implementation is intentionally byte-for-byte unchanged from physically verified V4.
+function anchorStatements(source: string) {
+  const ast = ts.createSourceFile('view.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const modal = ast.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === 'WeatherGraphsModal') as ts.FunctionDeclaration;
+  return modal.body!.statements.filter(n => ts.isVariableStatement(n) && n.declarationList.declarations.some(d =>
+    ts.isIdentifier(d.name) && ['cancelAnchor', 'alignSection', 'navigateSection', 'onSectionLayout', 'close'].includes(d.name.text))).map(n => n.getText(ast));
+}
+deepStrictEqual(anchorStatements(readFileSync('src/components/WeatherGraphsView.tsx', 'utf8')), anchorStatements(execFileSync('git', ['show', 'e091e2e:src/components/WeatherGraphsView.tsx'], { encoding: 'utf8' })));
+console.log('PASS V4.1 7/30/forecast summaries, zero/null/missing date coverage and explicit partial means, DST/calendar, compact 48pt presets, 0/0.1/0.4/null true-height bars/full-slot selection, independent summary/selection/scroll, 0 navigation HTTP; physically verified V4 anchors unchanged; cache/model/map/LOD pinned. Native layout/TalkBack remains phone QA.');
