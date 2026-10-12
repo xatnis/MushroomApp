@@ -7,10 +7,15 @@ import ts from 'typescript';
 import { MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../src/domain/mushroomWeather';
 import { colors, radii, spacing } from '../src/theme';
 import { slNumber, slDateTime } from '../src/domain/format';
+import { buildWeatherDailySeries, summarySeriesInputs, weatherLocalDate } from '../src/domain/weatherSeries';
+import { graphPeriodSummary } from '../src/components/weatherGraphPresentation';
+import { topThreeHotspots } from '../src/domain/hotspotTopThree';
+import { conditionsNavigationPatch } from '../src/domain/hotspotHeatmap';
+import { withoutConditionsListEntry } from './conditionsListEntryFixture';
 
 const node = (type: any, props: any) => ({ type, props });
 const walk = (n: any): any[] => Array.isArray(n) ? n.flatMap(walk) : n?.props ? [n, ...walk(n.props.children)] : [];
-const text = (n: any): string => Array.isArray(n) ? n.map(text).join(' ') : n?.props ? text(n.props.children) : n == null || typeof n === 'boolean' ? '' : String(n);
+const text = (n: any): string => Array.isArray(n) ? n.map(text).join('') : n?.props ? text(n.props.children) : n == null || typeof n === 'boolean' ? '' : String(n);
 const file = resolve('src/components/WeatherGraphsView.tsx'), nativeRequire = createRequire(file);
 const Module = nativeRequire('node:module'), mod = new Module(file);
 mod.filename = file; mod.paths = Module._nodeModulePaths(resolve('src/components'));
@@ -75,14 +80,18 @@ const states = screen.body!.statements.filter(ts.isVariableStatement).flatMap(s 
   .map(d => ((d.name as ts.ArrayBindingPattern).elements[0] as ts.BindingElement).name.getText(ast));
 let cursor = 0;
 const values: any[] = [];
+let overviewHotspots: any[] = [], overviewAssessments: any = {}, overviewComplete = true;
+const navigationCalls: any[] = [], focusCalls: any[] = [], hookContexts: any[] = [];
 const bindings: Record<string, any> = {
   React: { Fragment: 'Fragment', createElement: (type: any, props: any, ...children: any[]) => node(type, { ...props, children }) },
   useState: (initial: any) => { const slot = cursor++; if (!(slot in values)) values[slot] = initial; return [values[slot], (next: any) => values[slot] = typeof next === 'function' ? next(values[slot]) : next]; },
   useEffect() {}, useMemo: (f: any) => f(), useCallback: (f: any) => f, useRef: (n: any) => ({ current: n }),
-  useNavigation: () => ({ navigate() { throw new Error('graph opening must not navigate away from origin'); } }),
-  useApp: () => ({ hotspots: [], repository: {}, online: true, exploreLocation: { ...location, source: 'place' }, setExploreLocation() { throw new Error('graphs cannot change global location'); } }),
+  useNavigation: () => ({ navigate: (...args: any[]) => navigationCalls.push(args) }),
+  useApp: () => ({ hotspots: overviewHotspots, repository: {}, online: true, exploreLocation: { ...location, source: 'place' }, requestHotspotFocus: (...args: any[]) => focusCalls.push(args), setExploreLocation() { throw new Error('graphs cannot change global location'); } }),
   ...Object.fromEntries(['Screen', 'Text', 'Card', 'SectionTitle', 'Chip', 'View', 'AppButton', 'Notice', 'ActivityIndicator', 'WeatherGraphsEntry', 'WeatherGraphsModal', 'Metric', 'WeatherProfileScoreDetails'].map(s => [s, s])),
   styles: {}, commonStyles: {}, colors, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore, slNumber, slDateTime,
+  useLocationConditions: (_: any, profile: any, day: any) => { hookContexts.push([profile, day]); return { assessments: overviewAssessments, complete: overviewComplete }; }, topThreeHotspots, buildWeatherDailySeries, summarySeriesInputs, weatherLocalDate, graphPeriodSummary, conditionsNavigationPatch,
+  ScrollView: 'ScrollView', Pressable: 'Pressable', DetailLine: 'DetailLine', debugNumber: (v: any, unit: string) => v == null ? 'ni podatka' : v + ' ' + unit,
   placeDetails: () => '',
 };
 const compiled = ts.transpileModule(screen.getText(ast).replace(/^export /, ''), { compilerOptions: { jsx: ts.JsxEmit.React, module: ts.ModuleKind.None, target: ts.ScriptTarget.ES2022 } }).outputText;
@@ -94,8 +103,8 @@ values[states.indexOf('weatherSummary')] = { ...location, source: 'open-meteo', 
 let tree = render();
 const ordered = walk(tree);
 const start = ordered.findIndex(n => n.type === 'WeatherGraphsEntry');
-ok(start > ordered.findIndex(n => n.type === 'SectionTitle' && text(n) === 'Trenutno'));
-ok(start < ordered.findIndex(n => n.type === 'SectionTitle' && text(n) === 'Pretekle padavine'));
+ok(start > ordered.findIndex(n => n.type === 'SectionTitle' && text(n) === 'Gobarski signal'));
+ok(start < ordered.findIndex(n => n.type === 'SectionTitle' && text(n) === 'Vreme na kratko'));
 strictEqual(values[states.indexOf('showWeatherDetails')], false);
 ordered[start].props.onPress(); tree = render();
 const modal = walk(tree).find(n => n.type === 'WeatherGraphsModal'); strictEqual(modal.props.visible, true);
@@ -105,11 +114,72 @@ strictEqual(walk(tree).find(n => n.type === 'WeatherGraphsModal').props.visible,
 strictEqual(values[states.indexOf('showWeatherDetails')], false);
 strictEqual(values[states.indexOf('weatherProfileId')], 'generic');
 strictEqual(walk(tree).find(n => n.type === 'WeatherGraphsModal').props.summary, values[states.indexOf('weatherSummary')]);
+strictEqual(navigationCalls.length, 0, 'graph opening/closing stays on the originating screen');
 values[states.indexOf('selectedPlace')] = { ...location, latitude: 45.8, name: 'Nova lokacija' };
 tree = render(); strictEqual(walk(tree).find(n => n.type === 'WeatherGraphsModal').props.location.latitude, 45.8);
+
+// Razmere V2 actual overview render: one selector, same scorer, compact weather, complete-only Top 3.
+const day = weatherLocalDate();
+values[states.indexOf('weatherSummary')] = { ...values[states.indexOf('selectedPlace')], source: 'open-meteo', updatedAt: new Date().toISOString(), errors: {}, stale: false,
+  current: { temperatureC: 14, weatherDescription: 'Delno oblačno', soilMoisture0To7Cm: .271, soilMoisture7To28Cm: .29 },
+  historical: { days: [], rain3dMm: 3, rain7dMm: 7, rain14dMm: 14, rain26dMm: 80, rain30dMm: 30, rain60dMm: 60, avgTemp7dC: 11, avgTemp14dC: 12, avgTemp20dC: 13, evapotranspiration7dMm: 18.4 },
+  forecast: { days: Array.from({ length: 7 }, (_, i) => ({ date: new Date(new Date(day + 'T12:00:00Z').getTime() + i * 86400000).toISOString().slice(0, 10), precipitationMm: 2 })), rain3dMm: 6, rain7dMm: 14 },
+};
+overviewHotspots = Array.from({ length: 5 }, (_, i) => ({ id: 'hotspot-' + i, title: 'Rastišče ' + i, latitude: 46 + i / 100, longitude: 14 }));
+overviewAssessments = Object.fromEntries(overviewHotspots.map((h, i) => [h.id, { score: i === 4 ? null : 80 + i, classLabel: 'Dobre razmere' }]));
+tree = render();
+ok(!text(tree).includes('m³/m³') && !text(tree).includes('ET₀'));
+ok(text(tree).includes('Padavine zadnjih 14 dni: 14 mm')); ok(text(tree).includes('Padavine naslednjih 7 dni: 14 mm'));
+const headings = walk(tree).filter(n => n.type === 'SectionTitle').map(text);
+deepStrictEqual(headings, ['Lokacija', 'Gobarski signal', 'Vreme na kratko', 'Najboljša rastišča']);
+strictEqual(walk(tree).filter(n => n.type === 'ScrollView' && n.props.horizontal).length, 1);
+const overviewRows = () => walk(tree).filter(n => n.type === 'Pressable' && n.props.accessibilityLabel?.startsWith('Prikaži Rastišče'));
+strictEqual(overviewRows().length, 3); ok(text(overviewRows()[0]).includes('83/100'));
+overviewRows()[0].props.onPress(); strictEqual(focusCalls.at(-1)[0].id, 'hotspot-3'); deepStrictEqual(focusCalls.at(-1)[1], { profileId: 'generic', targetDay: 'today' });
+for (const profile of Object.keys(MUSHROOM_WEATHER_PROFILES)) {
+  walk(tree).find(n => n.type === 'Pressable' && n.props.accessibilityLabel === MUSHROOM_WEATHER_PROFILES[profile as keyof typeof MUSHROOM_WEATHER_PROFILES].label).props.onPress();
+  tree = render(); strictEqual(values[states.indexOf('weatherProfileId')], profile);
+  ok(text(tree).includes(calculateMushroomWeatherScore(values[states.indexOf('weatherSummary')], profile as any).score + '/100'));
+  deepStrictEqual(hookContexts.at(-1), [profile, 'today']);
+}
+walk(tree).find(n => n.type === 'AppButton' && n.props.title === 'Poglej vsa rastišča').props.onPress();
+const allParams = navigationCalls.at(-1); strictEqual(allParams[0], 'Tabs'); strictEqual(allParams[1].screen, 'Map');
+deepStrictEqual(allParams[1].params.conditionsListRequest.context, { targetProfile: 'lactariusDeliciosus', dayMode: 'today' });
+walk(tree).find(n => n.type === 'Pressable' && text(n) === 'Zakaj ta ocena?').props.onPress(); tree = render();
+const detailProps = walk(tree).find(n => n.type === 'WeatherProfileScoreDetails').props;
+strictEqual(detailProps.summary.current.soilMoisture0To7Cm, .271); strictEqual(detailProps.summary.current.soilMoisture7To28Cm, .29);
+strictEqual(detailProps.summary.historical.evapotranspiration7dMm, 18.4, 'technical values passed to the unchanged model details without duplicating their table');
+ok(walk(tree).some(n => n.type === 'WeatherProfileScoreDetails' && n.props.profileId === 'lactariusDeliciosus'));
+walk(tree).find(n => n.type === 'Pressable' && text(n) === 'Zakaj ta ocena?').props.onPress(); tree = render();
+overviewComplete = false; tree = render(); strictEqual(overviewRows().length, 0); ok(text(tree).includes('Izračunavam pogoje'));
+overviewComplete = true; overviewAssessments = {}; tree = render(); strictEqual(overviewRows().length, 0); ok(text(tree).includes('Trenutno ni mogoče izračunati'));
+overviewAssessments = { 'hotspot-0': { score: 0, classLabel: 'Neugodne razmere' } }; tree = render(); strictEqual(overviewRows().length, 1); ok(text(overviewRows()[0]).includes('0/100'), 'valid zero differs from unavailable');
+values[states.indexOf('weatherSummary')].forecast.days.pop(); values[states.indexOf('weatherSummary')].historical.rain14dMm = undefined;
+tree = render(); ok(text(tree).includes('Podatki za 6 od 7 dni')); ok(text(tree).includes('Padavine zadnjih 14 dni: ni podatka'));
+// Weather acquisitions stay outside presentation state: only the selected-location loader remains.
+strictEqual((screen.getText(ast).match(/getMushroomWeatherSummary\(/g) || []).length, 1);
+const previousConditions = ts.createSourceFile('previous.tsx', execFileSync('git', ['show', 'b04d47b:src/screens/ConditionsScreen.tsx'], { encoding: 'utf8' }), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+for (const name of ['WeatherProfileScoreDetails', 'GenericScoreDetails', 'BoletusScoreDetails', 'ChanterelleScoreDetails', 'LactariusScoreDetails']) {
+  const body = (file: ts.SourceFile) => file.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === name)?.getText(file);
+  strictEqual(body(ast), body(previousConditions), 'existing full model explanation preserved: ' + name);
+}
+values[states.indexOf('error')] = 'GPS dovoljenje ni na voljo'; values[states.indexOf('locationSettingsRequired')] = true; tree = render();
+ok(text(tree).includes('GPS dovoljenje ni na voljo')); ok(walk(tree).some(n => n.type === 'AppButton' && n.props.title === 'Odpri nastavitve aplikacije'));
+values[states.indexOf('selectedPlace')] = { ...location, latitude: 47, name: 'Druga lokacija' }; tree = render();
+ok(text(tree).includes('Trenutno: ni podatka')); ok(!text(tree).includes('Padavine zadnjih 14 dni: 14 mm'), 'old weather cannot appear under a new location');
+strictEqual(walk(tree).find(n => n.type === 'WeatherGraphsModal').props.location.latitude, 47);
 // Real map source callback records only the tapped point. Camera, scoring and navigation path unchanged.
 const mapSource = readFileSync('src/screens/MapScreen.tsx', 'utf8');
 const mapAst = ts.createSourceFile('MapScreen.tsx', mapSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+let listEntry: ts.ArrowFunction | undefined;
+const listVisitor = (n: ts.Node) => { if (ts.isCallExpression(n) && n.expression.getText(mapAst) === 'useEffect' && n.arguments[0]?.getText(mapAst).includes('const intent = route.params?.conditionsListRequest')) listEntry = n.arguments[0] as ts.ArrowFunction; ts.forEachChild(n, listVisitor); }; listVisitor(mapAst);
+const listState: any = { route: { params: allParams[1].params }, isFocused: true, consumedConditionsListRequest: { current: undefined } };
+const listCalls: any[] = [];
+const listBindings = { ...listState, conditionsNavigationPatch, switchHotspotView: (v: any) => listCalls.push(['view', v]), setOwnerFilter: (v: any) => listCalls.push(['owner', v]), setQuery: (v: any) => listCalls.push(['query', v]), setListSort: (v: any) => listCalls.push(['sort', v]), updateHeatmapNavigation: (v: any) => listCalls.push(['context', v]) };
+const enterList = new Function(...Object.keys(listBindings), 'return (' + listEntry!.getText(mapAst) + ');')(...Object.values(listBindings));
+enterList(); deepStrictEqual(listCalls, [['view', 'list'], ['owner', 'mine'], ['query', ''], ['sort', 'conditions'], ['context', { profileId: 'lactariusDeliciosus', targetDay: 'today' }]]);
+enterList(); strictEqual(listCalls.length, 5, 'consumed entry intent cannot reset a later ordinary map visit');
+strictEqual(withoutConditionsListEntry(mapSource).replace(/\r\n/g, '\n'), execFileSync('git', ['show', 'b04d47b:src/screens/MapScreen.tsx'], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), 'map/camera/LOD/source code unchanged outside additive list entry');
 let press: ts.ArrowFunction | undefined;
 const visit = (n: ts.Node) => {
   if (ts.isJsxOpeningElement(n) && n.tagName.getText(mapAst) === 'GeoJSONSource'
@@ -131,4 +201,4 @@ for (const path of ['src/services/weather.ts', 'src/services/weatherGraphs.ts', 
   'src/services/heatmap/useLocationConditions.ts', 'src/services/heatmap/useHeatmapVisuals.ts', 'src/domain/hotspotRanking.ts', 'src/domain/heatmap/controlsState.ts', 'src/navigation/AppNavigator.tsx'])
   strictEqual(readFileSync(path, 'utf8').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `7dcc5cb:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), path);
 globalThis.cancelAnimationFrame = originalCancelFrame;
-console.log('PASS graph discovery before historical summaries; open without Podrobnosti; native modal/back/heading/48pt/safe-area props; exact Razmere and map coordinates; missing-location guard; closed charts unmounted; context preserved; shared transport/model/scorers/cache/navigation/LOD pinned. Native layout/TalkBack still require phone QA.');
+console.log('PASS Razmere V2 hierarchy/same scorer/4 profiles, compact weather/coverage, preserved advanced inputs/model explanations, complete-only Top 3/valid zero/unavailable/loading, context/list-sort entry consumed once, graph origin/location/back, GPS errors, unchanged Map outside list intent and unchanged weather/cache/LOD. Native layout/TalkBack require phone QA.');

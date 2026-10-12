@@ -98,6 +98,7 @@ export function MapScreen() {
   }, [heatmapNavigation.selectedAreaId]);
   const consumedHotspotFocus = useRef<string | undefined>(undefined);
   const [mode, setMode] = useState<'map' | 'list'>('map');
+  const consumedConditionsListRequest = useRef<number | undefined>(undefined);
   const [query, setQuery] = useState('');
   const [ownerFilter, setOwnerFilter] = useState<'mine' | 'friends'>('mine');
   const [friendHotspots, setFriendHotspots] = useState<FriendHotspot[]>([]);
@@ -435,6 +436,13 @@ export function MapScreen() {
   const showRankingHotspot = (hotspot: (typeof hotspots)[number]) => {
     requestHotspotFocus(hotspot, conditionsNavigationPatch(conditionsContext));
   };
+  useEffect(() => {
+    const intent = route.params?.conditionsListRequest;
+    if (!isFocused || !intent || consumedConditionsListRequest.current === intent.requestedAt) return;
+    consumedConditionsListRequest.current = intent.requestedAt;
+    switchHotspotView('list'); setOwnerFilter('mine'); setQuery(''); setListSort('conditions');
+    updateHeatmapNavigation(conditionsNavigationPatch(intent.context));
+  }, [isFocused, route.params?.conditionsListRequest?.requestedAt, updateHeatmapNavigation]);
   const openTopThree = () => {
     cancelPendingHotspotFocus(); setSelectedId(undefined);
     setTopThreeRequested(true); dispatchHeatmapControls({ type: 'top-three-open' });

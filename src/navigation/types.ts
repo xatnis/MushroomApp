@@ -1,7 +1,7 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 
 export type TabsParamList = {
-  Map: { focusExploreLocationAt?: number } | undefined;
+  Map: { focusExploreLocationAt?: number; conditionsListRequest?: { requestedAt: number; context: import('../domain/hotspotRanking').ConditionsTargetContext } } | undefined;
   Conditions: undefined;
   Add: undefined;
   Community: undefined;

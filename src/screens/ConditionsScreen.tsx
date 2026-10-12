@@ -1,50 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import * as Location from 'expo-location';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppButton, Card, Chip, Field, Notice, Screen, SectionTitle, commonStyles } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
-import type { ExploreLocation, Hotspot, MushroomConditionsScore, MushroomWeatherProfileId, MushroomWeatherSummary } from '../domain/types';
+import type { ExploreLocation, MushroomConditionsScore, MushroomWeatherProfileId, MushroomWeatherSummary } from '../domain/types';
 import { useApp } from '../state/AppContext';
 import { getMushroomWeatherSummary, searchLocations, type PlaceSearchResult } from '../services/weather';
 import { acquireForegroundPosition, LocationAcquisitionError } from '../services/location';
 import { buildGpsExploreLocation, debugGpsLocality, resolveGpsLocality } from '../services/locality';
 import { BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
-import { assessLocationWeather, type LocationRankingAssessment } from '../domain/locationRanking';
+import { useLocationConditions } from '../services/heatmap/useLocationConditions';
+import { topThreeHotspots } from '../domain/hotspotTopThree';
+import { conditionsNavigationPatch } from '../domain/hotspotHeatmap';
+import { buildWeatherDailySeries, summarySeriesInputs, weatherLocalDate } from '../domain/weatherSeries';
+import { graphPeriodSummary } from '../components/weatherGraphPresentation';
 import { buildGenericWeatherDetails } from '../domain/weatherDetails';
 import { WeatherGraphsEntry, WeatherGraphsModal } from '../components/WeatherGraphsView';
-import { haversineKm, slDateTime, slNumber } from '../domain/format';
-import { speciesCatalogue } from '../domain/species';
+import { slDateTime, slNumber } from '../domain/format';
 import { colors, radii, spacing } from '../theme';
 
-interface RankingWeatherState {
-  hotspot: Hotspot;
-  summary?: MushroomWeatherSummary;
-  loading: boolean;
-  error?: string;
-  originalIndex: number;
-}
-
-interface Ranked extends RankingWeatherState {
-  assessment: LocationRankingAssessment;
-  distanceKm?: number;
-}
-
-const RANKING_CONCURRENCY = 4;
-
-async function runWithConcurrency<T>(items: T[], concurrency: number, worker: (item: T) => Promise<void>) {
-  let nextIndex = 0;
-  const run = async () => {
-    while (nextIndex < items.length) {
-      const item = items[nextIndex++];
-      await worker(item);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, run));
-}
-
-const coordinateLabel = (latitude: number, longitude: number) => `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
 const REVERSE_GEOCODE_TIMEOUT_MS = 5_000;
 
 const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => new Promise((resolve, reject) => {
@@ -74,8 +50,6 @@ export function ConditionsScreen() {
   const [placeResults, setPlaceResults] = useState<PlaceSearchResult[]>([]);
   const [weatherSummary, setWeatherSummary] = useState<MushroomWeatherSummary>();
   const [weatherProfileId, setWeatherProfileId] = useState<MushroomWeatherProfileId>('generic');
-  const [rankingWeather, setRankingWeather] = useState<RankingWeatherState[]>([]);
-  const [speciesId, setSpeciesId] = useState<string>();
   const [gpsLoading, setGpsLoading] = useState(false);
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string>();
@@ -213,40 +187,21 @@ export function ConditionsScreen() {
     return () => { active = false; clearTimeout(timeout); controller.abort(); };
   }, [placeQuery, placeSearchOpen]);
 
-  useEffect(() => {
-    const entries = hotspots.slice(0, 30).map((hotspot, originalIndex): RankingWeatherState => ({ hotspot, loading: true, originalIndex }));
-    setRankingWeather(entries);
-    if (!entries.length) return;
-    let active = true;
-    void runWithConcurrency(entries, RANKING_CONCURRENCY, async (entry) => {
-      try {
-        const summary = await getMushroomWeatherSummary(repository.database, entry.hotspot.latitude, entry.hotspot.longitude);
-        if (active) setRankingWeather((current) => current.map((item) => item.hotspot.id === entry.hotspot.id ? { ...item, summary, loading: false, error: undefined } : item));
-      } catch (cause) {
-        console.warn('Location ranking weather request failed', entry.hotspot.id, cause);
-        if (active) setRankingWeather((current) => current.map((item) => item.hotspot.id === entry.hotspot.id ? { ...item, loading: false, error: 'Vremenskih podatkov ni bilo mogoče pridobiti.' } : item));
-      }
-    });
-    return () => { active = false; };
-  }, [hotspots, repository]);
-
-  const ranked = useMemo(() => rankingWeather.map((entry): Ranked => ({
-    ...entry,
-    assessment: assessLocationWeather(entry.summary, speciesId),
-    distanceKm: coords ? haversineKm(coords.latitude, coords.longitude, entry.hotspot.latitude, entry.hotspot.longitude) : undefined,
-  })).sort((a, b) => {
-    const qualityOrder = { complete: 2, limited: 1, insufficient: 0 } as const;
-    const qualityDifference = qualityOrder[b.assessment.dataQuality] - qualityOrder[a.assessment.dataQuality];
-    if (qualityDifference) return qualityDifference;
-    const scoreDifference = (b.assessment.score.score ?? -1) - (a.assessment.score.score ?? -1);
-    if (scoreDifference) return scoreDifference;
-    if (a.distanceKm != null && b.distanceKm != null && a.distanceKm !== b.distanceKm) return a.distanceKm - b.distanceKm;
-    return a.originalIndex - b.originalIndex;
-  }), [coords, rankingWeather, speciesId]);
-
-  const score = useMemo(() => calculateMushroomWeatherScore(weatherSummary, weatherProfileId), [weatherProfileId, weatherSummary]);
+  // Do not display the previous location's values while the existing loader changes generation.
+  const displaySummary = weatherSummary && coords && weatherSummary.latitude === coords.latitude && weatherSummary.longitude === coords.longitude ? weatherSummary : undefined;
+  const score = useMemo(() => calculateMushroomWeatherScore(displaySummary, weatherProfileId), [weatherProfileId, displaySummary]);
   const weatherProfile = MUSHROOM_WEATHER_PROFILES[weatherProfileId];
-  const forecastMaxRain = Math.max(1, ...(weatherSummary?.forecast?.days.map((day) => day.precipitationMm ?? 0) ?? []));
+  const rankingContext = { targetProfile: weatherProfileId, dayMode: 'today' as const };
+  const { assessments, complete, error: rankingError, retry: retryRanking } = useLocationConditions(hotspots, weatherProfileId, 'today', true, 250);
+  const topHotspots = topThreeHotspots(hotspots, assessments, complete);
+  const forecastSummary = useMemo(() => {
+    const today = weatherLocalDate();
+    return graphPeriodSummary(buildWeatherDailySeries(coords?.latitude ?? NaN, coords?.longitude ?? NaN, today,
+      displaySummary ? summarySeriesInputs(displaySummary, today) : []), 'rain', 'forecast7');
+  }, [displaySummary]);
+  const showAllHotspots = () => navigation.navigate('Tabs', { screen: 'Map', params: {
+    conditionsListRequest: { requestedAt: Date.now(), context: rankingContext },
+  } });
 
   return <Screen style={styles.screenContent}>
     <Text style={commonStyles.title}>Razmere</Text>
@@ -298,62 +253,87 @@ export function ConditionsScreen() {
     {!weatherLoading && coords && (weatherError || weatherSummary?.errors.historical || weatherSummary?.errors.forecast)
       ? <AppButton title="Poskusi znova" variant="secondary" onPress={() => setWeatherRetry((value) => value + 1)} />
       : null}
-    {weatherSummary?.current ? <Card style={styles.introCard}><SectionTitle>Trenutno</SectionTitle>
-        <View style={styles.currentRow}><Text style={styles.currentTemperature}>{weatherSummary.current.temperatureC == null ? '—' : `${slNumber(weatherSummary.current.temperatureC)} °C`}</Text><Text style={commonStyles.heading}>{weatherSummary.current.weatherDescription ?? 'Opis vremena ni na voljo'}</Text></View>
-        {weatherSummary.current.soilMoisture0To7Cm != null ? <Text style={commonStyles.body}>Vlaga tal 0–7 cm: {slNumber(weatherSummary.current.soilMoisture0To7Cm, 3)} m³/m³</Text> : null}
-        {weatherSummary.current.soilMoisture7To28Cm != null ? <Text style={commonStyles.body}>Vlaga tal 7–28 cm: {slNumber(weatherSummary.current.soilMoisture7To28Cm, 3)} m³/m³</Text> : null}
-    </Card> : null}
-
+    <Card style={styles.suitabilityCard}>
+      <SectionTitle action={<Text style={commonStyles.muted}>Danes</Text>}>Gobarski signal</SectionTitle>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} nestedScrollEnabled contentContainerStyle={styles.profileRow}>
+        {Object.entries(MUSHROOM_WEATHER_PROFILES).map(([id, profile]) => <Pressable key={id} accessibilityRole="button"
+          accessibilityState={{ selected: weatherProfileId === id }} accessibilityLabel={profile.label}
+          onPress={() => setWeatherProfileId(id as MushroomWeatherProfileId)} style={[styles.profileChip, weatherProfileId === id && styles.profileSelected]}>
+          <Text style={[styles.profileText, weatherProfileId === id && styles.profileSelectedText]}>{profile.label}</Text>
+        </Pressable>)}
+      </ScrollView>
+      <View style={styles.scoreRow}><Text style={styles.score}>{score.score != null ? score.score + '/100' : '—'}</Text>
+        <View style={styles.scoreCopy}><Text style={commonStyles.heading}>{score.label}</Text><Text style={commonStyles.body}>Trend: {score.trend}</Text></View>
+      </View>
+      {score.reasons.slice(0, 2).map(reason => <Text key={reason} style={commonStyles.body}>{reason}</Text>)}
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded: showWeatherDetails }}
+        accessibilityHint="Razširi napredne podatke in razlago modela spodaj." onPress={() => setShowWeatherDetails(value => !value)} style={styles.detailsAction}>
+        <Text style={styles.actionText}>Zakaj ta ocena?</Text>
+      </Pressable>
+      <Text style={commonStyles.muted}>Ocena vremenskih razmer ne zagotavlja najdbe gob.</Text>
+    </Card>
     <WeatherGraphsEntry onPress={() => setGraphsOpen(true)} />
     <WeatherGraphsModal visible={graphsOpen} location={coords ? { latitude: coords.latitude, longitude: coords.longitude,
       name: (locationMode === 'gps' ? currentLocationName : selectedPlace?.name) ?? 'Izbrana lokacija' } : undefined}
       summary={weatherSummary} onClose={() => setGraphsOpen(false)} />
-    {weatherSummary ? <>
-
-      {weatherSummary.historical ? <>
-        <Card><SectionTitle>Pretekle padavine</SectionTitle><View style={styles.metrics}>
-          <Metric label="Zadnje 3 dni" value={weatherSummary.historical.rain3dMm == null ? '—' : `${slNumber(weatherSummary.historical.rain3dMm)} mm`} />
-          <Metric label="Zadnjih 7 dni" value={weatherSummary.historical.rain7dMm == null ? '—' : `${slNumber(weatherSummary.historical.rain7dMm)} mm`} />
-          <Metric label="Zadnjih 14 dni" value={weatherSummary.historical.rain14dMm == null ? '—' : `${slNumber(weatherSummary.historical.rain14dMm)} mm`} />
-          <Metric label="Zadnjih 30 dni" value={weatherSummary.historical.rain30dMm == null ? '—' : `${slNumber(weatherSummary.historical.rain30dMm)} mm`} />
-        </View><Text style={commonStyles.muted}>To so modelirani oziroma reanalizirani pretekli podatki. Prihodnja napoved ni vključena.</Text></Card>
-        <Card><SectionTitle>Temperatura</SectionTitle><View style={styles.metrics}>
-          <Metric label="Povprečje 7 dni" value={weatherSummary.historical.avgTemp7dC == null ? '—' : `${slNumber(weatherSummary.historical.avgTemp7dC)} °C`} />
-          <Metric label="Povprečje 14 dni" value={weatherSummary.historical.avgTemp14dC == null ? '—' : `${slNumber(weatherSummary.historical.avgTemp14dC)} °C`} />
-          <Metric label="Povprečje 20 dni" value={weatherSummary.historical.avgTemp20dC == null ? '—' : `${slNumber(weatherSummary.historical.avgTemp20dC)} °C`} />
-          <Metric label="ET₀ zadnjih 7 dni" value={weatherSummary.historical.evapotranspiration7dMm == null ? '—' : `${slNumber(weatherSummary.historical.evapotranspiration7dMm)} mm`} />
-        </View><Text style={commonStyles.muted}>ET₀ je referenčna evapotranspiracija in služi samo kot približen signal izsuševanja.</Text></Card>
-      </> : null}
-
-      {weatherSummary.forecast ? <Card><SectionTitle>Naslednjih 7 dni</SectionTitle>
-        <View style={styles.metrics}><Metric label="Naslednji 3 dnevi" value={weatherSummary.forecast.rain3dMm == null ? '—' : `${slNumber(weatherSummary.forecast.rain3dMm)} mm`} /><Metric label="Naslednjih 7 dni" value={weatherSummary.forecast.rain7dMm == null ? '—' : `${slNumber(weatherSummary.forecast.rain7dMm)} mm`} /></View>
-        <View style={styles.forecastList}>{weatherSummary.forecast.days.map((day, index) => <View key={day.date} style={styles.forecastDay}>
-          <View style={styles.forecastLabel}><Text style={commonStyles.body}>{index === 0 ? 'Danes' : index === 1 ? 'Jutri' : new Date(`${day.date}T12:00:00`).toLocaleDateString('sl-SI', { weekday: 'short' })}</Text><Text style={commonStyles.muted}>{day.temperatureMinC == null || day.temperatureMaxC == null ? '—' : `${slNumber(day.temperatureMinC, 0)}–${slNumber(day.temperatureMaxC, 0)} °C`}</Text></View>
-          <View style={styles.rainTrack}><View style={[styles.rainBar, { width: `${Math.max(3, 100 * (day.precipitationMm ?? 0) / forecastMaxRain)}%` }]} /></View>
-          <Text style={styles.forecastRain}>{day.precipitationMm == null ? '—' : `${slNumber(day.precipitationMm)} mm`}</Text>
-        </View>)}</View>
+    <Card style={styles.introCard}><SectionTitle>Vreme na kratko</SectionTitle>
+      <Text style={commonStyles.body}>Trenutno: {debugNumber(displaySummary?.current?.temperatureC, '°C')} · {displaySummary?.current?.weatherDescription ?? 'Opis vremena ni na voljo'}</Text>
+      <Text style={commonStyles.body}>Padavine zadnjih 14 dni: {debugNumber(displaySummary?.historical?.rain14dMm, 'mm')}</Text>
+      <Text style={commonStyles.body}>Padavine naslednjih 7 dni: {forecastSummary.text}</Text>
+      <Text style={commonStyles.muted}>Napoved vključuje danes, ki je še nedokončan dan.</Text>
+      {displaySummary?.stale ? <Text style={commonStyles.muted}>Starejši podatki iz predpomnilnika · {slDateTime(displaySummary.updatedAt)}</Text> : null}
+    </Card>
+    <Card style={styles.introCard}><SectionTitle>Najboljša rastišča</SectionTitle>
+      <Text style={commonStyles.muted}>{weatherProfile.label} · Danes · po modelnih pogojih</Text>
+      {!hotspots.length ? <Text style={commonStyles.body}>Za primerjavo najprej shrani rastišče.</Text>
+        : !complete ? <Text style={commonStyles.body}>Izračunavam pogoje za moja rastišča …</Text>
+        : topHotspots.length ? topHotspots.map((hotspot, index) => <Pressable key={hotspot.id} accessibilityRole="button"
+          accessibilityLabel={'Prikaži ' + (hotspot.title || 'rastišče') + ' na zemljevidu'}
+          onPress={() => { requestHotspotFocus(hotspot, conditionsNavigationPatch(rankingContext)); navigation.navigate('Tabs', { screen: 'Map' }); }}
+          style={styles.overviewHotspot}>
+          <Text style={styles.overviewRank}>#{index + 1}</Text><View style={styles.rankCopy}>
+            <Text style={commonStyles.heading}>{hotspot.title?.trim() || 'Rastišče brez naslova'}</Text>
+            <Text style={commonStyles.body}>{assessments[hotspot.id]!.score}/100 · {assessments[hotspot.id]!.classLabel}</Text>
+          </View>
+        </Pressable>) : <Text style={commonStyles.body}>Trenutno ni mogoče izračunati pogojev za shranjena rastišča.</Text>}
+      {complete && rankingError ? <AppButton title="Poskusi znova" variant="ghost" onPress={retryRanking} /> : null}
+      <AppButton title="Poglej vsa rastišča" variant="secondary" onPress={showAllHotspots} />
+    </Card>
+    <Pressable accessibilityRole="button" accessibilityState={{ expanded: showWeatherDetails }}
+      onPress={() => setShowWeatherDetails(value => !value)} style={styles.detailsAction}>
+      <Text style={styles.actionText}>Napredni podatki in razlaga modela {showWeatherDetails ? '⌃' : '⌄'}</Text>
+    </Pressable>
+    {showWeatherDetails && displaySummary ? <>
+      <Card><SectionTitle>Napredni vremenski podatki</SectionTitle>
+        <DetailLine label="Padavine 3 dni" value={debugNumber(displaySummary.historical?.rain3dMm, 'mm')} />
+        {weatherProfileId === 'boletusEdulis' || weatherProfileId === 'cantharellusCibarius' ? <DetailLine label="Padavine 14 dni" value={debugNumber(displaySummary.historical?.rain14dMm, 'mm')} /> : null}
+        {weatherProfileId === 'boletusEdulis' || weatherProfileId === 'lactariusDeliciosus' ? <DetailLine label="Padavine 30 dni" value={debugNumber(displaySummary.historical?.rain30dMm, 'mm')} /> : null}
+        <DetailLine label="Povprečna temperatura 7 dni" value={debugNumber(displaySummary.historical?.avgTemp7dC, '°C')} />
+        {weatherProfileId !== 'cantharellusCibarius' ? <DetailLine label="Povprečna temperatura 14 dni" value={debugNumber(displaySummary.historical?.avgTemp14dC, '°C')} /> : null}
+        {weatherProfileId === 'cantharellusCibarius' ? <DetailLine label="Povprečna temperatura 20 dni" value={debugNumber(displaySummary.historical?.avgTemp20dC, '°C')} /> : null}
+        <Text style={commonStyles.muted}>Vhodni podatki modela, vlaga tal in ET₀ so v razlagi izračuna spodaj; tu so samo dodatni vremenski podatki.</Text>
+        <Text style={commonStyles.muted}>Pretekli modelski/reanalizirani podatki, ne meritve na rastišču. ET₀ je referenčna evapotranspiracija in približen signal izsuševanja.</Text>
+      </Card>
+      <Card><SectionTitle>Napoved in podatkovni viri</SectionTitle>
+        <DetailLine label="Napoved padavin 3 dni" value={debugNumber(displaySummary.forecast?.rain3dMm, 'mm')} />
+        <DetailLine label="Napoved padavin 7 dni" value={forecastSummary.text} />
+        {displaySummary.forecast?.days.map(day => <DetailLine key={day.date}
+          label={day.date + ' · ' + debugNumber(day.temperatureMinC, '°C') + ' / ' + debugNumber(day.temperatureMaxC, '°C')}
+          value={debugNumber(day.precipitationMm, 'mm')} />)}
         <Text style={commonStyles.muted}>{weatherProfile.forecastNote}</Text>
-      </Card> : null}
-
-      <Card><Text style={commonStyles.body}>Vremenski profil</Text><View style={commonStyles.wrap}>
-        <Chip label="Splošno" selected={weatherProfileId === 'generic'} onPress={() => setWeatherProfileId('generic')} />
-        <Chip label="Jesenski goban" selected={weatherProfileId === 'boletusEdulis'} onPress={() => setWeatherProfileId('boletusEdulis')} />
-        <Chip label="Navadna lisička" selected={weatherProfileId === 'cantharellusCibarius'} onPress={() => setWeatherProfileId('cantharellusCibarius')} />
-        <Chip label="Užitna sirovka" selected={weatherProfileId === 'lactariusDeliciosus'} onPress={() => setWeatherProfileId('lactariusDeliciosus')} />
-      </View><Text style={commonStyles.muted}>Vrsta spremeni samo način izračuna iz istih vremenskih podatkov.</Text></Card>
-
-      <Card><SectionTitle>{weatherProfile.scoreTitle}</SectionTitle>
+        <Text style={commonStyles.muted}>Open‑Meteo · posodobljeno {slDateTime(displaySummary.updatedAt)}{displaySummary.stale ? ' · predpomnjeni podatki' : ''}</Text>
+        <Text style={commonStyles.muted}>Pred komercialno uporabo preverite pogoje uporabe Open-Meteo in zahtevano navedbo vira.</Text>
+      </Card>
+      <Card><SectionTitle>Razlaga ocene</SectionTitle>
+        <Text style={commonStyles.body}>{weatherProfile.scoreTitle} · {weatherProfile.scoreCaption}</Text>
         {weatherProfile.scientificName ? <Text style={commonStyles.muted}>{weatherProfile.scientificName}</Text> : null}
-        <View style={styles.scoreRow}><View><Text style={commonStyles.muted}>{weatherProfile.scoreCaption}</Text><Text style={styles.score}>{score.score != null ? `${score.score}` : '—'}</Text></View><View style={styles.scoreCopy}><Text style={commonStyles.heading}>{score.label}</Text><Text style={commonStyles.body}>Trend: {score.trend}</Text><Text style={commonStyles.muted}>{score.coverage}</Text></View></View>{score.reasons.map((reason) => <Text key={reason} style={commonStyles.body}>• {reason}</Text>)}{weatherProfile.seasonNote ? <Text style={commonStyles.muted}>{weatherProfile.seasonNote}</Text> : null}<Text style={commonStyles.muted}>Ocena temelji na vremenskih pogojih in ne zagotavlja pojava gob. Ni verjetnost uspeha ali znanstveno potrjen napovedni model.</Text></Card>
-
-      <AppButton title={showWeatherDetails ? 'Skrij podrobnosti' : 'Podrobnosti'} variant="ghost" onPress={() => setShowWeatherDetails((visible) => !visible)} />
-      {showWeatherDetails ? <WeatherProfileScoreDetails profileId={weatherProfileId} summary={weatherSummary} score={score} /> : null}
-      <Text style={commonStyles.muted}>Open‑Meteo · posodobljeno {slDateTime(weatherSummary.updatedAt)}{weatherSummary.stale ? ' · predpomnjeni podatki' : ''}</Text>
-    </> : null}
-    {hotspots.length ? <><SectionTitle>Kam po gobe?</SectionTitle>
-    <Card><Text style={commonStyles.body}>Ciljna vrsta (neobvezno)</Text><View style={commonStyles.wrap}><Chip label="Splošno" selected={!speciesId} onPress={() => setSpeciesId(undefined)} />{speciesCatalogue.filter((item) => item.kind === 'species').slice(0, 6).map((species) => <Chip key={species.id} label={species.nameSl} selected={speciesId === species.id} onPress={() => setSpeciesId(species.id)} />)}</View><Text style={commonStyles.muted}>Ocena uporablja isti vremenski profil kot podrobne Razmere. Za vrste brez lastnega profila se uporabi splošna vremenska ocena.</Text></Card>
-    {ranked.map((entry, index) => <Pressable key={entry.hotspot.id} onPress={() => { requestHotspotFocus(entry.hotspot); navigation.navigate('Tabs', { screen: 'Map' }); }}><Card><View style={styles.rankRow}><Text style={styles.rank}>{index + 1}</Text><View style={styles.rankCopy}><Text style={commonStyles.heading}>{entry.hotspot.title?.trim() || coordinateLabel(entry.hotspot.latitude, entry.hotspot.longitude)}</Text>{entry.loading ? <Text style={commonStyles.body}>Pridobivam vremenske podatke …</Text> : <><Text style={commonStyles.body}>{entry.assessment.score.score != null ? `${entry.assessment.score.score}/100 · ${entry.assessment.score.label}` : 'Ni dovolj podatkov za zanesljivo oceno.'}</Text><Text style={commonStyles.muted}>{entry.error ?? entry.assessment.reason}{entry.distanceKm != null ? ` · ${slNumber(entry.distanceKm)} km zračne razdalje` : ''}</Text>{entry.assessment.usesGenericFallback ? <Text style={commonStyles.muted}>Splošna vremenska ocena</Text> : null}{entry.assessment.dataQuality === 'limited' ? <Text style={commonStyles.muted}>Omejeni vremenski podatki</Text> : null}</>}</View></View></Card></Pressable>)}</> : null}
-    <Notice tone="info">Open-Meteo je zamenljiv ponudnik. Pred komercialno uporabo preverite njegove aktualne pogoje uporabe in zahteve glede navedbe vira.</Notice>
+        <Text style={commonStyles.body}>{score.coverage}</Text>
+        {score.reasons.map(reason => <Text key={reason} style={commonStyles.body}>{reason}</Text>)}
+        {weatherProfile.seasonNote ? <Text style={commonStyles.muted}>{weatherProfile.seasonNote}</Text> : null}
+        <Text style={commonStyles.muted}>Ocena ni verjetnost uspeha ali znanstveno potrjen napovedni model.</Text>
+      </Card>
+      <WeatherProfileScoreDetails profileId={weatherProfileId} summary={displaySummary} score={score} />
+    </> : showWeatherDetails ? <Text style={commonStyles.body}>Napredni podatki trenutno niso na voljo.</Text> : null}
   </Screen>;
 }
 
@@ -481,19 +461,20 @@ function DetailLine({ label, value }: { label: string; value: string }) {
   return <View style={styles.detailLine}><Text style={commonStyles.body}>{label}</Text><Text style={styles.detailValue}>{value}</Text></View>;
 }
 
-function Metric({ label, value }: { label: string; value: string }) { return <View style={styles.metric}><Text style={commonStyles.muted}>{label}</Text><Text style={commonStyles.heading}>{value}</Text></View>; }
 const styles = StyleSheet.create({
   screenContent: { gap: spacing.sm }, introCard: { padding: spacing.md, gap: spacing.sm },
+  suitabilityCard: { borderColor: colors.secondary, padding: spacing.md },
+  profileRow: { gap: spacing.sm }, profileChip: { minHeight: 48, paddingHorizontal: spacing.md, justifyContent: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: radii.round },
+  profileSelected: { backgroundColor: colors.primary }, profileText: { fontSize: 14, color: colors.primary }, profileSelectedText: { color: colors.white },
+  detailsAction: { minHeight: 48, justifyContent: 'center', paddingVertical: spacing.sm }, actionText: { color: colors.primary, fontSize: 16, fontWeight: '600' },
+  overviewHotspot: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, minHeight: 48, paddingVertical: spacing.sm, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border }, overviewRank: { color: colors.primary, fontSize: 16 },
   locationSummary: { gap: spacing.xs, padding: spacing.sm, borderRadius: radii.md, backgroundColor: colors.surfaceSoft },
   locationActions: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   locationAction: { flexGrow: 1, flexShrink: 1, flexBasis: 132, paddingHorizontal: spacing.sm },
   searchArea: { gap: spacing.sm },
   placeResult: { padding: spacing.md, gap: spacing.xs, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, backgroundColor: colors.surfaceSoft },
   placeResultPressed: { opacity: 0.75 },
-  currentRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: spacing.md }, currentTemperature: { color: colors.primary, fontSize: 42, lineHeight: 48, fontWeight: '900' },
-  scoreRow: { flexDirection: 'row', gap: spacing.lg, alignItems: 'center' }, score: { fontSize: 54, lineHeight: 60, color: colors.primary, fontWeight: '900' }, scoreCopy: { flex: 1, gap: spacing.xs },
-  metrics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }, metric: { flexGrow: 1, flexBasis: '45%', padding: spacing.md, borderRadius: radii.md, backgroundColor: colors.surfaceSoft },
-  forecastList: { gap: spacing.sm }, forecastDay: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, forecastLabel: { width: 82 }, rainTrack: { flex: 1, height: 10, overflow: 'hidden', borderRadius: radii.round, backgroundColor: colors.surfaceSoft }, rainBar: { height: '100%', borderRadius: radii.round, backgroundColor: colors.info }, forecastRain: { width: 62, color: colors.text, fontSize: 13, fontWeight: '700', textAlign: 'right' },
-  detailHeading: { marginTop: spacing.sm, color: colors.primary, fontSize: 13, fontWeight: '800', letterSpacing: 0.8 }, detailLine: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.md }, detailValue: { flexShrink: 1, color: colors.text, fontSize: 15, fontWeight: '700', textAlign: 'right' },
-  rankRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' }, rank: { width: 42, height: 42, borderRadius: 21, backgroundColor: colors.primary, color: colors.white, textAlign: 'center', textAlignVertical: 'center', fontSize: 20, fontWeight: '800' }, rankCopy: { flex: 1 },
+  scoreRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, alignItems: 'center' }, score: { fontSize: 42, color: colors.primary, fontWeight: '800' }, scoreCopy: { flexGrow: 1, flexBasis: 140, gap: spacing.xs },
+  detailHeading: { marginTop: spacing.sm, color: colors.primary, fontSize: 13, fontWeight: '800', letterSpacing: 0.8 }, detailLine: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.md }, detailValue: { flexShrink: 1, color: colors.text, fontSize: 15, fontWeight: '700', textAlign: 'right' },
+  rankCopy: { flex: 1 },
 });
