@@ -4,8 +4,9 @@ import { Camera, GeoJSONSource, Layer, Map, Marker, UserLocation, type MapRef, t
 import * as Location from 'expo-location';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
-import { useIsFocused, useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import { useIsFocused, useNavigation, useRoute, type RouteProp, type CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { AppButton, Card, Chip, EmptyState, Field, Notice, Screen, commonStyles } from '../components/ui';
 import { useApp } from '../state/AppContext';
 import type { RootStackParamList, TabsParamList } from '../navigation/types';
@@ -80,7 +81,7 @@ const placeDetails = (place: PlaceSearchResult) => {
 
 export function MapScreen() {
   const db = useSQLiteContext();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<CompositeNavigationProp<BottomTabNavigationProp<TabsParamList, 'Map'>, NativeStackNavigationProp<RootStackParamList>>>();
   const route = useRoute<RouteProp<TabsParamList, 'Map'>>();
   const isFocused = useIsFocused();
   const {
@@ -436,6 +437,10 @@ export function MapScreen() {
   const showRankingHotspot = (hotspot: (typeof hotspots)[number]) => {
     requestHotspotFocus(hotspot, conditionsNavigationPatch(conditionsContext));
   };
+  // tabPress also fires on reselect; navigation/focus alone does not change the internal view.
+  useEffect(() => navigation.addListener('tabPress', () => {
+    if (mode === 'list') switchHotspotView('map');
+  }), [navigation, mode, ownerFilter]);
   useEffect(() => {
     const intent = route.params?.conditionsListRequest;
     if (!isFocused || !intent || consumedConditionsListRequest.current === intent.requestedAt) return;
