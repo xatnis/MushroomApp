@@ -5,18 +5,19 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppButton, Card, Chip, Field, Notice, Screen, SectionTitle, commonStyles } from '../components/ui';
 import type { RootStackParamList } from '../navigation/types';
-import type { ExploreLocation, MushroomConditionsScore, MushroomWeatherProfileId, MushroomWeatherSummary } from '../domain/types';
+import type { ExploreLocation, MushroomWeatherProfileId, MushroomWeatherSummary } from '../domain/types';
 import { useApp } from '../state/AppContext';
 import { getMushroomWeatherSummary, searchLocations, type PlaceSearchResult } from '../services/weather';
 import { acquireForegroundPosition, LocationAcquisitionError } from '../services/location';
 import { buildGpsExploreLocation, debugGpsLocality, resolveGpsLocality } from '../services/locality';
-import { BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
+import { MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
 import { useLocationConditions } from '../services/heatmap/useLocationConditions';
 import { topThreeHotspots } from '../domain/hotspotTopThree';
 import { conditionsNavigationPatch } from '../domain/hotspotHeatmap';
 import { buildWeatherDailySeries, summarySeriesInputs, weatherLocalDate } from '../domain/weatherSeries';
 import { graphPeriodSummary } from '../components/weatherGraphPresentation';
-import { buildGenericWeatherDetails } from '../domain/weatherDetails';
+import { ConditionsAdvancedDetails } from '../components/ConditionsAdvancedDetails';
+import { createAdvancedDetailsFocus } from '../components/advancedDetailsFocus';
 import { WeatherGraphsEntry, WeatherGraphsModal } from '../components/WeatherGraphsView';
 import { slDateTime, slNumber } from '../domain/format';
 import { colors, radii, spacing } from '../theme';
@@ -67,6 +68,22 @@ export function ConditionsScreen() {
   const initialLocationRequested = useRef(false);
   const mounted = useRef(true);
   const coords = locationMode === 'gps' ? currentLocation : selectedPlace;
+  const screenScroll = useRef<ScrollView>(null);
+  const advancedFocus = useRef<ReturnType<typeof createAdvancedDetailsFocus> | null>(null);
+  if (!advancedFocus.current) advancedFocus.current = createAdvancedDetailsFocus(
+    y => screenScroll.current?.scrollTo({ y, animated: true }), spacing.lg,
+    callback => requestAnimationFrame(callback), id => cancelAnimationFrame(id));
+  const focus = advancedFocus.current;
+  // Capture a new generation before the new context's native onLayout callbacks are created.
+  focus.setContext(`${coords?.latitude}:${coords?.longitude}:${weatherProfileId}`);
+  useEffect(() => () => focus.cancel(), [focus]);
+  useEffect(() => { if (!showWeatherDetails) focus.cancel(); }, [focus, showWeatherDetails]);
+  const openExplanation = () => { focus.request(showWeatherDetails); setShowWeatherDetails(true); };
+  const toggleAdvanced = () => {
+    if (showWeatherDetails) { focus.cancel(); setShowWeatherDetails(false); }
+    else openExplanation();
+  };
+  const layoutGeneration = focus.generation;
 
   const acquireCurrent = useCallback(async () => {
     locationAbortController.current?.abort();
@@ -203,7 +220,7 @@ export function ConditionsScreen() {
     conditionsListRequest: { requestedAt: Date.now(), context: rankingContext },
   } });
 
-  return <Screen style={styles.screenContent}>
+  return <Screen style={styles.screenContent} scrollRef={screenScroll} onScrollBeginDrag={() => focus.cancel(false)}>
     <Text style={commonStyles.title}>Razmere</Text>
     {!online ? <Notice tone="warning">Ni povezave. Prikazani so lahko zadnji predpomnjeni podatki z označenim časom osvežitve.</Notice> : null}
     <Card style={styles.introCard}>
@@ -267,7 +284,7 @@ export function ConditionsScreen() {
       </View>
       {score.reasons.slice(0, 2).map(reason => <Text key={reason} style={commonStyles.body}>{reason}</Text>)}
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: showWeatherDetails }}
-        accessibilityHint="Razširi napredne podatke in razlago modela spodaj." onPress={() => setShowWeatherDetails(value => !value)} style={styles.detailsAction}>
+        accessibilityHint="Odpre in prikaže razlago trenutne ocene." onPress={openExplanation} style={styles.detailsAction}>
         <Text style={styles.actionText}>Zakaj ta ocena?</Text>
       </Pressable>
       <Text style={commonStyles.muted}>Ocena vremenskih razmer ne zagotavlja najdbe gob.</Text>
@@ -300,166 +317,18 @@ export function ConditionsScreen() {
       <AppButton title="Poglej vsa rastišča" variant="secondary" onPress={showAllHotspots} />
     </Card>
     <Pressable accessibilityRole="button" accessibilityState={{ expanded: showWeatherDetails }}
-      onPress={() => setShowWeatherDetails(value => !value)} style={styles.detailsAction}>
+      onPress={toggleAdvanced} style={styles.detailsAction}>
       <Text style={styles.actionText}>Napredni podatki in razlaga modela {showWeatherDetails ? '⌃' : '⌄'}</Text>
     </Pressable>
-    {showWeatherDetails && displaySummary ? <>
-      <Card><SectionTitle>Napredni vremenski podatki</SectionTitle>
-        <DetailLine label="Padavine 3 dni" value={debugNumber(displaySummary.historical?.rain3dMm, 'mm')} />
-        {weatherProfileId === 'boletusEdulis' || weatherProfileId === 'cantharellusCibarius' ? <DetailLine label="Padavine 14 dni" value={debugNumber(displaySummary.historical?.rain14dMm, 'mm')} /> : null}
-        {weatherProfileId === 'boletusEdulis' || weatherProfileId === 'lactariusDeliciosus' ? <DetailLine label="Padavine 30 dni" value={debugNumber(displaySummary.historical?.rain30dMm, 'mm')} /> : null}
-        <DetailLine label="Povprečna temperatura 7 dni" value={debugNumber(displaySummary.historical?.avgTemp7dC, '°C')} />
-        {weatherProfileId !== 'cantharellusCibarius' ? <DetailLine label="Povprečna temperatura 14 dni" value={debugNumber(displaySummary.historical?.avgTemp14dC, '°C')} /> : null}
-        {weatherProfileId === 'cantharellusCibarius' ? <DetailLine label="Povprečna temperatura 20 dni" value={debugNumber(displaySummary.historical?.avgTemp20dC, '°C')} /> : null}
-        <Text style={commonStyles.muted}>Vhodni podatki modela, vlaga tal in ET₀ so v razlagi izračuna spodaj; tu so samo dodatni vremenski podatki.</Text>
-        <Text style={commonStyles.muted}>Pretekli modelski/reanalizirani podatki, ne meritve na rastišču. ET₀ je referenčna evapotranspiracija in približen signal izsuševanja.</Text>
-      </Card>
-      <Card><SectionTitle>Napoved in podatkovni viri</SectionTitle>
-        <DetailLine label="Napoved padavin 3 dni" value={debugNumber(displaySummary.forecast?.rain3dMm, 'mm')} />
-        <DetailLine label="Napoved padavin 7 dni" value={forecastSummary.text} />
-        {displaySummary.forecast?.days.map(day => <DetailLine key={day.date}
-          label={day.date + ' · ' + debugNumber(day.temperatureMinC, '°C') + ' / ' + debugNumber(day.temperatureMaxC, '°C')}
-          value={debugNumber(day.precipitationMm, 'mm')} />)}
-        <Text style={commonStyles.muted}>{weatherProfile.forecastNote}</Text>
-        <Text style={commonStyles.muted}>Open‑Meteo · posodobljeno {slDateTime(displaySummary.updatedAt)}{displaySummary.stale ? ' · predpomnjeni podatki' : ''}</Text>
-        <Text style={commonStyles.muted}>Pred komercialno uporabo preverite pogoje uporabe Open-Meteo in zahtevano navedbo vira.</Text>
-      </Card>
-      <Card><SectionTitle>Razlaga ocene</SectionTitle>
-        <Text style={commonStyles.body}>{weatherProfile.scoreTitle} · {weatherProfile.scoreCaption}</Text>
-        {weatherProfile.scientificName ? <Text style={commonStyles.muted}>{weatherProfile.scientificName}</Text> : null}
-        <Text style={commonStyles.body}>{score.coverage}</Text>
-        {score.reasons.map(reason => <Text key={reason} style={commonStyles.body}>{reason}</Text>)}
-        {weatherProfile.seasonNote ? <Text style={commonStyles.muted}>{weatherProfile.seasonNote}</Text> : null}
-        <Text style={commonStyles.muted}>Ocena ni verjetnost uspeha ali znanstveno potrjen napovedni model.</Text>
-      </Card>
-      <WeatherProfileScoreDetails profileId={weatherProfileId} summary={displaySummary} score={score} />
-    </> : showWeatherDetails ? <Text style={commonStyles.body}>Napredni podatki trenutno niso na voljo.</Text> : null}
+    {showWeatherDetails ? <View onLayout={event => focus.layout(event.nativeEvent.layout.y, layoutGeneration)}>
+      <ConditionsAdvancedDetails key={`${coords?.latitude}:${coords?.longitude}`} summary={displaySummary} score={score}
+        forecastText={forecastSummary.text} onOpenGraphs={() => setGraphsOpen(true)} />
+    </View> : null}
   </Screen>;
 }
 
 const debugNumber = (value: number | undefined, unit: string, digits = 1) => value == null ? 'ni podatka' : `${slNumber(value, digits)} ${unit}`;
 
-function WeatherProfileScoreDetails({ profileId, summary, score }: { profileId: MushroomWeatherProfileId; summary: MushroomWeatherSummary; score: MushroomConditionsScore }) {
-  if (profileId === 'boletusEdulis') return <BoletusScoreDetails summary={summary} score={score} />;
-  if (profileId === 'cantharellusCibarius') return <ChanterelleScoreDetails summary={summary} score={score} />;
-  if (profileId === 'lactariusDeliciosus') return <LactariusScoreDetails summary={summary} score={score} />;
-  return <GenericScoreDetails summary={summary} score={score} />;
-}
-
-function GenericScoreDetails({ summary, score }: { summary: MushroomWeatherSummary; score: MushroomConditionsScore }) {
-  const details = buildGenericWeatherDetails(summary, score);
-  return <Card><SectionTitle>Kako je izračunana ocena?</SectionTitle>
-    <Text style={commonStyles.heading}>Splošne razmere za gobe</Text>
-    <Text style={commonStyles.muted}>{details.description}</Text>
-    {details.scoreSections.map((section) => <View key={section.title}>
-      <Text style={styles.detailHeading}>{section.title}</Text>
-      {section.rows.map((row) => <DetailLine key={row.label} label={row.label} value={row.value} />)}
-    </View>)}
-    <Text style={styles.detailHeading}>SKUPAJ</Text>
-    <DetailLine label="Vremenske razmere" value={details.total} />
-    <Text style={styles.detailHeading}>TREND</Text>
-    {details.trendRows.map((row) => <DetailLine key={row.label} label={row.label} value={row.value} />)}
-    <Text style={commonStyles.muted}>{details.trendNote}</Text>
-    <Text style={commonStyles.muted}>{details.coverage}</Text>
-    <Text style={commonStyles.muted}>{MUSHROOM_WEATHER_PROFILES.generic.tuningNote} Če signal manjka, se njegova utež izloči in preostale se transparentno preračunajo na 100 %.</Text>
-  </Card>;
-}
-
-function BoletusScoreDetails({ summary, score }: { summary: MushroomWeatherSummary; score: MushroomConditionsScore }) {
-  const contribution = (key: 'rain26' | 'temperature' | 'soilMoisture' | 'drying', maximum: number) => {
-    const component = score.components.find((item) => item.key === key);
-    return component ? `${slNumber(component.weightedPoints, 1)} / ${maximum}` : `ni podatka / ${maximum}`;
-  };
-  return <Card><SectionTitle>Kako je izračunana ocena?</SectionTitle>
-    <Text style={commonStyles.heading}>Jesenski goban</Text><Text style={commonStyles.muted}>Boletus edulis</Text>
-    <Text style={styles.detailHeading}>PADAVINE</Text>
-    <DetailLine label="Zadnjih 26 dni" value={debugNumber(summary.historical?.rain26dMm, 'mm')} />
-    <DetailLine label="Prispevek" value={contribution('rain26', BOLETUS_EDULIS_SCORE_V1_CONFIG.componentWeights.rain26)} />
-    <Text style={styles.detailHeading}>TEMPERATURA</Text>
-    <DetailLine label="Povprečje 20 dni" value={debugNumber(summary.historical?.avgTemp20dC, '°C')} />
-    <DetailLine label="Optimalna referenca" value={`~${BOLETUS_EDULIS_SCORE_V1_CONFIG.temperature.optimumC} °C`} />
-    <DetailLine label="Prispevek" value={contribution('temperature', BOLETUS_EDULIS_SCORE_V1_CONFIG.componentWeights.temperature)} />
-    <Text style={styles.detailHeading}>VLAGA TAL</Text>
-    <DetailLine label="0–7 cm" value={debugNumber(summary.current?.soilMoisture0To7Cm, 'm³/m³', 3)} />
-    <DetailLine label="7–28 cm" value={debugNumber(summary.current?.soilMoisture7To28Cm, 'm³/m³', 3)} />
-    <DetailLine label="Prispevek" value={contribution('soilMoisture', BOLETUS_EDULIS_SCORE_V1_CONFIG.componentWeights.soilMoisture)} />
-    <Text style={styles.detailHeading}>IZSUŠEVANJE</Text>
-    <DetailLine label="ET₀ zadnjih 7 dni" value={debugNumber(summary.historical?.evapotranspiration7dMm, 'mm')} />
-    <DetailLine label="Padavine 7 dni" value={debugNumber(summary.historical?.rain7dMm, 'mm')} />
-    <DetailLine label="Prispevek" value={contribution('drying', BOLETUS_EDULIS_SCORE_V1_CONFIG.componentWeights.drying)} />
-    <Text style={styles.detailHeading}>SKUPAJ</Text>
-    <DetailLine label="Eksperimentalna ocena" value={score.score == null ? 'ni podatka' : `${score.score} / 100`} />
-    <Text style={commonStyles.muted}>{MUSHROOM_WEATHER_PROFILES.boletusEdulis.tuningNote} Če signal manjka, se njegove uteži izločijo in preostale transparentno preračunajo na 100 %.</Text>
-  </Card>;
-}
-
-function ChanterelleScoreDetails({ summary, score }: { summary: MushroomWeatherSummary; score: MushroomConditionsScore }) {
-  const contribution = (key: 'rain30' | 'rain7' | 'temperature' | 'soilMoisture' | 'drying', maximum: number) => {
-    const component = score.components.find((item) => item.key === key);
-    return component ? `${slNumber(component.weightedPoints, 1)} / ${maximum}` : `ni podatka / ${maximum}`;
-  };
-  const config = CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG;
-  return <Card><SectionTitle>Kako je izračunana ocena?</SectionTitle>
-    <Text style={commonStyles.heading}>Navadna lisička</Text><Text style={commonStyles.muted}>Cantharellus cibarius</Text>
-    <Text style={styles.detailHeading}>DALJŠA NAVLAŽENOST</Text>
-    <DetailLine label="Padavine 30 dni" value={debugNumber(summary.historical?.rain30dMm, 'mm')} />
-    <DetailLine label="Prispevek" value={contribution('rain30', config.componentWeights.rain30)} />
-    <Text style={styles.detailHeading}>NEDAVNE PADAVINE</Text>
-    <DetailLine label="Padavine 7 dni" value={debugNumber(summary.historical?.rain7dMm, 'mm')} />
-    <DetailLine label="Prispevek" value={contribution('rain7', config.componentWeights.rain7)} />
-    <Text style={styles.detailHeading}>TEMPERATURA</Text>
-    <DetailLine label="Povprečje 14 dni" value={debugNumber(summary.historical?.avgTemp14dC, '°C')} />
-    <DetailLine label="Raziskovalni kontekst" value={`${config.temperature.researchContextMinC}–${config.temperature.researchContextMaxC} °C · ena evropska študija`} />
-    <DetailLine label="Prispevek" value={contribution('temperature', config.componentWeights.temperature)} />
-    <Text style={styles.detailHeading}>VLAGA TAL</Text>
-    <DetailLine label="0–7 cm" value={debugNumber(summary.current?.soilMoisture0To7Cm, 'm³/m³', 3)} />
-    <DetailLine label="7–28 cm" value={debugNumber(summary.current?.soilMoisture7To28Cm, 'm³/m³', 3)} />
-    <DetailLine label="Prispevek" value={contribution('soilMoisture', config.componentWeights.soilMoisture)} />
-    <Text style={styles.detailHeading}>IZSUŠEVANJE</Text>
-    <DetailLine label="ET₀ zadnjih 7 dni" value={debugNumber(summary.historical?.evapotranspiration7dMm, 'mm')} />
-    <DetailLine label="Padavine 7 dni" value={debugNumber(summary.historical?.rain7dMm, 'mm')} />
-    <DetailLine label="Prispevek" value={contribution('drying', config.componentWeights.drying)} />
-    <Text style={styles.detailHeading}>SKUPAJ</Text>
-    <DetailLine label="Vremenske razmere" value={score.score == null ? 'ni podatka' : `${score.score} / 100`} />
-    <Text style={commonStyles.muted}>{MUSHROOM_WEATHER_PROFILES.cantharellusCibarius.tuningNote} Če signal manjka, se njegove uteži izločijo in preostale transparentno preračunajo na 100 %.</Text>
-  </Card>;
-}
-
-function LactariusScoreDetails({ summary, score }: { summary: MushroomWeatherSummary; score: MushroomConditionsScore }) {
-  const contribution = (key: 'rain60' | 'rain14' | 'soilMoisture' | 'temperature' | 'drying', maximum: number) => {
-    const component = score.components.find((item) => item.key === key);
-    return component ? `${slNumber(component.weightedPoints, 1)} / ${maximum}` : `ni podatka / ${maximum}`;
-  };
-  const config = LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG;
-  return <Card><SectionTitle>Kako je izračunana ocena?</SectionTitle>
-    <Text style={commonStyles.heading}>Užitna sirovka</Text><Text style={commonStyles.muted}>Lactarius deliciosus</Text>
-    <Text style={styles.detailHeading}>DOLGOROČNA NAVLAŽENOST</Text>
-    <DetailLine label="Padavine 60 dni" value={debugNumber(summary.historical?.rain60dMm, 'mm')} />
-    <DetailLine label="Prispevek" value={contribution('rain60', config.componentWeights.rain60)} />
-    <Text style={styles.detailHeading}>NEDAVNE PADAVINE</Text>
-    <DetailLine label="Padavine 14 dni" value={debugNumber(summary.historical?.rain14dMm, 'mm')} />
-    <DetailLine label="Prispevek" value={contribution('rain14', config.componentWeights.rain14)} />
-    <Text style={styles.detailHeading}>VLAGA TAL</Text>
-    <DetailLine label="0–7 cm" value={debugNumber(summary.current?.soilMoisture0To7Cm, 'm³/m³', 3)} />
-    <DetailLine label="7–28 cm" value={debugNumber(summary.current?.soilMoisture7To28Cm, 'm³/m³', 3)} />
-    <DetailLine label="Prispevek" value={contribution('soilMoisture', config.componentWeights.soilMoisture)} />
-    <Text style={styles.detailHeading}>TEMPERATURA</Text>
-    <DetailLine label="Povprečje 20 dni" value={debugNumber(summary.historical?.avgTemp20dC, '°C')} />
-    <DetailLine label="Prispevek" value={contribution('temperature', config.componentWeights.temperature)} />
-    <Text style={commonStyles.muted}>Model uporablja široko jesensko temperaturno območje in postopno zmanjšuje signal ob dolgotrajno visokih temperaturah. Pragovi niso biološki optimum.</Text>
-    <Text style={styles.detailHeading}>IZSUŠEVANJE</Text>
-    <DetailLine label="ET₀ zadnjih 7 dni" value={debugNumber(summary.historical?.evapotranspiration7dMm, 'mm')} />
-    <DetailLine label="Padavine 7 dni" value={debugNumber(summary.historical?.rain7dMm, 'mm')} />
-    <DetailLine label="Prispevek" value={contribution('drying', config.componentWeights.drying)} />
-    <Text style={styles.detailHeading}>SKUPAJ</Text>
-    <DetailLine label="Vremenske razmere" value={score.score == null ? 'ni podatka' : `${score.score} / 100`} />
-    <Text style={commonStyles.muted}>{MUSHROOM_WEATHER_PROFILES.lactariusDeliciosus.tuningNote} Če opcijski signal manjka, se njegova utež izloči in preostale se transparentno preračunajo na 100 %.</Text>
-  </Card>;
-}
-
-function DetailLine({ label, value }: { label: string; value: string }) {
-  return <View style={styles.detailLine}><Text style={commonStyles.body}>{label}</Text><Text style={styles.detailValue}>{value}</Text></View>;
-}
 
 const styles = StyleSheet.create({
   screenContent: { gap: spacing.sm }, introCard: { padding: spacing.md, gap: spacing.sm },
@@ -475,6 +344,5 @@ const styles = StyleSheet.create({
   placeResult: { padding: spacing.md, gap: spacing.xs, borderWidth: 1, borderColor: colors.border, borderRadius: radii.md, backgroundColor: colors.surfaceSoft },
   placeResultPressed: { opacity: 0.75 },
   scoreRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, alignItems: 'center' }, score: { fontSize: 42, color: colors.primary, fontWeight: '800' }, scoreCopy: { flexGrow: 1, flexBasis: 140, gap: spacing.xs },
-  detailHeading: { marginTop: spacing.sm, color: colors.primary, fontSize: 13, fontWeight: '800', letterSpacing: 0.8 }, detailLine: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', gap: spacing.md }, detailValue: { flexShrink: 1, color: colors.text, fontSize: 15, fontWeight: '700', textAlign: 'right' },
   rankCopy: { flex: 1 },
 });

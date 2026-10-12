@@ -271,7 +271,7 @@ try {
 } finally { globalThis.Date = OriginalDate; globalThis.setTimeout = originalTimeout; globalThis.clearTimeout = originalClear; }
 
 const conditions = readFileSync('src/screens/ConditionsScreen.tsx', 'utf8');
-ok(conditions.includes('<Screen style={styles.screenContent}>')); ok(conditions.includes('screenContent: { gap: spacing.sm }'));
+ok(conditions.includes('<Screen style={styles.screenContent}')); ok(conditions.includes('screenContent: { gap: spacing.sm }'));
 ok(conditions.includes('introCard: { padding: spacing.md, gap: spacing.sm }')); ok(conditions.includes('locationActions: { flexDirection: \'row\', flexWrap: \'wrap\''));
 ok(conditions.indexOf('<WeatherGraphsEntry') > conditions.indexOf('<Card style={styles.suitabilityCard}>'));
 for (const path of ['src/services/weather.ts', 'src/services/weatherGraphs.ts', 'src/domain/weatherSeries.ts', 'src/domain/mushroomWeather.ts',

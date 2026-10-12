@@ -27,6 +27,12 @@ mod._compile(ts.transpileModule(readFileSync(filename, 'utf8'), { compilerOption
   target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, esModuleInterop: true,
 } }).outputText, filename);
 const { Screen, AppButton } = mod.exports;
+// Razmere may opt into measured-scroll focus; ordinary screens retain identical inset/layout behavior.
+const scrollRef = { current: null };
+const onScrollBeginDrag = () => {};
+const focused = Screen({ scrollRef, onScrollBeginDrag }).props.children.props.children;
+strictEqual(focused.props.ref, scrollRef); strictEqual(focused.props.onScrollBeginDrag, onScrollBeginDrag);
+strictEqual(Screen({}).props.children.props.children.props.ref, undefined);
 const flatten = (styles: any[]): any => Object.assign({}, ...styles.filter(Boolean));
 let removed = 0;
 const last = jsx(AppButton, { title: 'Izbriši rastišče in obiske', variant: 'danger', onPress: () => { removed++; } });
