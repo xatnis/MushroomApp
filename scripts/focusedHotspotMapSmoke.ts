@@ -81,6 +81,13 @@ strictEqual(slice(source, '  const conditionsContext =', '  const [heatmapBundle
 strictEqual(slice(source, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen'), slice(old, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen'));
 strictEqual(slice(source, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'), slice(old, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'));
 const withoutOptionalScrollFocus = (source: string) => source
+  .replace(', topSafeArea = false', '')
+  .replace('; topSafeArea?: boolean', '')
+  .replace(" style={topSafeArea ? styles.clipped : undefined}", '')
+  .replaceAll('bottomSafeArea || topSafeArea', 'bottomSafeArea')
+  .replace("edges={topSafeArea ? ['top', 'left', 'right'] : ['left', 'right']}", "edges={['left', 'right']}")
+  .replace(/  \/\/ Headerless screens opt in: the non-scrolling native safe-area owns top inset\/background once\.\r?\n/, '')
+  .replace(/  clipped: \{ overflow: 'hidden' \},\r?\n/, '')
   .replace(', type Ref }', ' }')
   .replace(', scrollRef, onScrollBeginDrag }', ' }')
   .replace('; scrollRef?: Ref<ScrollView>; onScrollBeginDrag?: () => void', '')

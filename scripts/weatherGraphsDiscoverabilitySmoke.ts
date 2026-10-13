@@ -108,6 +108,7 @@ render();
 values[states.indexOf('weatherSummary')] = { ...location, source: 'open-meteo', updatedAt: '2026-10-11T08:00:00Z', errors: {}, stale: false,
   current: { temperatureC: 14 }, historical: { days: [] } };
 let tree = render();
+strictEqual(tree.props.topSafeArea, true, 'headerless Razmere owns its top safe-area without changing navigation');
 const ordered = walk(tree);
 const start = ordered.findIndex(n => n.type === 'WeatherGraphsEntry');
 ok(start > ordered.findIndex(n => n.type === 'SectionTitle' && text(n) === 'Gobarski signal'));

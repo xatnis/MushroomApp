@@ -5,7 +5,7 @@ import { colors, radii, spacing, typography } from '../theme';
 import type { SyncState } from '../domain/types';
 import { t } from '../i18n';
 
-export function Screen({ children, scroll = true, style, bottomSafeArea = false, scrollRef, onScrollBeginDrag }: { children: ReactNode; scroll?: boolean; style?: ViewStyle; bottomSafeArea?: boolean; scrollRef?: Ref<ScrollView>; onScrollBeginDrag?: () => void }) {
+export function Screen({ children, scroll = true, style, bottomSafeArea = false, scrollRef, onScrollBeginDrag, topSafeArea = false }: { children: ReactNode; scroll?: boolean; style?: ViewStyle; bottomSafeArea?: boolean; scrollRef?: Ref<ScrollView>; onScrollBeginDrag?: () => void; topSafeArea?: boolean }) {
   const insets = useSafeAreaInsets();
   // Opt in only for edge-to-edge stack scroll screens; tabs already own their bottom inset.
   const baseBottom = style?.paddingBottom ?? style?.paddingVertical ?? style?.padding ?? spacing.lg;
@@ -13,12 +13,13 @@ export function Screen({ children, scroll = true, style, bottomSafeArea = false,
     ? { paddingBottom: (typeof baseBottom === 'number' ? baseBottom : spacing.lg) + insets.bottom }
     : undefined;
   const content = scroll
-    ? <ScrollView ref={scrollRef} onScrollBeginDrag={onScrollBeginDrag} contentContainerStyle={[styles.screenContent, style, bottomStyle]}
-      contentInsetAdjustmentBehavior={bottomSafeArea ? 'never' : undefined}
-      automaticallyAdjustContentInsets={bottomSafeArea ? false : undefined}
+    ? <ScrollView ref={scrollRef} onScrollBeginDrag={onScrollBeginDrag} style={topSafeArea ? styles.clipped : undefined} contentContainerStyle={[styles.screenContent, style, bottomStyle]}
+      contentInsetAdjustmentBehavior={bottomSafeArea || topSafeArea ? 'never' : undefined}
+      automaticallyAdjustContentInsets={bottomSafeArea || topSafeArea ? false : undefined}
       keyboardShouldPersistTaps="handled">{children}</ScrollView>
     : <View style={[styles.screenContent, styles.flex, style]}>{children}</View>;
-  return <SafeAreaView edges={['left', 'right']} style={styles.safe}><KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>{content}</KeyboardAvoidingView></SafeAreaView>;
+  // Headerless screens opt in: the non-scrolling native safe-area owns top inset/background once.
+  return <SafeAreaView edges={topSafeArea ? ['top', 'left', 'right'] : ['left', 'right']} style={styles.safe}><KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>{content}</KeyboardAvoidingView></SafeAreaView>;
 }
 
 export function AppButton({ title, variant = 'primary', loading, style, ...props }: PressableProps & { title: string; variant?: 'primary' | 'secondary' | 'ghost' | 'danger'; loading?: boolean; style?: ViewStyle }) {
@@ -69,6 +70,7 @@ export const commonStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
+  clipped: { overflow: 'hidden' },
   safe: { flex: 1, backgroundColor: colors.background }, flex: { flex: 1 },
   screenContent: { padding: spacing.lg, gap: spacing.lg, backgroundColor: colors.background, flexGrow: 1 },
   button: { minHeight: 48, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg, paddingVertical: spacing.md },

@@ -220,7 +220,7 @@ export function ConditionsScreen() {
     conditionsListRequest: { requestedAt: Date.now(), context: rankingContext },
   } });
 
-  return <Screen style={styles.screenContent} scrollRef={screenScroll} onScrollBeginDrag={() => focus.cancel(false)}>
+  return <Screen style={styles.screenContent} topSafeArea scrollRef={screenScroll} onScrollBeginDrag={() => focus.cancel(false)}>
     <Text style={commonStyles.title}>Razmere</Text>
     {!online ? <Notice tone="warning">Ni povezave. Prikazani so lahko zadnji predpomnjeni podatki z označenim časom osvežitve.</Notice> : null}
     <Card style={styles.introCard}>

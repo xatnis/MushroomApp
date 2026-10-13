@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import ts from 'typescript';
-import { spacing } from '../src/theme';
+import { colors, spacing } from '../src/theme';
 
 // Execute the actual shared Screen component with device insets; not a native layout engine.
 const requireHere = createRequire(__filename), Module = requireHere('node:module').Module;
@@ -34,6 +34,19 @@ const focused = Screen({ scrollRef, onScrollBeginDrag }).props.children.props.ch
 strictEqual(focused.props.ref, scrollRef); strictEqual(focused.props.onScrollBeginDrag, onScrollBeginDrag);
 strictEqual(Screen({}).props.children.props.children.props.ref, undefined);
 const flatten = (styles: any[]): any => Object.assign({}, ...styles.filter(Boolean));
+for (const os of ['android', 'ios']) {
+  platform.OS = os;
+  const top = Screen({ topSafeArea: true, scrollRef, onScrollBeginDrag });
+  deepStrictEqual(top.props.edges, ['top', 'left', 'right'], 'native safe-area owns the top exactly once, not bottom');
+  strictEqual(top.props.style.backgroundColor, colors.background, 'opaque non-scrolling background beneath status icons');
+  const scroll = top.props.children.props.children;
+  strictEqual(scroll.props.style.overflow, 'hidden', 'clip drawing to the safe scroll viewport');
+  strictEqual(scroll.props.contentInsetAdjustmentBehavior, 'never'); strictEqual(scroll.props.automaticallyAdjustContentInsets, false);
+  strictEqual(flatten(scroll.props.contentContainerStyle).padding, spacing.lg);
+  strictEqual(flatten(scroll.props.contentContainerStyle).paddingTop, undefined, 'no extra manual/status-height padding');
+  strictEqual(scroll.props.ref, scrollRef); strictEqual(scroll.props.onScrollBeginDrag, onScrollBeginDrag);
+}
+platform.OS = 'android';
 let removed = 0;
 const last = jsx(AppButton, { title: 'Izbriši rastišče in obiske', variant: 'danger', onPress: () => { removed++; } });
 for (const inset of [0, 4, 16, 24, 34, 48]) {

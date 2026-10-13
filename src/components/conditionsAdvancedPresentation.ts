@@ -38,22 +38,47 @@ export function advancedInputs(summary: MushroomWeatherSummary, score: MushroomC
   const rainWindows = profile === 'generic' ? [7, 14, 30] : profile === 'boletusEdulis' ? [26]
     : profile === 'cantharellusCibarius' ? [7, 30] : [14, 60];
   const temperatureDays = profile === 'cantharellusCibarius' ? 14 : 20;
+  // The dependency map describes the inspected production inputs; it does not evaluate them.
+  // Only a value consumed by an existing canonical component is labelled as used.
+  const used = (n: number | undefined, ...keys: MushroomScoreComponent['key'][]) =>
+    n != null && Number.isFinite(n) && score.components.some(component => keys.includes(component.key));
   return [
     { title: 'Padavine', rows: ([3, 7, 14, 26, 30, 60] as const).map(days => ({
       label: `Padavine zadnjih ${days} dni`, value: value(h?.[`rain${days}dMm`], 'mm'),
       usage: rainWindows.includes(days) ? `Vhod padavinskega signala${days === 7 ? ' in bilance izsuševanja' : ''}` : days === 7 ? 'Vhod bilance izsuševanja' : 'Dodaten vremenski kontekst',
       coverage: h?.coverage?.[`rain${days}dDays`] == null ? undefined : `${h.coverage[`rain${days}dDays`]}/${days} dni`,
+      usedInScore: used(h?.[`rain${days}dMm`], ...(rainWindows.includes(days) ? [profile === 'generic' ? 'rain' as const : `rain${days}` as MushroomScoreComponent['key']] : []), ...(days === 7 ? ['drying' as const] : [])),
     })) },
     { title: 'Temperatura', rows: ([7, 14, 20] as const).map(days => ({
       label: `Povprečna temperatura ${days} dni`, value: value(h?.[`avgTemp${days}dC`], '°C'),
       usage: days === temperatureDays ? 'Vhod temperaturnega signala' : 'Dodaten vremenski kontekst',
       coverage: h?.coverage?.[`temp${days}dDays`] == null ? undefined : `${h.coverage[`temp${days}dDays`]}/${days} dni`,
+      usedInScore: days === temperatureDays && used(h?.[`avgTemp${days}dC`], 'temperature'),
     })) },
-    { title: 'Vlaga tal in izsuševanje', rows: [
-      { label: 'Modelirana vlaga tal 0–7 cm', value: value(c?.soilMoisture0To7Cm, 'm³/m³', 3), usage: 'Vhod talne vlage', coverage: undefined },
-      { label: 'Modelirana vlaga tal 7–28 cm', value: value(c?.soilMoisture7To28Cm, 'm³/m³', 3), usage: 'Vhod talne vlage', coverage: undefined },
+    { title: 'Vlaga tal', rows: [
+      { label: 'Modelirana vlaga tal 0–7 cm', value: value(c?.soilMoisture0To7Cm, 'm³/m³', 3), usage: 'Vhod talne vlage', coverage: undefined, usedInScore: used(c?.soilMoisture0To7Cm, 'soilMoisture') },
+      { label: 'Modelirana vlaga tal 7–28 cm', value: value(c?.soilMoisture7To28Cm, 'm³/m³', 3), usage: 'Vhod talne vlage', coverage: undefined, usedInScore: used(c?.soilMoisture7To28Cm, 'soilMoisture') },
+    ] },
+    { title: 'Izsuševanje', rows: [
       { label: 'ET₀ zadnjih 7 dni', value: value(h?.evapotranspiration7dMm, 'mm ET₀'), usage: 'Bilanca s padavinami zadnjih 7 dni',
-        coverage: h?.coverage?.evapotranspiration7dDays == null ? undefined : `${h.coverage.evapotranspiration7dDays}/7 dni` },
+        coverage: h?.coverage?.evapotranspiration7dDays == null ? undefined : `${h.coverage.evapotranspiration7dDays}/7 dni`, usedInScore: used(h?.evapotranspiration7dMm, 'drying') },
     ] },
   ];
+}
+
+export function advancedInputGroups(summary: MushroomWeatherSummary, score: MushroomConditionsScore) {
+  const groups = advancedInputs(summary, score);
+  const select = (used: boolean) => groups.map(group => ({ ...group, rows: group.rows.filter(row => row.usedInScore === used) })).filter(group => group.rows.length);
+  return { used: select(true), additional: select(false) };
+}
+
+export function advancedExplanation(score: MushroomConditionsScore): string {
+  if (score.score == null) return score.reasons[0] ?? 'Za oceno ni dovolj podatkov.';
+  const factors = advancedFactors(score);
+  const available = factors.filter(factor => factor.points != null);
+  if (!available.length) return score.reasons[0] ?? 'Numerični prispevki niso na voljo.';
+  // Describe actual weighted contributions, never reverse-engineer the total or add thresholds.
+  const largest = available.reduce((first, next) => next.points! > first.points! ? next : first);
+  const text = largest.points === 0 ? 'Razpoložljivi dejavniki ne prispevajo točk.' : `K oceni največ prispeva dejavnik »${largest.label}«.`;
+  return text + (available.length < factors.length ? ' Del prispevkov ni na voljo.' : '');
 }

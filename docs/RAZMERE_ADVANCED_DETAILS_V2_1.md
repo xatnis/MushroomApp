@@ -60,3 +60,42 @@ Automated JavaScript/TSX tests are not a native layout engine. Physical Redmi 13
 Executed for this change: TypeScript and 21 focused/smoke suites (advanced conditions, graphs/discoverability/navigation/cache, generic detail presentation, conditions card, hotspot conditions/UI, ranking/UI/controls, Top 3, heatmap integration/overlays/focused map, shared location hook, bottom Map tab, heatmap navigation/transition/LOD and shared Screen safe areas). All pass after updating precise presentation-only expectations. The existing production regression runner executed **84,248 regional** and **15,688 pilot** identical comparisons. Warm weather/cache fixtures retain **0 extra HTTP** requests.
 
 The requested `npm run apk -- --name MushroomApp-preview-razmere-advanced-v2-1.apk` was attempted. Gradle failed with `java.io.IOException: Unable to establish loopback connection`; no old APK was copied or renamed. No device was connected (`adb devices` empty), so native verification was not performed. Run the same APK command locally to build the preview.
+
+## Razmere V2.2 — Advanced Details Final Polish
+
+### Safe-area investigation
+
+Both the root Tabs stack screen and tab headers use `headerShown: false`. Inspection of the installed navigator's Screen implementation confirmed that a hidden header supplies no top layout spacer. App-level StatusBar config only sets dark icons; the existing shared Screen used left/right safe-area edges, leaving the headerless Razmere ScrollView without a top-inset owner. This is a confirmed code-level gap consistent with scrolling content behind status icons, not a reproduced native recording artifact (no device is connected).
+
+Razmere alone opts into `Screen.topSafeArea`. The non-scrolling native SafeAreaView owns the actual top inset once and retains its opaque app background. Its ScrollView explicitly clips overflow within the safe viewport; automatic content inset adjustment is disabled for this opt-in to avoid double insets. No status-bar height, manual top content padding, global StatusBar change, absolute mask or new fixed header is introduced. Other Screen defaults, keyboard behavior, bottom-tab inset ownership and graph modal remain unchanged. The Android CLI skill guided environment/inset checks; physical clock/icon overlap still requires phone QA.
+
+The V2.1 measured content-Y focus helper is byte-identical. Its scroll target remains relative to the now-safe ScrollView, with the same design breathing room, post-layout frame and generation/gesture cancellation. Input disclosure changes do not request another scroll.
+
+### Shorter input hierarchy
+
+The main **Vhodni vremenski podatki** remains initially collapsed. On expansion, **Uporabljeno pri oceni** contains only finite values consumed by components actually present in the canonical result. Compact categories are Padavine, Temperatura, Vlaga tal and Izsuševanje; empty categories are omitted. **Dodatni vremenski podatki** is a secondary, initially collapsed disclosure for the remaining context, missing/non-included inputs and forecast totals. Closing/reopening the input disclosure resets the extra disclosure to compact presentation.
+
+| Profile | Rain component inputs | Temperature | Other dependencies |
+| --- | --- | --- | --- |
+| Splošno | 7/14/30 days, only if its combined rain component exists | 20 days | both soil layers required for soil component; ET₀ + D7 rain for drying |
+| Jesenski goban | 26 days | 20 days | available soil layer(s); ET₀ + D7 rain for drying |
+| Navadna lisička | independent 30-day and 7-day inputs | 14 days | available soil layer(s); ET₀ + D7 rain for drying |
+| Užitna sirovka | independent 60-day and 14-day inputs | 20 days | available soil layer(s); ET₀ + D7 rain for drying |
+
+This is a presentation dependency map of inspected production code, not another scorer. Canonical component presence determines inclusion, so a lone Generic soil layer or D7 rain without an active drying/rain component is not falsely labelled used. Every historical input appears in exactly one subsection. D7 rain is shared by rain/drying but rendered once. Forecast data is always context, never a current-score input. Unknown/non-included values are neutrally identified as additional context; missing values remain **Ni podatka**. Existing units and partial coverage stay visible; full-coverage metadata no longer adds a repeated line to each row.
+
+### Concise explanation and preserved breakdown
+
+The repeated introductory rain/temperature measurement paragraphs are replaced by one sentence naming the actual largest canonical weighted contribution. This is not a new score or a new biological threshold. Zero, unavailable and incomplete contribution cases have honest wording. All original scorer reasons remain accessible in **Viri in omejitve modela**, alongside attribution, uncertainty, renormalization/rounding, soil modelling and historical/forecast caveats.
+
+`advancedFactors` is byte-identical to V2.1: total, names, weights, contribution/max bar ratios, statuses and missing/qualitative fallbacks are unchanged. Main overview order, profiles, graph entry, ranking/Top 3 and navigation architecture are unchanged.
+
+### Accessibility and checks
+
+New headings expose header roles; the extra disclosure announces expanded/collapsed state and retains a 48pt minimum touch height. Key/value rows and long values can wrap and grow with system fonts. Factor text alternatives remain intact. No fixed metric-row heights or smaller fonts are introduced.
+
+Executed: TypeScript and all **21** focused/smoke suites listed above, all passing. Expanded advanced tests cover per-profile actual inclusion, Generic versus species single-layer semantics, absent drying, non-duplicated D7 rain and all input rows, zero/missing/coverage, extra disclosure default/reset, concise contribution-derived explanation, retained canonical reasons, and unchanged factor/focus implementations. Screen tests cover top edge ownership, static background, clipping, disabled auto-insets, no extra manual top padding and unchanged bottom/keyboard behavior. Discovery tests execute the existing measured reveal path and correct source location; source guards preserve models/weather/cache/graphs/Map/navigation/LOD/privacy.
+
+Production regressions executed again: **84,248 regional** and **15,688 pilot** identical comparisons. Disclosure, selection and scroll changes add **0 HTTP requests**; warm weather/ranking fixtures retain zero extra requests. There is no new network or scoring pipeline. Native Redmi 13C status-bar drawing, large fonts, keyboard transitions and TalkBack still need physical verification; JavaScript tests cannot certify native rendering.
+
+V2.2 preview build attempted with `npm run apk -- --name MushroomApp-preview-razmere-v2-2.apk`. Gradle failed with `Unable to establish loopback connection`; the requested APK does not exist and no stale artifact was substituted. Run the same command locally on Windows.
