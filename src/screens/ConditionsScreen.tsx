@@ -65,9 +65,11 @@ export function ConditionsScreen() {
   const locationRequestId = useRef(0);
   const locationAbortController = useRef<AbortController | undefined>(undefined);
   const weatherRequestId = useRef(0);
+  const weatherRequestLocation = useRef<string | undefined>(undefined);
   const initialLocationRequested = useRef(false);
   const mounted = useRef(true);
   const coords = locationMode === 'gps' ? currentLocation : selectedPlace;
+  const locationKey = coords ? `${coords.latitude}:${coords.longitude}` : undefined;
   const screenScroll = useRef<ScrollView>(null);
   const advancedFocus = useRef<ReturnType<typeof createAdvancedDetailsFocus> | null>(null);
   if (!advancedFocus.current) advancedFocus.current = createAdvancedDetailsFocus(
@@ -166,10 +168,12 @@ export function ConditionsScreen() {
 
   useEffect(() => {
     if (!coords) {
+      weatherRequestLocation.current = undefined;
       weatherRequestId.current += 1;
       setWeatherSummary(undefined); setWeatherLoading(false); setWeatherError(undefined);
       return;
     }
+    weatherRequestLocation.current = `${coords.latitude}:${coords.longitude}`;
     const requestId = ++weatherRequestId.current;
     const isCurrentRequest = () => mounted.current && weatherRequestId.current === requestId;
     setWeatherSummary(undefined); setWeatherLoading(true); setWeatherError(undefined); setShowWeatherDetails(false);
@@ -207,6 +211,20 @@ export function ConditionsScreen() {
   // Do not display the previous location's values while the existing loader changes generation.
   const displaySummary = weatherSummary && coords && weatherSummary.latitude === coords.latitude && weatherSummary.longitude === coords.longitude ? weatherSummary : undefined;
   const score = useMemo(() => calculateMushroomWeatherScore(displaySummary, weatherProfileId), [weatherProfileId, displaySummary]);
+  // Derive presentation from the existing loader; undefined scorer input is not a completed evaluation.
+  const currentWeatherError = locationKey != null && weatherRequestLocation.current === locationKey ? weatherError : undefined;
+  const locationPending = gpsLoading || (!coords && !exploreLocation && !initialLocationRequested.current && !error);
+  const locationFailed = locationMode === 'gps' && Boolean(error);
+  const weatherPending = Boolean(coords) && !locationPending && !locationFailed
+    && (weatherLoading || (!displaySummary && !currentWeatherError));
+  const requestFailed = !locationPending && !weatherPending && (locationFailed || Boolean(currentWeatherError)
+    || (score.score == null && Boolean(displaySummary?.errors.historical || displaySummary?.errors.forecast)));
+  const canShowWeather = Boolean(coords && displaySummary) && !locationPending && !weatherPending && !locationFailed;
+  const canShowEvaluation = canShowWeather && !requestFailed;
+  const evaluationMessage = locationPending ? 'Pridobivam lokacijo ...'
+    : weatherPending ? 'Preračunavam razmere ...'
+      : requestFailed ? (locationFailed ? 'Lokacije trenutno ni mogoče pridobiti.' : 'Ocene trenutno ni mogoče pridobiti. Poskusi znova.')
+        : 'Za prikaz razmer izberi lokacijo.';
   const weatherProfile = MUSHROOM_WEATHER_PROFILES[weatherProfileId];
   const rankingContext = { targetProfile: weatherProfileId, dayMode: 'today' as const };
   const { assessments, complete, error: rankingError, retry: retryRanking } = useLocationConditions(hotspots, weatherProfileId, 'today', true, 250);
@@ -263,11 +281,11 @@ export function ConditionsScreen() {
     {gpsLoading || weatherLoading ? <ActivityIndicator size="large" color={colors.primary} /> : null}
     {error ? <Notice tone="warning">{error}</Notice> : null}
     {locationSettingsRequired ? <AppButton title="Odpri nastavitve aplikacije" variant="secondary" onPress={() => void Linking.openSettings().catch(() => setError('Nastavitev aplikacije ni bilo mogoče odpreti.'))} /> : null}
-    {weatherError ? <Notice tone="warning">{weatherError}</Notice> : null}
+    {currentWeatherError ? <Notice tone="warning">{currentWeatherError}</Notice> : null}
     {locationNotice ? <Notice tone="info">{locationNotice}</Notice> : null}
-    {weatherSummary?.errors.historical ? <Notice tone="warning">{weatherSummary.errors.historical}</Notice> : null}
-    {weatherSummary?.errors.forecast ? <Notice tone="warning">{weatherSummary.errors.forecast}</Notice> : null}
-    {!weatherLoading && coords && (weatherError || weatherSummary?.errors.historical || weatherSummary?.errors.forecast)
+    {displaySummary?.errors.historical ? <Notice tone="warning">{displaySummary.errors.historical}</Notice> : null}
+    {displaySummary?.errors.forecast ? <Notice tone="warning">{displaySummary.errors.forecast}</Notice> : null}
+    {!weatherLoading && coords && (currentWeatherError || displaySummary?.errors.historical || displaySummary?.errors.forecast)
       ? <AppButton title="Poskusi znova" variant="secondary" onPress={() => setWeatherRetry((value) => value + 1)} />
       : null}
     <Card style={styles.suitabilityCard}>
@@ -279,11 +297,17 @@ export function ConditionsScreen() {
           <Text style={[styles.profileText, weatherProfileId === id && styles.profileSelectedText]}>{profile.label}</Text>
         </Pressable>)}
       </ScrollView>
+      {canShowEvaluation ? <>
       <View style={styles.scoreRow}><Text style={styles.score}>{score.score != null ? score.score + '/100' : '—'}</Text>
         <View style={styles.scoreCopy}><Text style={commonStyles.heading}>{score.label}</Text><Text style={commonStyles.body}>Trend: {score.trend}</Text></View>
       </View>
       {score.reasons.slice(0, 2).map(reason => <Text key={reason} style={commonStyles.body}>{reason}</Text>)}
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: showWeatherDetails }}
+      {displaySummary?.stale ? <Text style={commonStyles.muted}>Starejši podatki iz predpomnilnika · {slDateTime(displaySummary.updatedAt)}</Text> : null}
+      </> : <View accessibilityLiveRegion="polite" style={commonStyles.row}>
+        {locationPending || weatherPending ? <ActivityIndicator color={colors.primary} /> : null}
+        <Text style={[commonStyles.body, { flexShrink: 1 }]}>{evaluationMessage}</Text>
+      </View>}
+      <Pressable accessibilityRole="button" disabled={!canShowEvaluation} accessibilityState={{ expanded: showWeatherDetails, disabled: !canShowEvaluation }}
         accessibilityHint="Odpre in prikaže razlago trenutne ocene." onPress={openExplanation} style={styles.detailsAction}>
         <Text style={styles.actionText}>Zakaj ta ocena?</Text>
       </Pressable>
@@ -294,11 +318,13 @@ export function ConditionsScreen() {
       name: (locationMode === 'gps' ? currentLocationName : selectedPlace?.name) ?? 'Izbrana lokacija' } : undefined}
       summary={weatherSummary} onClose={() => setGraphsOpen(false)} />
     <Card style={styles.introCard}><SectionTitle>Vreme na kratko</SectionTitle>
+      {canShowWeather ? <>
       <Text style={commonStyles.body}>Trenutno: {debugNumber(displaySummary?.current?.temperatureC, '°C')} · {displaySummary?.current?.weatherDescription ?? 'Opis vremena ni na voljo'}</Text>
       <Text style={commonStyles.body}>Padavine zadnjih 14 dni: {debugNumber(displaySummary?.historical?.rain14dMm, 'mm')}</Text>
       <Text style={commonStyles.body}>Padavine naslednjih 7 dni: {forecastSummary.text}</Text>
       <Text style={commonStyles.muted}>Napoved vključuje danes, ki je še nedokončan dan.</Text>
       {displaySummary?.stale ? <Text style={commonStyles.muted}>Starejši podatki iz predpomnilnika · {slDateTime(displaySummary.updatedAt)}</Text> : null}
+      </> : <Text style={commonStyles.body}>{evaluationMessage}</Text>}
     </Card>
     <Card style={styles.introCard}><SectionTitle>Najboljša rastišča</SectionTitle>
       <Text style={commonStyles.muted}>{weatherProfile.label} · Danes · po modelnih pogojih</Text>
@@ -321,8 +347,8 @@ export function ConditionsScreen() {
       <Text style={styles.actionText}>Napredni podatki in razlaga modela {showWeatherDetails ? '⌃' : '⌄'}</Text>
     </Pressable>
     {showWeatherDetails ? <View onLayout={event => focus.layout(event.nativeEvent.layout.y, layoutGeneration)}>
-      <ConditionsAdvancedDetails key={`${coords?.latitude}:${coords?.longitude}`} summary={displaySummary} score={score}
-        forecastText={forecastSummary.text} onOpenGraphs={() => setGraphsOpen(true)} />
+      {canShowEvaluation ? <ConditionsAdvancedDetails key={`${coords?.latitude}:${coords?.longitude}`} summary={displaySummary} score={score}
+        forecastText={forecastSummary.text} onOpenGraphs={() => setGraphsOpen(true)} /> : <Text style={commonStyles.body}>{evaluationMessage}</Text>}
     </View> : null}
   </Screen>;
 }

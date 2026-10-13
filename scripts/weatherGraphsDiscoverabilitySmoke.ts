@@ -184,7 +184,7 @@ strictEqual((screen.getText(ast).match(/getMushroomWeatherSummary\(/g) || []).le
 values[states.indexOf('error')] = 'GPS dovoljenje ni na voljo'; values[states.indexOf('locationSettingsRequired')] = true; tree = render();
 ok(text(tree).includes('GPS dovoljenje ni na voljo')); ok(walk(tree).some(n => n.type === 'AppButton' && n.props.title === 'Odpri nastavitve aplikacije'));
 values[states.indexOf('selectedPlace')] = { ...location, latitude: 47, name: 'Druga lokacija' }; tree = render();
-ok(text(tree).includes('Trenutno: ni podatka')); ok(!text(tree).includes('Padavine zadnjih 14 dni: 14 mm'), 'old weather cannot appear under a new location');
+ok(text(tree).includes('Preračunavam razmere ...')); ok(!text(tree).includes('Premalo podatkov')); ok(!text(tree).includes('Padavine zadnjih 14 dni: 14 mm'), 'old weather cannot appear under a new location');
 strictEqual(walk(tree).find(n => n.type === 'WeatherGraphsModal').props.location.latitude, 47);
 // Real map source callback records only the tapped point. Camera, scoring and navigation path unchanged.
 const mapSource = readFileSync('src/screens/MapScreen.tsx', 'utf8');
