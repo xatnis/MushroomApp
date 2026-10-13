@@ -52,7 +52,7 @@ async function run() {
     MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore: (...args: any[]) => { scorerCalls++; return calculateMushroomWeatherScore(args[0], args[1]); },
     buildWeatherDailySeries, summarySeriesInputs, weatherLocalDate, graphPeriodSummary, createAdvancedDetailsFocus, colors, spacing, slNumber, slDateTime,
     debugNumber: (v: any, unit: string) => v == null ? 'ni podatka' : v + ' ' + unit, placeDetails: () => '',
-    ...Object.fromEntries(['Screen', 'Text', 'View', 'Card', 'Chip', 'Field', 'Notice', 'SectionTitle', 'Pressable', 'ScrollView', 'ActivityIndicator', 'AppButton', 'ConditionsAdvancedDetails', 'WeatherGraphsEntry', 'WeatherGraphsModal'].map(s => [s, s])),
+    ...Object.fromEntries(['Screen', 'Text', 'View', 'Card', 'Chip', 'Field', 'Notice', 'SectionTitle', 'Pressable', 'ScrollView', 'ActivityIndicator', 'AppButton', 'ConditionsAdvancedDetails', 'WeatherGraphsEntry', 'WeatherGraphsModal', 'SevenDayConditionsEntry', 'SevenDayConditionsModal'].map(s => [s, s])),
   };
   const component = new Function(...Object.keys(bindings), compiled + '; return ConditionsScreen;')(...Object.values(bindings));
   let tree: any;

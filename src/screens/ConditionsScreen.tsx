@@ -19,6 +19,7 @@ import { graphPeriodSummary } from '../components/weatherGraphPresentation';
 import { ConditionsAdvancedDetails } from '../components/ConditionsAdvancedDetails';
 import { createAdvancedDetailsFocus } from '../components/advancedDetailsFocus';
 import { WeatherGraphsEntry, WeatherGraphsModal } from '../components/WeatherGraphsView';
+import { SevenDayConditionsEntry, SevenDayConditionsModal } from '../components/SevenDayConditionsView';
 import { slDateTime, slNumber } from '../domain/format';
 import { colors, radii, spacing } from '../theme';
 
@@ -62,6 +63,7 @@ export function ConditionsScreen() {
   const [placeSearchError, setPlaceSearchError] = useState<string>();
   const [showWeatherDetails, setShowWeatherDetails] = useState(false);
   const [graphsOpen, setGraphsOpen] = useState(false);
+  const [sevenDayOpen, setSevenDayOpen] = useState(false);
   const locationRequestId = useRef(0);
   const locationAbortController = useRef<AbortController | undefined>(undefined);
   const weatherRequestId = useRef(0);
@@ -70,6 +72,7 @@ export function ConditionsScreen() {
   const mounted = useRef(true);
   const coords = locationMode === 'gps' ? currentLocation : selectedPlace;
   const locationKey = coords ? `${coords.latitude}:${coords.longitude}` : undefined;
+  const currentLocationKey = useRef(locationKey); currentLocationKey.current = locationKey;
   const screenScroll = useRef<ScrollView>(null);
   const advancedFocus = useRef<ReturnType<typeof createAdvancedDetailsFocus> | null>(null);
   if (!advancedFocus.current) advancedFocus.current = createAdvancedDetailsFocus(
@@ -312,8 +315,19 @@ export function ConditionsScreen() {
         <Text style={styles.actionText}>Zakaj ta ocena?</Text>
       </Pressable>
       <Text style={commonStyles.muted}>Ocena vremenskih razmer ne zagotavlja najdbe gob.</Text>
+      <SevenDayConditionsEntry disabled={!coords || locationPending} onPress={() => { setGraphsOpen(false); setSevenDayOpen(true); }} />
     </Card>
-    <WeatherGraphsEntry onPress={() => setGraphsOpen(true)} />
+    <SevenDayConditionsModal visible={sevenDayOpen} database={repository.database} profileId={weatherProfileId} onProfileChange={setWeatherProfileId}
+      location={coords ? { latitude: coords.latitude, longitude: coords.longitude, name: (locationMode === 'gps' ? currentLocationName : selectedPlace?.name) ?? 'Izbrana lokacija' } : undefined}
+      summary={displaySummary} onSnapshot={summary => {
+        if (mounted.current && currentLocationKey.current === `${summary.latitude}:${summary.longitude}`
+          && (!displaySummary || Date.parse(summary.updatedAt) >= Date.parse(displaySummary.updatedAt))) {
+          // The accepted canonical snapshot completes this location's load; late older requests cannot overwrite it.
+          weatherRequestId.current += 1;
+          setWeatherSummary(summary); setWeatherLoading(false); setWeatherError(undefined);
+        }
+      }} onClose={() => setSevenDayOpen(false)} />
+    <WeatherGraphsEntry onPress={() => { setSevenDayOpen(false); setGraphsOpen(true); }} />
     <WeatherGraphsModal visible={graphsOpen} location={coords ? { latitude: coords.latitude, longitude: coords.longitude,
       name: (locationMode === 'gps' ? currentLocationName : selectedPlace?.name) ?? 'Izbrana lokacija' } : undefined}
       summary={weatherSummary} onClose={() => setGraphsOpen(false)} />

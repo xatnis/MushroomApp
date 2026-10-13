@@ -95,7 +95,7 @@ const bindings: Record<string, any> = {
   useEffect() {}, useMemo: (f: any) => f(), useCallback: (f: any) => f, useRef: (n: any) => { const slot = refCursor++; return refs[slot] ??= { current: n }; },
   useNavigation: () => ({ navigate: (...args: any[]) => navigationCalls.push(args) }),
   useApp: () => ({ hotspots: overviewHotspots, repository: {}, online: true, exploreLocation: { ...location, source: 'place' }, requestHotspotFocus: (...args: any[]) => focusCalls.push(args), setExploreLocation() { throw new Error('graphs cannot change global location'); } }),
-  ...Object.fromEntries(['Screen', 'Text', 'Card', 'SectionTitle', 'Chip', 'View', 'AppButton', 'Notice', 'ActivityIndicator', 'WeatherGraphsEntry', 'WeatherGraphsModal', 'Metric', 'ConditionsAdvancedDetails'].map(s => [s, s])),
+  ...Object.fromEntries(['Screen', 'Text', 'Card', 'SectionTitle', 'Chip', 'View', 'AppButton', 'Notice', 'ActivityIndicator', 'WeatherGraphsEntry', 'WeatherGraphsModal', 'SevenDayConditionsEntry', 'SevenDayConditionsModal', 'Metric', 'ConditionsAdvancedDetails'].map(s => [s, s])),
   styles: {}, commonStyles: {}, colors, spacing, createAdvancedDetailsFocus, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore, slNumber, slDateTime,
   useLocationConditions: (_: any, profile: any, day: any) => { hookContexts.push([profile, day]); return { assessments: overviewAssessments, complete: overviewComplete }; }, topThreeHotspots, buildWeatherDailySeries, summarySeriesInputs, weatherLocalDate, graphPeriodSummary, conditionsNavigationPatch,
   ScrollView: 'ScrollView', Pressable: 'Pressable', DetailLine: 'DetailLine', debugNumber: (v: any, unit: string) => v == null ? 'ni podatka' : v + ' ' + unit,
@@ -123,8 +123,28 @@ strictEqual(values[states.indexOf('showWeatherDetails')], false);
 strictEqual(values[states.indexOf('weatherProfileId')], 'generic');
 strictEqual(walk(tree).find(n => n.type === 'WeatherGraphsModal').props.summary, values[states.indexOf('weatherSummary')]);
 strictEqual(navigationCalls.length, 0, 'graph opening/closing stays on the originating screen');
+// Seven-day entry uses the same exact selected location/profile; it does not mutate the map day context.
+walk(tree).find(n => n.type === 'SevenDayConditionsEntry').props.onPress(); tree = render();
+let weekly = walk(tree).find(n => n.type === 'SevenDayConditionsModal');
+strictEqual(weekly.props.visible, true); deepStrictEqual(weekly.props.location, location);
+strictEqual(weekly.props.profileId, 'generic');
+weekly.props.onProfileChange('boletusEdulis'); tree = render();
+strictEqual(walk(tree).find(n => n.type === 'SevenDayConditionsModal').props.profileId, 'boletusEdulis');
+values[states.indexOf('weatherError')] = 'Predhodna omrežna napaka'; values[states.indexOf('weatherLoading')] = true;
+const refreshedSummary = { ...values[states.indexOf('weatherSummary')], updatedAt: new Date().toISOString() };
+weekly.props.onSnapshot(refreshedSummary); tree = render();
+strictEqual(values[states.indexOf('weatherSummary')], refreshedSummary); strictEqual(values[states.indexOf('weatherLoading')], false);
+strictEqual(values[states.indexOf('weatherError')], undefined, 'a successful weekly canonical refresh clears the previous error, not the profile/context');
+walk(tree).find(n => n.type === 'SevenDayConditionsModal').props.onSnapshot({ ...refreshedSummary, updatedAt: '2020-01-01T00:00:00Z' });
+strictEqual(values[states.indexOf('weatherSummary')], refreshedSummary, 'older same-location callback cannot replace a newer canonical snapshot');
+weekly.props.onClose(); tree = render(); strictEqual(walk(tree).find(n => n.type === 'SevenDayConditionsModal').props.visible, false);
+strictEqual(navigationCalls.length, 0, 'weekly close/Android Back stays on the same screen');
+values[states.indexOf('weatherProfileId')] = 'generic';
 values[states.indexOf('selectedPlace')] = { ...location, latitude: 45.8, name: 'Nova lokacija' };
 tree = render(); strictEqual(walk(tree).find(n => n.type === 'WeatherGraphsModal').props.location.latitude, 45.8);
+const preservedSummary = values[states.indexOf('weatherSummary')];
+weekly.props.onSnapshot({ ...preservedSummary, latitude: location.latitude, longitude: location.longitude });
+strictEqual(values[states.indexOf('weatherSummary')], preservedSummary, 'late old-location weekly callback cannot replace new-location data');
 
 // Razmere V2 actual overview render: one selector, same scorer, compact weather, complete-only Top 3.
 const day = weatherLocalDate();
