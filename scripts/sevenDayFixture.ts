@@ -1,5 +1,6 @@
 import type { SevenDaySnapshot } from '../src/domain/sevenDayConditions';
 import { buildHistoricalWeatherSummaryForTarget, shiftLocalDate } from '../src/services/weather';
+import { civilDailyPeriod } from '../src/domain/soilSampling';
 export function sevenDayFixture(baseLocalDate = '2026-10-13'): SevenDaySnapshot {
   const daily = Array.from({ length: 67 }, (_, index) => {
     const offset = index - 60, date = shiftLocalDate(baseLocalDate, offset);
@@ -19,5 +20,6 @@ export function sevenDayFixture(baseLocalDate = '2026-10-13'): SevenDaySnapshot 
       current: { ...soilByDate[baseLocalDate], temperatureC: 15 }, forecast: { days: daily.filter(e => e.day.date >= baseLocalDate).map(e => e.day), rain7dMm: 140 },
       errors: {}, source: 'open-meteo', stale: false, updatedAt: '2026-10-13T08:00:00Z' }, legacyCurrentSoil: soilByDate[baseLocalDate],
     forecastRetrievedAt: '2026-10-13T08:00:00Z', archiveRetrievedAt: '2026-10-13T07:00:00Z', forecastIssuedAt: null,
+    canonicalCurrentSoil: soilByDate[baseLocalDate], legacyTomorrowSoil: soilByDate[shiftLocalDate(baseLocalDate, 1)], dailyPeriods: Object.fromEntries(daily.map(e => [e.day.date, civilDailyPeriod(e.day.date)])),
     snapshotId: 'fixture-native-soil-v1', assembledAt: '2026-10-13T08:01:00Z', expiresAt: Date.now() + 1800000, stale: false, blockers: [] };
 }

@@ -90,3 +90,69 @@ Actual production regression execution (`hotspotConditionsSmoke`): **84,248 regi
 ## Future readiness
 
 The typed snapshot/input builder can support later selected-hotspot forecasts. Multi-location/week ranking, future heatmaps, marker dates, push notifications and other foraging profiles are deliberately deferred. Before broader publication, resolve the canonical soil sampling/offset contract, confirm forecast issuance metadata where available, validate source/model continuity and uncertainty, and compare forecasts with later field outcomes without reclassifying later observations as information known at forecast issuance.
+
+## Seven-Day Conditions V1.1 — Soil Sampling and DST Consistency
+
+### Acceptance: PARTIAL, not unconditional map-integration readiness
+
+The following findings and implementation supersede the V1 soil-offset gate above. Soil instants are now explicitly resolved, including across DST. **Numeric publication is still gated** where the unchanged production sampling policy or API daily periods are incompatible. No production scorer, weight, heatmap assessment, point/hotspot integration, weather transport, query/cache key, UI or navigation has been altered to force parity. This task does not implement map integration.
+
+### Actual source audit / comparison matrix
+
+| Existing surface | Source / spatial context | Today soil choice | Tomorrow soil choice | V1.1 behavior |
+| --- | --- | --- | --- | --- |
+| Razmere individual Today | `getMushroomWeatherSummary`, point cache, timezone=auto | `currentWeatherFrom`: exact hourly time or last timestamp <= returned current.time | No independent Tomorrow implementation in this service | Untouched; weekly verifies this floor/as-of reference |
+| Hotspot detail, ranking, marker/popup and Top 3 | `useLocationConditions` → `conditionsForLocation` → cached pilot bundle; existing weather-cell mapping, actual point outside coverage | Batch `soilPointAt`: nearest hourly timestamp to current.time | Nearest timestamp to provider-labelled target date 09:00 | Untouched; independent legacy sampling retained as parity reference |
+| Regional / pilot heatmap | Same batch service, regional weather points; habitat / LOD layers | Same nearest-hour rule | Same nearest provider-09:00 rule | Entire regional model/scheduler/extraction left unchanged |
+| Weekly V1 | Direct selected-location point response + same cached raw forecast | Floor-hour values, but compared to nearest-hour batch output | Required raw 09:00; rejected a differing provider/DST offset | Superseded by explicit instant sampler and retained independent parity gates |
+| Weekly V1.1 | Same direct-location sources, deeply frozen weekly snapshot | Latest unique native sample no later than current.time's actual instant, less than one hour old | Exact **09:00 Europe/Ljubljana**, converted to UTC and matched in the provider array | Correct time/depth metadata; no nearest-hour substitute, interpolation or carry-forward |
+| Historical soil | Archive request contains daily rain/temp/ET₀, **no historical soil series** | Not a soil input source | Not applicable | No invented archive-to-forecast layer transformation |
+
+The Today difference is a real sampling-policy difference, not a weight/formula error. At 10:45 a nearest-hour policy can choose 11:00 whereas the point as-of policy chooses 10:00. A scientifically valid approximate nearest estimate is not the same instant as an as-of estimate; numeric equality alone does not prove consistency. Resolving all legacy point surfaces would require an explicit input-policy decision while maintaining their heatmap/detail equality. Such a production change is deliberately not hidden in this patch.
+
+`soilSamplingSmoke` reports a **synthetic diagnostic**, not new production scores: floor vs nearest total is Generic 72/74, Boletus 72/74, Cantharellus 67/69, Lactarius 79/82 for its fixed 10:45 fixture. All real production paths remain byte-identical to 4222eb0. The new gate also catches different raw values/instants when saturation or rounding makes their totals identical.
+
+### Reusable sampling contract and metadata
+
+`src/domain/soilSampling.ts` defines `point-asof-or-local09-v1`. The inputs are an explicit target local date, returned current reference or future morning role, response offset and native hourly arrays. Today is sampled relative to **the provider's returned current instant**, not the device clock or a guessed historical hour. Future morning is a unique civil instant. Both native depths come from the same array index; unknown/invalid time metadata, duplicate instants, a missing requested hour, unsupported units, invalid values and incompatible/missing depth layers remain unavailable. A missing unit attribute may only rely on the already documented default of these named native variables; explicit conflicting units are rejected.
+
+The frozen snapshot now retains provider timestamp, UTC instant, real Ljubljana local timestamp, provider offset, timezone, retrieval time and current-modelled/forecast role per sample. `soilTime` denotes the real sample, while the original canonical current weather timestamp remains untouched. These are instantaneous model fields, not daily means or local station observations. Exact soil model-run identity is **not exposed by the existing best_match payload**; the app cannot claim a verified IFS run merely from the variable name. The [ECMWF native-variable documentation](https://open-meteo.com/en/docs/ecmwf-api) supports the named depths; actual responses and unit checks decide availability. There is no 0–1 → 0–7 cm or 9–27 → 7–28 cm substitution.
+
+### DST root cause and deterministic handling
+
+The provider's documented ISO timestamps use one fixed `utc_offset_seconds` throughout a response. Parsing an offsetless API timestamp with host `Date.parse` is not a reliable interpretation of that instant. The new helper interprets it as wall time minus the **published response offset**, then formats its instant through Europe/Ljubljana. It independently resolves desired civil clocks using IANA offsets and verifies the resulting wall time; calendar dates advance through the existing calendar helper, not by adding 24 hours.
+
+- 29 March 2026 has 23 elapsed hours. Local 02:30 does not exist: the resolver returns no instant, never shifts it to 03:30. Local 09:00 is UTC 07:00; a CET-offset response names that sample 08:00.
+- 25 October 2026 has 25 elapsed hours. Local 02:30 has UTC 00:30 and UTC 01:30: the resolver exposes both rather than guessing. Current sampling uses the response's explicit offset to disambiguate. Local 09:00 is UTC 08:00; a CEST-offset response names that sample 10:00.
+- The future contract deliberately uses unambiguous 09:00. It requires that exact instant; nearby hours are not substituted. Tests change the host timezone between UTC, Ljubljana and New York and obtain the same result.
+
+The old blanket *soil offset differs, therefore no sample* gate is replaced only for soil extraction: correctly converted native soil can now be inspected on those dates. **This does not automatically authorize a numeric score.** Legacy Tomorrow may still use another instant, so `legacyTomorrowSoil` is extracted independently from the raw provider-09:00 rule, not copied from the new sampler. Equality of total/components, both raw layers and actual chosen time is required. This fixes the V1 self-referential Tomorrow comparison risk.
+
+### Additional daily-period blocker found during source inspection
+
+Provider [getTimerange2 source](https://github.com/open-meteo/open-meteo/blob/main/Sources/App/Helper/ForecastapiQuery.swift) constructs daily reads with 86,400-second steps and a constant offset. A provider-labelled day across DST therefore cannot be assumed to equal a complete 23-/25-hour Ljubljana civil day. Its boundary can also shift on other historical dates with a different seasonal offset. Neither a daily sum nor a temperature mean can be corrected accurately by merely renaming its date or scaling it.
+
+The new `dailyPeriods` metadata compares **both actual interval endpoints** against civil midnight-to-midnight. Numeric publication requires compatible periods for all dates in the profile's required lookback, including D7/ET₀7. Unknown period metadata also blocks publication. This prevents a spring transition daily bin from silently including an hour beyond the target's local-midnight cutoff. Diagnostic canonical inputs remain retained; unverified-period contribution bars are not presented as confirmed.
+
+All four profiles / Day 0–6 remain supported when native soil, complete daily windows, timezone/period compatibility and legacy parity are valid. Maximum relevant lookbacks are Generic 30, Boletus 26, Cantharellus 30 and Lactarius 60 days. A required window spanning incompatible seasonal daily bins remains unavailable; this can persist after the transition, not just on the clock-change date. Old Today's host-calendar alignment gate also remains in place. No false zero or renormalized partial full-score replaces these blockers.
+
+### Parity, explanations, safety and performance
+
+Full-compatible fixtures verify all four profiles' Today/Day 0 and Tomorrow/Day +1 totals, component arrays/maxima, raw soil values, rolling windows, ET₀ and explanation/coverage metadata. Day 0 retains the canonical **point** explanation/trend context; a regional capped forecast can have a different trend explanation without changing numeric factors. Tests do not force these intentionally different trend contexts to be equal.
+
+Retained/strengthened gates: complete required components, both native soil layers, no missing ET₀/temperature mean/D60, source-vintage consistency, valid timezone and local horizon, daily interval compatibility, Today/Tomorrow **input and instant** parity, and unknown sampling metadata. No scorer is modified and no UI override or rounding trick suppresses a mismatch. The forecast/back/loading/error/stale interface, profile/location generations, privacy, visits and all MapLibre/LOD behavior stay unchanged.
+
+Raw weather request/cache keys, variable sets, 30-minute TTL, dedupe and coherent forecast snapshot are unchanged. Only the bounded **derived** snapshot policy key changes to `native-soil-instant-v1-1` so a V1 derived object cannot bypass new checks. No new HTTP variable or per-day request is introduced. On 2026-10-14 the public live check produced **28 ready results**, cold main+weekly **2 existing requests**, warm reopen **0 extra**. Date/profile/detail/scroll actions remain local with 0 HTTP.
+
+### Verification, remaining work and map-readiness decision
+
+On 2026-10-14 TypeScript and **26 suites** passed: the 25 V1 suites listed above plus `soilSamplingSmoke`. New coverage includes 23-/25-hour arrays, missing/repeated clocks, response offset vs IANA time, future exact-hour lookup, current floor at minutes 00/15/30/45/59, no cross-day carry-forward, native units/depths, duplicate/missing samples, daily interval endpoints, unknown period metadata, all-profile parity and masked/saturated soil mismatches. The existing transport fixture now explicitly freezes its audited 2026-10-13 clock; it no longer accidentally depends on the developer's current date. Production golden snapshots were not changed.
+
+Actual regression execution: **84,248 regional + 15,688 pilot identical comparisons**, baseline 2822a44, including production source-identity guards. A native device was not attached, so no new Android/TalkBack journey is claimed. `npm run apk -- --name MushroomApp-preview-seven-day-v1-1.apk` failed with **Unable to establish loopback connection**; no stale APK was copied.
+
+Readiness verdict: **safe reusable sampler and gated weekly evaluation, NOT ready for unconditional Map/Hotspot seven-day publication**. The two remaining decisions must precede a COMPLETE verdict:
+
+1. Explicitly approve/version one production individual-point soil policy across Razmere and cell-backed hotspot/detail paths, with isolated before/after input and score cases. Keep regional semantics separate if intentionally coarse; never disguise a golden change as unchanged behavior.
+2. Obtain validated date-aligned daily inputs for DST-crossing windows. A concrete route is cached/batched hourly precipitation, mean-temperature samples and ET₀ spanning required history + forecast, aggregated over true civil day boundaries. These variables are not requested by this patch, and their cache/version/network cost needs separate review. Then compare the corrected inputs with legacy Today/Tomorrow explicitly rather than changing old values silently.
+
+Until then, exact soil instants are available where supported, but unresolved equivalence produces an honest unavailable result. No map button or new feature is shipped as part of this consistency work.

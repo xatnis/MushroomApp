@@ -4,6 +4,7 @@ import { assessHeatmapWeather } from './heatmap/assessment';
 import { calculateMushroomWeatherScore, MUSHROOM_SCORE_V1_CONFIG, BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG } from './mushroomWeather';
 import { buildHistoricalWeatherSummaryForTarget, shiftLocalDate } from '../services/weather';
 import { validWeatherDate, WEATHER_TIMEZONE, type WeatherSeriesInput } from './weatherSeries';
+import type { DailyPeriod, SoilSampleMetadata } from './soilSampling';
 
 const configs = { generic: MUSHROOM_SCORE_V1_CONFIG, boletusEdulis: BOLETUS_EDULIS_SCORE_V1_CONFIG,
   cantharellusCibarius: CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, lactariusDeliciosus: LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG };
@@ -18,6 +19,10 @@ export interface SevenDaySnapshot {
   forecastIssuedAt: null; snapshotId: string; expiresAt: number; stale: boolean; blockers: string[];
   assembledAt: string;
   dateBlockers?: Record<string, string[]>;
+  legacyTomorrowSoil?: HeatmapSoilPoint;
+  canonicalCurrentSoil?: HeatmapSoilPoint;
+  soilSampling?: Record<string, SoilSampleMetadata>;
+  dailyPeriods: Record<string, DailyPeriod>;
 }
 export interface SevenDayResult {
   targetLocalDate: string; horizonDay: number; profileId: MushroomWeatherProfileId;
@@ -28,6 +33,7 @@ export interface SevenDayResult {
   assembledAt: string;
   latitude: number; longitude: number; modelledHistoryDays: number;
   soilTime?: string; targetSoil?: HeatmapSoilPoint; targetWeather?: DailyWeatherPoint;
+  soilSampling?: SoilSampleMetadata;
   provenance: Array<{ date: string; source: WeatherSeriesInput['source']; retrievedAt: string | null }>;
 }
 const finite = (n: unknown): n is number => typeof n === 'number' && Number.isFinite(n);
@@ -61,6 +67,9 @@ export function buildWeatherInputsForTargetDate(snapshot: SevenDaySnapshot, targ
   const missing = [...snapshot.blockers, ...(snapshot.dateBlockers?.[target] ?? [])];
   if (!soil?.time?.startsWith(target + 'T')) missing.push('Čas talne vlage ne pripada ciljnemu dnevu.');
   const required = SEVEN_DAY_REQUIREMENTS[profile];
+  const requiredStart = shiftLocalDate(target, -Math.max(...required.rain, required.temperature, 7));
+  if (history.some(entry => entry.day.date >= requiredStart && !snapshot.dailyPeriods[entry.day.date]?.compatible))
+    missing.push('Dnevna UTC/DST okna ponudnika niso potrjena kot popolni lokalni koledarski dnevi; primerljive ocene ne prikazujemo.');
   for (const days of required.rain) if (historical[`rain${days}dMm`] == null) missing.push(`Manjkajo popolne ${days}-dnevne padavine.`);
   if (historical[`avgTemp${required.temperature}dC`] == null) missing.push(`Manjka popolna ${required.temperature}-dnevna povprečna temperatura.`);
   if (historical.rain7dMm == null || historical.evapotranspiration7dMm == null) missing.push('Manjkajo 7-dnevni podatki za bilanco izsuševanja (padavine in ET₀).');
@@ -92,9 +101,17 @@ export function evaluateSevenDayConditions(snapshot: SevenDaySnapshot, profile: 
     if (horizonDay <= 1) {
       const source: HeatmapWeatherCellSource = { id: snapshot.snapshotId, latitude: snapshot.latitude, longitude: snapshot.longitude,
         baseLocalDate: snapshot.baseLocalDate, days: snapshot.daily.map(e => e.day).filter(day => day.date <= shiftLocalDate(snapshot.baseLocalDate, 1)),
-        currentSoil: snapshot.legacyCurrentSoil, tomorrowMorningSoil: snapshot.soilByDate[shiftLocalDate(snapshot.baseLocalDate, 1)],
+        currentSoil: snapshot.legacyCurrentSoil, tomorrowMorningSoil: snapshot.legacyTomorrowSoil,
         fetchedAt: snapshot.today.updatedAt, stale: snapshot.stale, errors: snapshot.today.errors };
       const legacy = assessHeatmapWeather(source, profile, horizonDay === 0 ? 'today' : 'tomorrow');
+      const legacySoil = horizonDay === 0 ? snapshot.legacyCurrentSoil : snapshot.legacyTomorrowSoil;
+      const alignedSoil = snapshot.soilByDate[target];
+      const pointSoil = snapshot.canonicalCurrentSoil;
+      if (!horizonDay && (pointSoil?.time !== alignedSoil?.time || pointSoil?.soilMoisture0To7Cm !== alignedSoil?.soilMoisture0To7Cm || pointSoil?.soilMoisture7To28Cm !== alignedSoil?.soilMoisture7To28Cm
+        || built.summary.current?.soilMoisture0To7Cm !== alignedSoil?.soilMoisture0To7Cm || built.summary.current?.soilMoisture7To28Cm !== alignedSoil?.soilMoisture7To28Cm))
+        missing.push('Today/Tomorrow point referenca in poravnani soil vzorec se ne ujemata; številčne ocene ne prikazujemo.');
+      if (legacySoil?.time !== alignedSoil?.time || legacySoil?.soilMoisture0To7Cm !== alignedSoil?.soilMoisture0To7Cm || legacySoil?.soilMoisture7To28Cm !== alignedSoil?.soilMoisture7To28Cm)
+        missing.push('Today/Tomorrow uporablja drug instant ali vrednosti talne vlage; številčni prikaz čaka na uskladitev produkcijske politike.');
       if (canonical.score !== legacy.score.score || JSON.stringify(canonical.components) !== JSON.stringify(legacy.score.components))
         missing.push('Date-aligned vhodi niso enaki obstoječi Today/Tomorrow oceni; številčni prikaz je ustavljen.');
     }
@@ -104,7 +121,7 @@ export function evaluateSevenDayConditions(snapshot: SevenDaySnapshot, profile: 
       if (built.summary.historical?.[`avgTemp${required.temperature}dC`] !== built.historical[`avgTemp${required.temperature}dC`]) missing.push('Današnji temperaturni snapshot ni poravnan z lokalnim datumom.');
     }
     const available = missing.length === 0;
-    const componentsVerified = !snapshot.blockers.length && !missing.some(reason => reason.includes('Today/Tomorrow') || reason.includes('snapshot ni poravnan'));
+    const componentsVerified = !snapshot.blockers.length && !missing.some(reason => reason.includes('Today/Tomorrow') || reason.includes('snapshot ni poravnan') || reason.includes('Dnevna UTC/DST'));
     return { targetLocalDate: target, horizonDay, profileId: profile, score: available ? canonical.score! : null,
       label: available ? canonical.label : null, status: available ? snapshot.stale ? 'stale' : 'ready'
         : snapshot.today.errors.forecast || snapshot.today.errors.historical ? 'error' : 'insufficient_data',
@@ -112,6 +129,7 @@ export function evaluateSevenDayConditions(snapshot: SevenDaySnapshot, profile: 
       forecastRetrievedAt: snapshot.forecastRetrievedAt, forecastIssuedAt: null, latitude: snapshot.latitude, longitude: snapshot.longitude,
       assembledAt: snapshot.assembledAt,
       soilTime: snapshot.soilByDate[target]?.time,
+      soilSampling: snapshot.soilSampling?.[target],
       targetSoil: cleanSoil(snapshot.soilByDate[target], target),
       targetWeather: snapshot.daily.find(e => e.day.date === target && e.source === 'forecast')?.day
         ? cleanDay(snapshot.daily.find(e => e.day.date === target && e.source === 'forecast')!.day) : undefined,

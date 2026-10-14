@@ -74,6 +74,14 @@ strictEqual(forecastSoilAt({ hourly: { time: soil.hourly.time } }, '2026-10-14',
 strictEqual(forecastSoilAt({ ...soil, hourly_units: { soil_moisture_0_to_7cm: '%' } }, '2026-10-14', '2026-10-14T09:00')!.soilMoisture0To7Cm, undefined);
 
 async function transport() {
+  // This scenario's canonical Today builder intentionally uses the host calendar. Freeze its audited date,
+  // rather than make a 2026-10-13 fixture fail on the developer's current calendar date.
+  const RealDate = globalThis.Date;
+  class FixtureDate extends RealDate {
+    constructor(value?: string | number) { super(value === undefined ? '2026-10-13T12:00:00Z' : value); }
+    static now() { return RealDate.parse('2026-10-13T12:00:00Z'); }
+  }
+  globalThis.Date = FixtureDate as DateConstructor;
   const today = '2026-10-13', rows = new Map<string, any>(), fixture = sevenDayFixture(today);
   const db: any = { getFirstAsync: async (_: string, key: string) => rows.get(key), runAsync: async (_: string, key: string, payload: string, fetchedAt: string, expiresAt: string) => rows.set(key, { payload, fetchedAt, expiresAt }) };
   let http = 0, fail = false;
@@ -117,7 +125,9 @@ async function transport() {
     ok(evaluateSevenDayConditions(alias, 'generic').every(r => r.score != null));
     const dst = await variant(() => {}, '2026-10-24');
     strictEqual(dst.baseLocalDate, '2026-10-24');
-    ok(evaluateSevenDayConditions(dst, 'generic').slice(1).every(r => r.score === null && r.missing.some(s => s.includes('UTC/DST'))));
+    strictEqual(dst.soilSampling?.['2026-10-25'].providerTime, '2026-10-25T10:00');
+    strictEqual(dst.soilByDate['2026-10-25'].time, '2026-10-25T09:00', 'correct civil morning is now available even across the provider DST offset');
+    ok(evaluateSevenDayConditions(dst, 'generic').slice(1).every(r => r.score === null && r.missing.some(s => s.includes('UTC/DST') || s.includes('Today/Tomorrow'))));
     const incompatible = await variant(data => { delete data.hourly.soil_moisture_0_to_7cm; delete data.hourly.soil_moisture_7_to_28cm; data.hourly.soil_moisture_0_to_1cm = data.hourly.time.map(() => .3); });
     ok(evaluateSevenDayConditions(incompatible, 'generic').every(r => r.score == null));
     const missingEt0 = await variant(data => data.daily.et0_fao_evapotranspiration = data.daily.time.map(() => null));
@@ -140,7 +150,7 @@ async function transport() {
     const stale = await loadSevenDaySnapshot({ ...db } as any, fixture, today); ok(stale.stale);
     ok(evaluateSevenDayConditions(stale, 'generic').every(r => r.status === 'stale')); strictEqual(http, 4);
     console.log('Seven-day mock HTTP: cold 2 existing endpoint requests, concurrent extra 0, warm memory/disk extra 0, 4 profiles/day selections extra 0; stale offline attempted 2 refreshes.');
-  } finally { globalThis.fetch = original; }
+  } finally { globalThis.fetch = original; globalThis.Date = RealDate; }
 }
 for (const path of ['src/domain/mushroomWeather.ts','src/domain/heatmap/assessment.ts','src/services/weather.ts','src/services/weatherGraphs.ts',
   'src/components/WeatherGraphs.tsx','src/screens/MapScreen.tsx','src/domain/hotspotRanking.ts','src/navigation/AppNavigator.tsx'])

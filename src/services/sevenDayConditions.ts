@@ -5,6 +5,7 @@ import type { MushroomWeatherSummary } from '../domain/types';
 import type { WeatherSeriesInput } from '../domain/weatherSeries';
 import { WEATHER_TIMEZONE, validWeatherDate } from '../domain/weatherSeries';
 import { getMushroomWeatherSummary, mapDailyWeather, shiftLocalDate } from './weather';
+import { sampleNativeSoil, providerDailyPeriod, providerInstant, ljubljanaClock } from '../domain/soilSampling';
 
 interface CacheRow { payload: string; fetchedAt: string; expiresAt: string }
 interface Location { latitude: number; longitude: number }
@@ -82,7 +83,7 @@ export function forecastSoilAt(data: RawWeather | undefined, date: string, prefe
 export function loadSevenDaySnapshot(db: SQLiteDatabase, location: Location, today: string, options: { requestTimeoutMs?: number; seedUpdatedAt?: string } = {}): Promise<SevenDaySnapshot> {
   if (!validWeatherDate(today) || !Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)
     || Math.abs(location.latitude) > 90 || Math.abs(location.longitude) > 180) return Promise.reject(new Error('Neveljavna lokacija ali datum.'));
-  const key = `${location.latitude}:${location.longitude}:${today}:native-soil-09-v1`;
+  const key = `${location.latitude}:${location.longitude}:${today}:native-soil-instant-v1-1`;
   let entries = cache.get(db); if (!entries) { entries = new Map(); cache.set(db, entries); }
   const existing = entries.get(key);
   if (existing && existing.expiresAt > Date.now() && !existing.stale
@@ -107,6 +108,7 @@ export function loadSevenDaySnapshot(db: SQLiteDatabase, location: Location, tod
     if (rowTimes.at(-1) !== canonicalToday.updatedAt) blockers.push('Snapshot se je med branjem spremenil; osveži prikaz.');
     if (!matchesCanonicalVintage(canonicalToday, archive, forecast, today)) blockers.push('Vremenski podatki ne pripadajo istemu snapshotu kot današnja ocena; osveži prikaz.');
     const daily: WeatherSeriesInput[] = [];
+    const dailyPeriods: SevenDaySnapshot['dailyPeriods'] = {};
     for (const [data, row, endpoint] of [[archive, archiveRow, 'archive'], [forecast, forecastRow, 'forecast']] as const) {
       if (!data || !Array.isArray(data.daily?.time)) continue;
       const badRainUnits = data.daily_units?.precipitation_sum && data.daily_units.precipitation_sum !== 'mm';
@@ -114,6 +116,7 @@ export function loadSevenDaySnapshot(db: SQLiteDatabase, location: Location, tod
       const badEt0Units = data.daily_units?.et0_fao_evapotranspiration && data.daily_units.et0_fao_evapotranspiration !== 'mm';
       for (const point of mapDailyWeather(data, endpoint === 'archive' ? 'historical' : 'forecast')) {
         if (!validWeatherDate(point.date) || point.date < shiftLocalDate(today, -60) || point.date > shiftLocalDate(today, 6)) continue;
+        dailyPeriods[point.date] = providerDailyPeriod(point.date, data.utc_offset_seconds);
         daily.push({ day: { ...point, kind: point.date < today ? 'historical' : 'forecast',
           precipitationMm: badRainUnits ? undefined : point.precipitationMm,
           temperatureMeanC: badTempUnits ? undefined : point.temperatureMeanC,
@@ -123,32 +126,35 @@ export function loadSevenDaySnapshot(db: SQLiteDatabase, location: Location, tod
       }
     }
     const soilByDate: SevenDaySnapshot['soilByDate'] = {};
+    const soilSampling: NonNullable<SevenDaySnapshot['soilSampling']> = {};
     const dateBlockers: NonNullable<SevenDaySnapshot['dateBlockers']> = {};
-    // Today uses the canonical current/floor-hour observation; each future date uses its OWN modelled 09:00 point.
-    const actualCurrentSoil = forecastSoilAt(forecast, today, forecast?.current?.time ?? `${today}T00:00`, false);
-    if (canonicalToday.current?.time && actualCurrentSoil?.time) soilByDate[today] = { time: actualCurrentSoil.time,
-      soilMoisture0To7Cm: !forecast?.hourly_units?.soil_moisture_0_to_7cm || forecast.hourly_units.soil_moisture_0_to_7cm === 'm³/m³' ? canonicalToday.current.soilMoisture0To7Cm : undefined,
-      soilMoisture7To28Cm: !forecast?.hourly_units?.soil_moisture_7_to_28cm || forecast.hourly_units.soil_moisture_7_to_28cm === 'm³/m³' ? canonicalToday.current.soilMoisture7To28Cm : undefined };
-    for (let index = 1; index < 7; index++) {
+    const retrieval = forecastRow && Number.isFinite(Date.parse(forecastRow.fetchedAt)) ? forecastRow.fetchedAt : null;
+    // One explicit native-depth contract. No local/host parsing of provider wall-clock strings.
+    for (let index = 0; index < 7; index++) {
       const date = shiftLocalDate(today, index);
-      if (forecast?.utc_offset_seconds !== weatherUtcOffsetAtDate(date)) {
-        dateBlockers[date] = ['Jutranji čas talne vlage ni potrjen v lokalnem času (UTC/DST odmik); primerljive številčne ocene ne prikazujemo.'];
-        continue;
-      }
-      const soil = forecastSoilAt(forecast, date, `${date}T09:00`);
-      if (soil?.time === `${date}T09:00`) soilByDate[date] = soil;
-      else dateBlockers[date] = ['Manjka napovedni vzorec talne vlage ob 09:00 za ta datum.'];
+      const sample = sampleNativeSoil(forecast, date, index ? { kind: 'morning' } : { kind: 'current', providerReference: forecast?.current?.time ?? '' }, retrieval);
+      if (sample.point) soilByDate[date] = sample.point;
+      if (sample.metadata) soilSampling[date] = sample.metadata;
+      if (sample.missing.length) dateBlockers[date] = sample.missing;
     }
+    // Independent legacy reference: preserve its raw chosen index and expose the REAL local instant.
+    const normalizeLegacy = (point: HeatmapSoilPoint | undefined): HeatmapSoilPoint | undefined => {
+      const instant = point && providerInstant(point.time, forecast?.utc_offset_seconds);
+      return point && instant != null ? { ...point, time: ljubljanaClock(instant).slice(0, 16) } : undefined;
+    };
     // A source failure must not be covered by an unrelated old cache payload.
     if (canonicalToday.errors.historical) for (let i = daily.length - 1; i >= 0; i--) if (daily[i].source === 'archive') daily.splice(i, 1);
     if (canonicalToday.errors.forecast) {
       for (let i = daily.length - 1; i >= 0; i--) if (daily[i].source !== 'archive') daily.splice(i, 1);
       for (const date of Object.keys(soilByDate)) delete soilByDate[date];
+      for (const date of Object.keys(soilSampling)) delete soilSampling[date];
       blockers.push('Nedavna zgodovina in napoved trenutno nista na voljo.');
     }
     const snapshot: SevenDaySnapshot = freeze(JSON.parse(JSON.stringify({ baseLocalDate: today, latitude: location.latitude, longitude: location.longitude, timezone: WEATHER_TIMEZONE,
-      today: canonicalToday, daily, soilByDate,
-      legacyCurrentSoil: forecastSoilAt(forecast, today, forecast?.current?.time ?? `${today}T00:00`),
+      today: canonicalToday, daily, dailyPeriods, soilByDate, soilSampling,
+      legacyCurrentSoil: normalizeLegacy(forecastSoilAt(forecast, today, forecast?.current?.time ?? `${today}T00:00`)),
+      canonicalCurrentSoil: normalizeLegacy(forecastSoilAt(forecast, today, forecast?.current?.time ?? `${today}T00:00`, false)),
+      legacyTomorrowSoil: normalizeLegacy(forecastSoilAt(forecast, shiftLocalDate(today, 1), `${shiftLocalDate(today, 1)}T09:00`)),
       forecastRetrievedAt: forecastRow && Number.isFinite(Date.parse(forecastRow.fetchedAt)) ? forecastRow.fetchedAt : null,
       archiveRetrievedAt: archiveRow && Number.isFinite(Date.parse(archiveRow.fetchedAt)) ? archiveRow.fetchedAt : null, forecastIssuedAt: null,
       snapshotId: `${key}:${forecastRow?.fetchedAt ?? 'missing'}:${archiveRow?.fetchedAt ?? 'missing'}`,
