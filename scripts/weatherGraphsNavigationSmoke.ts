@@ -276,7 +276,7 @@ ok(conditions.includes('introCard: { padding: spacing.md, gap: spacing.sm }')); 
 ok(conditions.indexOf('<WeatherGraphsEntry') > conditions.indexOf('<Card style={styles.suitabilityCard}>'));
 for (const path of ['src/services/weather.ts', 'src/services/weatherGraphs.ts', 'src/domain/weatherSeries.ts', 'src/domain/mushroomWeather.ts',
   'src/screens/MapScreen.tsx', 'src/services/heatmap/useLocationConditions.ts', 'src/services/heatmap/useHeatmapVisuals.ts', 'src/domain/hotspotRanking.ts', 'src/domain/heatmap/controlsState.ts', 'src/navigation/AppNavigator.tsx'])
-  strictEqual((path.endsWith('MapScreen.tsx') ? withoutConditionsListEntry(readFileSync(path, 'utf8')) : readFileSync(path, 'utf8')).replace(/\r\n/g, '\n'), execFileSync('git', ['show', `9f3257c:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), `V4 UI-only: ${path}`);
+  strictEqual((path.endsWith('MapScreen.tsx') ? withoutConditionsListEntry(readFileSync(path, 'utf8')) : readFileSync(path, 'utf8')).replace('export async function cachedFetch<T>', 'async function cachedFetch<T>').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `9f3257c:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), `V4 UI-only: ${path}`);
 // Anchor implementation is intentionally byte-for-byte unchanged from physically verified V4.
 function anchorStatements(source: string) {
   const ast = ts.createSourceFile('view.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);

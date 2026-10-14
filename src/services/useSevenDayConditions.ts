@@ -41,8 +41,9 @@ export function useSevenDayConditions(db: SQLiteDatabase, location: { latitude: 
     void loadSevenDaySnapshot(db, location, today, { seedUpdatedAt: seed?.updatedAt }).then(snapshot => {
       if (!active || current.current !== key) return;
       setLoaded({ key, snapshot }); setFailure(undefined);
-      // Keep Razmere's Today on this same canonical weather snapshot, never a different forecast vintage.
-      if (!snapshot.blockers.length) onLoaded.current(snapshot.today);
+      // Only the legacy-compatible contract may synchronize Razmere's production Today.
+      // Civil-hourly candidate inputs must not silently migrate that weather contract.
+      if (!snapshot.blockers.length && !snapshot.inputContract) onLoaded.current(snapshot.today);
     }).catch(cause => { if (active && current.current === key) setFailure({ key, message: cause instanceof Error ? cause.message : 'Napovedi trenutno ni mogoče pridobiti.' }); });
     return () => { active = false; };
     // Profile and day selection are local calculations, not acquisition dependencies.

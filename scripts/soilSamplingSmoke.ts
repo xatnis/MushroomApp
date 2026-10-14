@@ -115,5 +115,5 @@ for (const profile of Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherP
 }
 console.log('Audited 10:45 sampling-policy difference (synthetic, NOT new production scores)', parity);
 for (const file of ['src/services/weather.ts','src/domain/mushroomWeather.ts','src/domain/locationConditions.ts','src/domain/heatmap/assessment.ts','src/services/heatmap/pilotHeatmap.ts','src/screens/MapScreen.tsx','src/components/SevenDayConditionsView.tsx'])
-  strictEqual(readFileSync(file,'utf8').replace(/\r\n/g,'\n'), execFileSync('git',['show',`4222eb0:${file}`],{encoding:'utf8'}).replace(/\r\n/g,'\n'), file);
+  strictEqual(readFileSync(file,'utf8').replace('export async function cachedFetch<T>', 'async function cachedFetch<T>').replace(/\r\n/g,'\n'), execFileSync('git',['show',`4222eb0:${file}`],{encoding:'utf8'}).replace(/\r\n/g,'\n'), file);
 console.log('PASS native two-layer soil/current floor/exact future local09, provenance, 23/25h, nonexistent/repeated clocks, response-fixed offset and host independence, all-profile Today/Tomorrow full-input/windows/components/metadata parity, stronger mismatch gates, incompatible daily bins/unknown metadata, no production/heatmap/UI/source changes.');

@@ -146,6 +146,7 @@ function regressionTests() {
     'src/services/weather.ts', 'src/services/heatmap/regionalWeather.ts', 'src/domain/heatmap/lod.ts', 'src/domain/heatmap/visual.ts']) {
     const current = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
     const productionDefault = file !== 'src/services/weather.ts' ? current : current
+      .replace('export async function cachedFetch<T>', 'async function cachedFetch<T>')
       .replace('  /** Optional calendar anchor for read-only daily charts; scorer callers retain their existing default. */\n  baseLocalDate?: string;\n', '')
       .replace('export const mapDailyWeather', 'const mapDailyWeather')
       .replace('const today = options.baseLocalDate ?? dateAtOffset(0);', 'const today = dateAtOffset(0);')

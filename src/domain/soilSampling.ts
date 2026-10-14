@@ -11,6 +11,7 @@ export interface SoilSampleMetadata {
   contract: 'point-asof-or-local09-v1'; providerTime: string; instantUtc: string; localTime: string;
   timezone: typeof WEATHER_TIMEZONE; providerOffsetSeconds: number;
   mode: 'currentModelled' | 'forecast'; retrievedAt: string | null;
+  providerEpochSeconds?: number; localOffsetSeconds?: number; depthsCm?: ['0–7', '7–28']; units?: 'm³/m³'; source?: 'open-meteo-forecast-hourly';
 }
 export interface DailyPeriod {
   startUtc: string | null; endUtc: string | null; compatible: boolean;

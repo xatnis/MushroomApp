@@ -156,3 +156,90 @@ Readiness verdict: **safe reusable sampler and gated weekly evaluation, NOT read
 2. Obtain validated date-aligned daily inputs for DST-crossing windows. A concrete route is cached/batched hourly precipitation, mean-temperature samples and ET₀ spanning required history + forecast, aggregated over true civil day boundaries. These variables are not requested by this patch, and their cache/version/network cost needs separate review. Then compare the corrected inputs with legacy Today/Tomorrow explicitly rather than changing old values silently.
 
 Until then, exact soil instants are available where supported, but unresolved equivalence produces an honest unavailable result. No map button or new feature is shipped as part of this consistency work.
+
+## V1.2 — Canonical Weather Consistency
+
+Status: **PARTIAL**. Civil-day hourly assembly is implemented and validated. Production point-policy migration is deliberately **not** performed. Today/Tomorrow publication still requires strict independent legacy input/result parity. This section supersedes V1.1's two-request/current-snapshot availability findings; older sections describe the earlier implementation.
+
+### Audited production contracts and impact
+
+| Surface | Today soil | Tomorrow soil | Weather/date contract |
+| --- | --- | --- | --- |
+| Razmere | Latest response hour not later than provider `current.time` | No separate Razmere Tomorrow evaluator | Existing hybrid daily arrays; default historical builder uses host calendar |
+| Hotspot detail/ranking/Top 3/badges/popups | Nearest provider hour (ties retain earlier array entry) | Nearest provider-labelled 09:00 | Shared cell-backed regional weather assessment; prepared habitat can intentionally resolve to a weather-cell centre rather than exact saved coordinates |
+| Selected map-point/regional/pilot | Same existing nearest-hour batch helper | Same provider-labelled 09:00 | Existing regional daily inputs and habitat/LOD semantics, unchanged |
+| Seven-day V1.2 | As-of provider-current UTC instant, unique floor hour younger than one hour | Exact **09:00 Europe/Ljubljana**, also for +2…+6 | Validated Unix hourly inputs aggregated into true civil dates |
+
+At 10:45 the first contract can use 10:00 and the second 11:00. Both are **modelled** soil, not on-site observations. The future hour is nevertheless not the same current/as-of input. Sharing the batch helper with regional/cell-backed scoring means changing it globally would change existing surface contracts; introducing another hidden point scorer would also break consistency. No such change is shipped.
+
+Synthetic impact audit (`pointSamplingAuditSmoke`): 24 hours × minutes 00/15/30/45 × four profiles = **384 cases**, **92 different sample instants**, **40 different rounded totals**, maximum **1 point**, for its documented mild hourly native-layer gradient. V1.1's separate 10:45 fixture retains differences of **2/2/2/3 points** for Generic/Boletus/Cantharellus/Lactarius. These are **fixture diagnostics, not a population estimate**. Actual changed legacy production results in this patch: **0**. No golden snapshot or scorer weight is changed.
+
+### Civil-day assembly and interval validation
+
+`weatherIntervals.ts` defines `open-meteo-utc-hourly-civil-v1`. Midnight boundaries are resolved independently through IANA Europe/Ljubljana and calendar-date arithmetic. No boundary is calculated as previous midnight +86,400 seconds.
+
+- **Precipitation:** API hourly accumulation over the preceding hour. A day sums interval-end timestamps in `(startUtc, endUtc]`; the value at the start belongs to the previous day. Rain, showers and snow are included, in mm.
+- **ET₀:** preceding-hour reference-evapotranspiration accumulation, with the same endpoint rule, in mm. It is FAO reference ET₀, not measured forest evapotranspiration.
+- **Temperature:** instantaneous hourly model samples in `[startUtc, endUtc)`. Their arithmetic mean is the day's mean of equal-duration hourly samples; temperature is never summed as a physical daily total. Display min/max describe available hourly samples, not claimed sub-hour extrema.
+
+Provider semantics: [Forecast documentation](https://open-meteo.com/en/docs), [Historical API documentation](https://open-meteo.com/en/docs/historical-weather-api). Open-Meteo may interpolate coarser model output to its hourly API resolution; these are modelled API-hourly values, not independent station observations. The app does not interpolate missing values itself. Native ECMWF [0–7/7–28 cm variables](https://open-meteo.com/en/docs/ecmwf-api) are requested by their exact names; absent/wrong-unit layers remain unavailable. No substitution from 0–1/3–9/9–27 cm is introduced.
+
+The indexed validator checks UTC Unix seconds, hour alignment, ordering, unique expected instants, units, response contract and retrieval timestamp. A full day expects **23, 24 or 25** elapsed hourly intervals as appropriate. Duplicate/overlapping/half-hour clocks, gaps, unequal variable-array lengths, null values, invalid units and malformed payloads never become zero. Each variable can fail independently; window requirements then determine profile availability. Structural daily compatibility and per-variable coverage/issues are retained in the frozen snapshot.
+
+DST fixtures verify:
+
+| Date | Civil UTC start → end | Hours | Morning soil instant |
+| --- | --- | --- | --- |
+| 2026-03-29 | 2026-03-28 23:00Z → 2026-03-29 22:00Z | 23 | 07:00Z = local 09:00 |
+| 2026-10-25 | 2026-10-24 22:00Z → 2026-10-25 23:00Z | 25 | 08:00Z = local 09:00 |
+
+Spring's nonexistent 02:00 is not manufactured. Autumn's two local 02:00 samples have distinct UTC epochs and are both included. The existing resolver continues to return both ambiguous instants / no nonexistent instant rather than guessing. Soil metadata records original provider epoch, UTC instant, local clock/offset, both native depths, m³/m³, source and retrieval time.
+
+For current/as-of extraction the provider-current epoch must also be representable and not later than the response retrieval timestamp. An invalid or future-labelled current instant is rejected; it cannot authorize a future soil hour as current. Missing or incompatible native layers remain separately guarded for every future date.
+
+### Windows, source seam and frozen vintage
+
+The unchanged canonical window convention remains **[target−N calendar dates, target)**:
+
+| Profile | Rain windows | Temperature | Other required weekly inputs |
+| --- | --- | --- | --- |
+| Splošno | D7/D14/D30 | T20 | Both native soil depths; D7 and ET₀7 drying balance |
+| Jesenski goban | D26 | T20 | Same soil/drying requirements |
+| Navadna lisička | D7/D30 | T14 | Same soil/drying requirements |
+| Užitna sirovka | D14/D60 | T20 | Same soil/drying requirements |
+
+One archive response covers the older portion of D60 and one forecast response covers recent history plus all future dates, soil and current metadata. Whole UTC dates include the final midnight accumulation endpoint. Each civil date owns **one** endpoint source: dates before base−7 use archive, base−7…yesterday recent forecast history, today onward forecast. The overlap exists only in fetched raw margins; it is not double-counted or used to fill another vintage's gaps. No per-day request, D60→D30 truncation, target-day lookback inclusion or post-target input leakage is introduced.
+
+All seven scorer inputs use this one hourly forecast response. `legacyToday`/`legacyDaily` are separate **diagnostic references**, never blended into candidate weather inputs. The acquisition hook cannot pass a civil-hourly candidate to the main Razmere `onSnapshot` callback: opening the weekly view therefore cannot silently migrate Today's production weather/cache. Production services remain unchanged apart from exporting the existing `cachedFetch` function for reuse; its body, TTL, SQL schema, stale fallback and dedupe are untouched.
+
+### Parity and availability gate
+
+Compatible deterministic fixtures prove all four profiles × seven dates across ordinary, spring/autumn, leap and year-boundary cases. Parity checks compare unrounded rain windows, T14/T20, D7/ET₀7, both soil values and actual sample instants, component arrays/weights, canonical total, and the point Today explanation. Legacy Tomorrow is still derived independently from legacy daily/soil inputs. Saturated factors or equal rounded totals cannot conceal different inputs. Day +2…+6 invoke the unchanged production scorers on validated target-date inputs.
+
+Live public test coordinate 46.5/14.5, **2026-10-14**, returned:
+
+| Profiles | Day 0/+1 | Day +2…+6 |
+| --- | --- | --- |
+| All four | Unavailable: strict legacy-input parity fails | Five ready results per profile (20 total) |
+
+For that run, legacy T20 **6.769999999999999 °C** vs hourly-civil **6.773125 °C**, T14 **6.721428571428572** vs **6.728571428571428 °C**, and ET₀7 **7.92** vs **7.999999999999999 mm** demonstrate actual source/aggregation differences even without a DST transition in the short window. D60 also differs at floating-point accumulation precision (**251.10000000000002** vs **251.1 mm**). All four rounded Today diagnostics happened to match (69/50/66/88), but inputs/components did not; the scores are correctly **not published**. No rounding hack or UI override is used to assert parity.
+
+These live scores are transient provider results, not golden fixtures or evidence that every location/day/model has sufficient data. Retained gates cover missing/native-incompatible soil, incomplete rain/temperature/ET₀/D60, invalid hourly source/units/intervals, unknown timestamps, failed source-vintage validation and independent Today/Tomorrow parity. A daily-interval gate is satisfied only by proven civil-hourly coverage, not removed universally. Invalid source requests are errors; missing/partial model inputs are insufficient data; usable expired fallback remains explicitly stale. Missing values are never fake 0 or renormalized full-score substitutes.
+
+### Cache, requests and payload cost
+
+The existing 30-minute SQL cache/timeout/in-flight dedupe is reused. New exact-coordinate keys identify endpoint, civil UTC range/base date, full variable set, GMT/Unix/hourly resolution and interval-contract version. Derived memory keys are versioned `civil-hourly-point-v1-2`, bounded to eight snapshots per database, frozen recursively and invalidated by source freshness/base date or changed legacy seed. Fresh warm reopen reuses memory or disk. Old daily caches are retained solely for unchanged production/parity references; they cannot satisfy a new hourly key.
+
+Measured mocked **and live** cold cost: **4 total requests** (two existing legacy references + two additional hourly sources). Concurrent duplicate adds **0**; warm memory/disk reopen adds **0**; date/profile/detail/scroll selection adds **0**. Offline expired rows attempt refresh, then visibly stale fallback; no valid cache means no invented weekly score.
+
+The live hourly payloads were **1,296 archive hours / 28,410 UTF-8 JSON bytes** and **360 forecast hours / 12,392 bytes**, total **40,802 bytes additional decoded JSON**, not compressed wire size. Payloads cover UTC margins and the necessary D60 history; they are not fetched separately for each target or profile. No private test locations/raw payload files are committed. Location/profile generation guards, local midnight/resume handling, SQLite visit schemas, privacy and MapLibre/GeoJSON/LOD remain unchanged.
+
+### Verification and readiness
+
+New `weatherIntervalsSmoke` and `pointSamplingAuditSmoke` cover endpoint semantics, true 23/25-hour days, repeated/missing clocks, zero/null, invalid/duplicate/overlapping/gapped/unequal-length input, independent variables, full raw-window/component parity, no future leakage, native depth metadata, partial/offline/stale behavior and warm/concurrent request counts. Existing seven-day transport tests now provide realistic UTC hourly fixtures and assert the actual four-request cold cost. Hook tests explicitly prohibit replacing main Today with a new hourly candidate. Source-identity tests permit **only** the new `export` keyword on `cachedFetch`; their old scorer/regional golden baselines are not regenerated.
+
+**Map integration verdict: not ready for unconditional seven-numeric-day publication.** The validated builder can be reused only with all availability gates intact. A complete cross-surface migration needs an explicit versioned decision for individual-point as-of soil sampling and civil-hourly weather aggregates, isolated before/after production input/score tests, cache-policy migration and a decision about intentionally coarser regional/cell/habitat contracts. No map UI is implemented here. Today/Tomorrow discrepancies are a real remaining integration blocker, not a provider incapability that can be solved by disabling checks.
+
+Android preview command: `npm run apk -- --name MushroomApp-preview-seven-day-v1-2.apk`. This environment failed with **Unable to establish loopback connection**; no old APK was substituted. No Android device was attached, so native/TalkBack verification remains separate.
+
+Executed on 2026-10-14: TypeScript and **28 deterministic suites passed**: soilSampling, sevenDayConditions, sevenDayUi, weatherIntervals, pointSamplingAudit, conditionsLoading, conditionsAdvanced, weatherGraphsDiscoverability, weatherGraphsNavigation, weatherGraphs, genericWeatherDetails, conditionsCard, screenSafeArea, locationAccuracy, hotspotConditions, hotspotConditionsUi, hotspotRanking, hotspotRankingUi, rankingControls, hotspotTopThree, hotspotHeatmapIntegration, hotspotOverlay, focusedHotspotMap, locationConditionsHook, bottomMapTabNavigation, heatmapNavigation, heatmapTransition and heatmapLod (each `scripts/*Smoke.ts`). The separate public `sevenDayLiveSmoke` probe completed successfully and exposed the real guarded Day 0/+1 differences above. **84,248 regional + 15,688 pilot comparisons were actually executed and remained identical** against baseline 2822a44. Expected offline/timeout fixture warnings are not failed tests. Initial development fixture/type failures were corrected before this final verification; no failed baseline was regenerated.

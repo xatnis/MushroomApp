@@ -6,6 +6,7 @@ import type { WeatherSeriesInput } from '../domain/weatherSeries';
 import { WEATHER_TIMEZONE, validWeatherDate } from '../domain/weatherSeries';
 import { getMushroomWeatherSummary, mapDailyWeather, shiftLocalDate } from './weather';
 import { sampleNativeSoil, providerDailyPeriod, providerInstant, ljubljanaClock } from '../domain/soilSampling';
+import { withCivilHourlyWeather } from './sevenDayHourlyWeather';
 
 interface CacheRow { payload: string; fetchedAt: string; expiresAt: string }
 interface Location { latitude: number; longitude: number }
@@ -83,11 +84,11 @@ export function forecastSoilAt(data: RawWeather | undefined, date: string, prefe
 export function loadSevenDaySnapshot(db: SQLiteDatabase, location: Location, today: string, options: { requestTimeoutMs?: number; seedUpdatedAt?: string } = {}): Promise<SevenDaySnapshot> {
   if (!validWeatherDate(today) || !Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)
     || Math.abs(location.latitude) > 90 || Math.abs(location.longitude) > 180) return Promise.reject(new Error('Neveljavna lokacija ali datum.'));
-  const key = `${location.latitude}:${location.longitude}:${today}:native-soil-instant-v1-1`;
+  const key = `${location.latitude}:${location.longitude}:${today}:civil-hourly-point-v1-2`;
   let entries = cache.get(db); if (!entries) { entries = new Map(); cache.set(db, entries); }
   const existing = entries.get(key);
   if (existing && existing.expiresAt > Date.now() && !existing.stale
-    && (!options.seedUpdatedAt || options.seedUpdatedAt === existing.today.updatedAt)) return Promise.resolve(existing);
+    && (!options.seedUpdatedAt || options.seedUpdatedAt === (existing.legacyToday ?? existing.today).updatedAt)) return Promise.resolve(existing);
   let requests = pending.get(db); if (!requests) { requests = new Map(); pending.set(db, requests); }
   const active = requests.get(key); if (active) return active;
   const task = (async () => {
@@ -150,7 +151,7 @@ export function loadSevenDaySnapshot(db: SQLiteDatabase, location: Location, tod
       for (const date of Object.keys(soilSampling)) delete soilSampling[date];
       blockers.push('Nedavna zgodovina in napoved trenutno nista na voljo.');
     }
-    const snapshot: SevenDaySnapshot = freeze(JSON.parse(JSON.stringify({ baseLocalDate: today, latitude: location.latitude, longitude: location.longitude, timezone: WEATHER_TIMEZONE,
+    const legacy: SevenDaySnapshot = { baseLocalDate: today, latitude: location.latitude, longitude: location.longitude, timezone: WEATHER_TIMEZONE,
       today: canonicalToday, daily, dailyPeriods, soilByDate, soilSampling,
       legacyCurrentSoil: normalizeLegacy(forecastSoilAt(forecast, today, forecast?.current?.time ?? `${today}T00:00`)),
       canonicalCurrentSoil: normalizeLegacy(forecastSoilAt(forecast, today, forecast?.current?.time ?? `${today}T00:00`, false)),
@@ -159,7 +160,8 @@ export function loadSevenDaySnapshot(db: SQLiteDatabase, location: Location, tod
       archiveRetrievedAt: archiveRow && Number.isFinite(Date.parse(archiveRow.fetchedAt)) ? archiveRow.fetchedAt : null, forecastIssuedAt: null,
       snapshotId: `${key}:${forecastRow?.fetchedAt ?? 'missing'}:${archiveRow?.fetchedAt ?? 'missing'}`,
       expiresAt: Math.min(...[archiveRow, forecastRow].map(r => r && Number.isFinite(Date.parse(r.expiresAt)) ? Date.parse(r.expiresAt) : 0)),
-      stale: canonicalToday.stale || daily.some(e => e.stale), blockers, dateBlockers, assembledAt: new Date().toISOString() })));
+      stale: canonicalToday.stale || daily.some(e => e.stale), blockers, dateBlockers, assembledAt: new Date().toISOString() };
+    const snapshot: SevenDaySnapshot = freeze(JSON.parse(JSON.stringify(await withCivilHourlyWeather(db, legacy, options.requestTimeoutMs))));
     entries!.set(key, snapshot);
     if (entries!.size > 8) entries!.delete(entries!.keys().next().value!);
     return snapshot;

@@ -5,10 +5,12 @@ import { calculateMushroomWeatherScore, MUSHROOM_WEATHER_PROFILES } from '../src
 import { assessHeatmapWeather } from '../src/domain/heatmap/assessment';
 import { buildWeatherInputsForTargetDate, evaluateSevenDayConditions, SEVEN_DAY_REQUIREMENTS } from '../src/domain/sevenDayConditions';
 import { loadSevenDaySnapshot, forecastSoilAt, weatherUtcOffsetAtDate, compatibleWeatherTimezone, matchesCanonicalVintage } from '../src/services/sevenDayConditions';
-import { shiftLocalDate } from '../src/services/weather';
+import { shiftLocalDate, getHeatmapWeatherBatch } from '../src/services/weather';
+import { HEATMAP_WEATHER_POLICY_VERSION } from '../src/domain/heatmap/config';
 import { weatherLocalDate } from '../src/domain/weatherSeries';
 import type { MushroomWeatherProfileId } from '../src/domain/types';
 import { sevenDayFixture } from './sevenDayFixture';
+import { hourlyWeatherFixture } from './sevenDayHourlyFixture';
 
 const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 for (const base of ['2026-10-13', '2024-02-28', '2024-02-29', '2026-03-28', '2026-10-24', '2026-12-29']) {
@@ -88,6 +90,7 @@ async function transport() {
   const original = globalThis.fetch;
   globalThis.fetch = (async (url: any) => {
     http++; if (fail) throw new Error('offline'); const forecast = String(url).includes('/v1/forecast');
+    if (String(url).includes('timeformat=unixtime')) return { ok: true, status: 200, json: async () => hourlyWeatherFixture(String(url), today) };
     const days = fixture.daily.filter(e => forecast ? e.day.date >= shiftLocalDate(today, -7) : e.day.date <= shiftLocalDate(today, -8)).map(e => e.day);
     const time = fixture.daily.flatMap(e => Array.from({ length: 24 }, (_, hour) => e.day.date + 'T' + String(hour).padStart(2, '0') + ':00'));
     const data = { timezone: 'Europe/Ljubljana', utc_offset_seconds: 7200, current: { time: today + 'T10:00', temperature_2m: 15 },
@@ -98,42 +101,53 @@ async function transport() {
   }) as any;
   try {
     const first = loadSevenDaySnapshot(db, fixture, today), second = loadSevenDaySnapshot(db, fixture, today); strictEqual(first, second);
-    const snapshot = await first; strictEqual(http, 2); ok(Object.isFrozen(snapshot) && Object.isFrozen(snapshot.daily));
+    const snapshot = await first; strictEqual(http, 4); ok(Object.isFrozen(snapshot) && Object.isFrozen(snapshot.daily));
     for (const profile of Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[]) ok(evaluateSevenDayConditions(snapshot, profile).every(r => r.score != null));
-    const warm = await loadSevenDaySnapshot(db, fixture, today); strictEqual(warm, snapshot); strictEqual(http, 2);
+    const warm = await loadSevenDaySnapshot(db, fixture, today); strictEqual(warm, snapshot); strictEqual(http, 4);
     // Reconstruct with a new database identity using the same existing canonical disk rows, not another request.
-    const diskDb = { ...db }; await loadSevenDaySnapshot(diskDb, fixture, today); strictEqual(http, 2);
+    const diskDb = { ...db }; await loadSevenDaySnapshot(diskDb, fixture, today); strictEqual(http, 4);
+    const cell = { id: 'same-point', latitude: fixture.latitude, longitude: fixture.longitude, projectedX: 0, projectedY: 0 };
+    const cellKey = `${cell.id}:${cell.latitude.toFixed(4)}:${cell.longitude.toFixed(4)}`;
+    rows.set(`heatmap-archive:${HEATMAP_WEATHER_POLICY_VERSION}:${shiftLocalDate(today, -60)}:${shiftLocalDate(today, -8)}:${cellKey}`,
+      [...rows.entries()].find(([key]) => key.startsWith('mushroom-archive'))![1]);
+    rows.set(`heatmap-forecast:${HEATMAP_WEATHER_POLICY_VERSION}:${today}:${cellKey}`,
+      [...rows.entries()].find(([key]) => key.startsWith('mushroom-forecast'))![1]);
+    const batch = await getHeatmapWeatherBatch(db, [cell], today);
+    strictEqual(http, 4, 'equivalent real batch adapter consumes seeded warm source, not another network pipeline');
+    for (const profile of Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[]) for (const day of ['today', 'tomorrow'] as const) {
+      const assessment = assessHeatmapWeather(batch.cells[cell.id], profile, day);
+      const result = evaluateSevenDayConditions(snapshot, profile)[day === 'today' ? 0 : 1];
+      const { days: _legacyDays, ...legacyWindows } = assessment.summary.historical!;
+      const { days: _newDays, ...newWindows } = result.inputs.historical!;
+      deepStrictEqual(newWindows, legacyWindows); strictEqual(result.inputs.current!.soilMoisture0To7Cm, assessment.summary.current!.soilMoisture0To7Cm);
+      strictEqual(result.inputs.current!.soilMoisture7To28Cm, assessment.summary.current!.soilMoisture7To28Cm);
+      deepStrictEqual(result.canonical.components, assessment.score.components); strictEqual(result.score, assessment.score.score);
+    }
     const stored = new Map([...rows].map(([key, row]) => [key, clone(row)]));
     const archive = JSON.parse([...stored].find(([key]) => key.includes('archive'))![1].payload);
     const forecast = JSON.parse([...stored].find(([key]) => key.includes('forecast'))![1].payload);
-    ok(matchesCanonicalVintage(snapshot.today, archive, forecast, today));
+    ok(matchesCanonicalVintage(snapshot.legacyToday!, archive, forecast, today));
     const changed = clone(forecast); changed.daily.precipitation_sum[changed.daily.time.length - 1] += 1;
-    ok(!matchesCanonicalVintage(snapshot.today, archive, changed, today), 'future source replacement detected even if the newest archive timestamp is unchanged');
-    const variant = async (modify: (data: any, key: string) => void, base = today) => {
+    ok(!matchesCanonicalVintage(snapshot.legacyToday!, archive, changed, today), 'future source replacement detected even if the newest archive timestamp is unchanged');
+    const variant = async (modify: (data: any, key: string) => void) => {
       const variantRows = new Map([...stored].map(([key, row]) => {
         const data = JSON.parse(row.payload);
-        if (base !== today) {
-          const shiftTime = (time: string) => shiftLocalDate(time.slice(0, 10), 11) + time.slice(10);
-          data.daily.time = data.daily.time.map(shiftTime); data.hourly.time = data.hourly.time.map(shiftTime); data.current.time = shiftTime(data.current.time);
-          key = key.replace('2026-08-14:2026-10-05', '2026-08-25:2026-10-16').replace(':2026-10-13', ':2026-10-24');
-        }
         modify(data, key); return [key, { ...row, payload: JSON.stringify(data) }] as const;
       }));
-      return loadSevenDaySnapshot({ getFirstAsync: async (_: string, key: string) => variantRows.get(key) } as any, fixture, base);
+      return loadSevenDaySnapshot({ getFirstAsync: async (_: string, key: string) => variantRows.get(key) } as any, fixture, today);
     };
-    const alias = await variant(data => data.timezone = 'Europe/Vienna');
+    const alias = await variant((data, key) => { if (!key.startsWith('seven-day-hourly')) data.timezone = 'Europe/Vienna'; });
     ok(evaluateSevenDayConditions(alias, 'generic').every(r => r.score != null));
-    const dst = await variant(() => {}, '2026-10-24');
-    strictEqual(dst.baseLocalDate, '2026-10-24');
-    strictEqual(dst.soilSampling?.['2026-10-25'].providerTime, '2026-10-25T10:00');
-    strictEqual(dst.soilByDate['2026-10-25'].time, '2026-10-25T09:00', 'correct civil morning is now available even across the provider DST offset');
-    ok(evaluateSevenDayConditions(dst, 'generic').slice(1).every(r => r.score === null && r.missing.some(s => s.includes('UTC/DST') || s.includes('Today/Tomorrow'))));
+    const asOfMismatch = await variant((data, key) => { if (key.startsWith('mushroom-forecast')) data.current.time = today + 'T10:45'; });
+    for (const profile of Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[])
+      ok(evaluateSevenDayConditions(asOfMismatch, profile)[0].missing.some(reason => reason.includes('drug instant')), 'real cached batch-nearest index differs from floor even with identical layer values');
+    // Real 23/25-hour UTC aggregation is covered separately by weatherIntervalsSmoke, not shifted 24-hour fixtures.
     const incompatible = await variant(data => { delete data.hourly.soil_moisture_0_to_7cm; delete data.hourly.soil_moisture_7_to_28cm; data.hourly.soil_moisture_0_to_1cm = data.hourly.time.map(() => .3); });
     ok(evaluateSevenDayConditions(incompatible, 'generic').every(r => r.score == null));
-    const missingEt0 = await variant(data => data.daily.et0_fao_evapotranspiration = data.daily.time.map(() => null));
+    const missingEt0 = await variant(data => { if (data.daily) data.daily.et0_fao_evapotranspiration = data.daily.time.map(() => null); if (data.hourly.et0_fao_evapotranspiration) data.hourly.et0_fao_evapotranspiration.fill(null); });
     ok(evaluateSevenDayConditions(missingEt0, 'boletusEdulis').every(r => r.score == null));
     const wrongZone = await variant(data => data.timezone = 'UTC'); ok(wrongZone.blockers.length > 0);
-    strictEqual(http, 2, 'all profile/variable/DST disk cases add no HTTP');
+    strictEqual(http, 4, 'all profile/variable disk cases add no HTTP');
     // Source-vintage guard runs after a cached canonical summary, not merely an endpoint timestamp test.
     const vintageRows = new Map([...stored].map(([key, row]) => [key, clone(row)]));
     const forecastKey = [...vintageRows.keys()].find(key => key.includes('forecast'))!;
@@ -148,11 +162,11 @@ async function transport() {
     // Expired raw rows and offline fetch yield clearly stale, internally coherent weather data.
     rows.forEach(row => row.expiresAt = '2000-01-01T00:00:00Z'); fail = true;
     const stale = await loadSevenDaySnapshot({ ...db } as any, fixture, today); ok(stale.stale);
-    ok(evaluateSevenDayConditions(stale, 'generic').every(r => r.status === 'stale')); strictEqual(http, 4);
-    console.log('Seven-day mock HTTP: cold 2 existing endpoint requests, concurrent extra 0, warm memory/disk extra 0, 4 profiles/day selections extra 0; stale offline attempted 2 refreshes.');
+    ok(evaluateSevenDayConditions(stale, 'generic').every(r => r.status === 'stale')); strictEqual(http, 8);
+    console.log('Seven-day mock HTTP: cold 2 existing + 2 civil-hourly requests, concurrent extra 0, warm memory/disk extra 0, 4 profiles/day selections extra 0; stale offline attempted 4 refreshes.');
   } finally { globalThis.fetch = original; globalThis.Date = RealDate; }
 }
 for (const path of ['src/domain/mushroomWeather.ts','src/domain/heatmap/assessment.ts','src/services/weather.ts','src/services/weatherGraphs.ts',
   'src/components/WeatherGraphs.tsx','src/screens/MapScreen.tsx','src/domain/hotspotRanking.ts','src/navigation/AppNavigator.tsx'])
-  strictEqual(readFileSync(path,'utf8').replace(/\r\n/g,'\n'), execFileSync('git',['show',`d7fc1e7:${path}`],{encoding:'utf8'}).replace(/\r\n/g,'\n'),path);
+  strictEqual(readFileSync(path,'utf8').replace('export async function cachedFetch<T>', 'async function cachedFetch<T>').replace(/\r\n/g,'\n'), execFileSync('git',['show',`d7fc1e7:${path}`],{encoding:'utf8'}).replace(/\r\n/g,'\n'),path);
 void transport().then(() => console.log('PASS 4 profiles x 7 dates x calendar/DST/leap/year cases, D7/14/26/30/60 T14/20, Today/Tomorrow full-input parity/gate, native soil/ET0/units, missing/null/partial/stale, no future leakage, immutable vintage/dedupe/cache and production-source guards.'));

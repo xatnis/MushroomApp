@@ -93,6 +93,9 @@ async function hooks() {
     fetches[1].resolve(next); await settle(); strictEqual(result.snapshot, next); strictEqual(result.loading, false); strictEqual(callbacks.length, 1);
     for (const id of Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[]) { profile = id; commit(); strictEqual(fetches.length, 2); strictEqual(result.results[0].profileId, id); }
     result.retry(); commit(); strictEqual(fetches.length, 3); fetches[2].reject(new Error('timeout')); await settle(); strictEqual(result.error, 'timeout'); strictEqual(result.loading, false);
+    result.retry(); commit(); const callbackCount = callbacks.length;
+    fetches.at(-1).resolve({ ...next, inputContract: 'open-meteo-utc-hourly-civil-v1' }); await settle();
+    strictEqual(callbacks.length, callbackCount, 'civil-hourly candidate never migrates main production Today or its cached summary');
     coordinates = { latitude: 48, longitude: 16 }; commit(); strictEqual(result.error, undefined);
     for (const slot of slots) slot?.cleanup?.(); fetches.at(-1).resolve(fixture); await settle(); strictEqual(callbacks.length, 1); strictEqual(timers.size, 0); strictEqual(removed, 1);
     strictEqual(new Date(hook.nextWeatherMidnight(new Date('2026-03-29T00:30:00Z'))).toISOString(), '2026-03-29T22:00:00.000Z');

@@ -237,7 +237,7 @@ ok(!mapSource.includes('<WeatherGraphs summary='), 'no duplicate inline charts')
 ok(!source.includes('<WeatherGraphs summary='));
 for (const path of ['src/services/weather.ts', 'src/services/weatherGraphs.ts', 'src/domain/weatherSeries.ts', 'src/domain/mushroomWeather.ts',
   'src/services/heatmap/useLocationConditions.ts', 'src/services/heatmap/useHeatmapVisuals.ts', 'src/domain/hotspotRanking.ts', 'src/domain/heatmap/controlsState.ts', 'src/navigation/AppNavigator.tsx'])
-  strictEqual(readFileSync(path, 'utf8').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `7dcc5cb:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), path);
+  strictEqual(readFileSync(path, 'utf8').replace('export async function cachedFetch<T>', 'async function cachedFetch<T>').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `7dcc5cb:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), path);
 globalThis.cancelAnimationFrame = originalCancelFrame;
 globalThis.requestAnimationFrame = originalFrame;
 console.log('PASS Razmere V2 hierarchy/same scorer/4 profiles, compact weather/coverage, preserved advanced inputs/model explanations, complete-only Top 3/valid zero/unavailable/loading, context/list-sort entry consumed once, graph origin/location/back, GPS errors, unchanged Map outside list intent and unchanged weather/cache/LOD. Native layout/TalkBack require phone QA.');

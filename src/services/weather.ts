@@ -144,7 +144,7 @@ export async function searchLocations(query: string, signal?: AbortSignal): Prom
   return (data.results ?? []).filter((result) => Number.isFinite(result.latitude) && Number.isFinite(result.longitude));
 }
 
-async function cachedFetch<T>(
+export async function cachedFetch<T>(
   db: SQLiteDatabase,
   key: string,
   url: string,

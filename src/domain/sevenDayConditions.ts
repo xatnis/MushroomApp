@@ -1,10 +1,11 @@
 import type { DailyWeatherPoint, MushroomConditionsScore, MushroomWeatherProfileId, MushroomWeatherSummary } from './types';
 import type { HeatmapSoilPoint, HeatmapWeatherCellSource } from './heatmap/types';
-import { assessHeatmapWeather } from './heatmap/assessment';
+import { assessHeatmapWeather, buildHeatmapWeatherSummary } from './heatmap/assessment';
 import { calculateMushroomWeatherScore, MUSHROOM_SCORE_V1_CONFIG, BOLETUS_EDULIS_SCORE_V1_CONFIG, CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG } from './mushroomWeather';
 import { buildHistoricalWeatherSummaryForTarget, shiftLocalDate } from '../services/weather';
 import { validWeatherDate, WEATHER_TIMEZONE, type WeatherSeriesInput } from './weatherSeries';
 import type { DailyPeriod, SoilSampleMetadata } from './soilSampling';
+import type { HOURLY_INTERVAL_CONTRACT, IntervalCoverage, HourlyVariable } from './weatherIntervals';
 
 const configs = { generic: MUSHROOM_SCORE_V1_CONFIG, boletusEdulis: BOLETUS_EDULIS_SCORE_V1_CONFIG,
   cantharellusCibarius: CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, lactariusDeliciosus: LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG };
@@ -23,6 +24,10 @@ export interface SevenDaySnapshot {
   canonicalCurrentSoil?: HeatmapSoilPoint;
   soilSampling?: Record<string, SoilSampleMetadata>;
   dailyPeriods: Record<string, DailyPeriod>;
+  inputContract?: typeof HOURLY_INTERVAL_CONTRACT;
+  legacyDaily?: WeatherSeriesInput[];
+  legacyToday?: MushroomWeatherSummary;
+  intervalCoverage?: Record<string, Record<HourlyVariable, IntervalCoverage>>;
 }
 export interface SevenDayResult {
   targetLocalDate: string; horizonDay: number; profileId: MushroomWeatherProfileId;
@@ -80,7 +85,7 @@ export function buildWeatherInputsForTargetDate(snapshot: SevenDaySnapshot, targ
     current: { time: soil?.time, temperatureC: snapshot.daily.find(e => e.day.date === target && e.source === 'forecast')?.day.temperatureMeanC,
       soilMoisture0To7Cm: soil?.soilMoisture0To7Cm, soilMoisture7To28Cm: soil?.soilMoisture7To28Cm },
     // The old Tomorrow path has only its target day in forecast context. Do not add later rain to any score/trend.
-    forecast: undefined, errors: snapshot.today.errors, stale: snapshot.stale, updatedAt: snapshot.today.updatedAt, source: 'open-meteo',
+    forecast: undefined, errors: snapshot.today.errors, stale: snapshot.stale, updatedAt: snapshot.forecastRetrievedAt ?? snapshot.today.updatedAt, source: 'open-meteo',
   };
   return { summary, historical, history, missing };
 }
@@ -100,10 +105,23 @@ export function evaluateSevenDayConditions(snapshot: SevenDaySnapshot, profile: 
     // Do not silently turn a snapshot/date alignment or legacy sampling difference into a second Today/Tomorrow score.
     if (horizonDay <= 1) {
       const source: HeatmapWeatherCellSource = { id: snapshot.snapshotId, latitude: snapshot.latitude, longitude: snapshot.longitude,
-        baseLocalDate: snapshot.baseLocalDate, days: snapshot.daily.map(e => e.day).filter(day => day.date <= shiftLocalDate(snapshot.baseLocalDate, 1)),
+        baseLocalDate: snapshot.baseLocalDate, days: (snapshot.legacyDaily ?? snapshot.daily).map(e => e.day).filter(day => day.date <= shiftLocalDate(snapshot.baseLocalDate, 1)),
         currentSoil: snapshot.legacyCurrentSoil, tomorrowMorningSoil: snapshot.legacyTomorrowSoil,
         fetchedAt: snapshot.today.updatedAt, stale: snapshot.stale, errors: snapshot.today.errors };
       const legacy = assessHeatmapWeather(source, profile, horizonDay === 0 ? 'today' : 'tomorrow');
+      const pointReference = snapshot.legacyToday ?? snapshot.today;
+      const legacyInputs = buildHeatmapWeatherSummary(source, horizonDay === 0 ? 'today' : 'tomorrow').summary;
+      // Raw unrounded weather input parity, not merely equal final scores or saturated factor points.
+      const inputKeys = [...required.rain.map(days => `rain${days}dMm`), `avgTemp${required.temperature}dC`, 'rain7dMm', 'evapotranspiration7dMm'] as Array<keyof NonNullable<MushroomWeatherSummary['historical']>>;
+      if (inputKeys.some(key => built.historical[key] !== legacyInputs.historical?.[key]
+        || (!horizonDay && built.historical[key] !== pointReference.historical?.[key])))
+        missing.push('Today/Tomorrow ne uporablja istih surovih padavinskih, temperaturnih ali ET₀ oken; primerljiva številčna ocena je ustavljena.');
+      if (!horizonDay) {
+        const pointScore = calculateMushroomWeatherScore(pointReference, profile);
+        if (canonical.score !== pointScore.score || JSON.stringify(canonical.components) !== JSON.stringify(pointScore.components)
+          || JSON.stringify(canonical.reasons) !== JSON.stringify(pointScore.reasons))
+          missing.push('Today/Tomorrow point rezultat ali razlaga se ne ujema s kanonično referenco; številčni prikaz je ustavljen.');
+      }
       const legacySoil = horizonDay === 0 ? snapshot.legacyCurrentSoil : snapshot.legacyTomorrowSoil;
       const alignedSoil = snapshot.soilByDate[target];
       const pointSoil = snapshot.canonicalCurrentSoil;
@@ -137,6 +155,7 @@ export function evaluateSevenDayConditions(snapshot: SevenDaySnapshot, profile: 
       provenance: built.history.map(e => ({ date: e.day.date, source: e.source, retrievedAt: e.fetchedAt })),
       warnings: ['Okna se končajo pred ciljnim dnevom; prihodnja okna vključujejo napovedane, ne opazovane dnevne podatke.',
         'Ocena ni verjetnost najdbe. Zanesljivost je lahko manjša za bolj oddaljene dni.',
+        ...(snapshot.inputContract ? ['Dnevni podatki so agregirani iz urnih modelskih podatkov po lokalnem koledarju; temperatura je povprečje urnih vzorcev, ET₀ pa referenčna evapotranspiracija.'] : []),
         ...(snapshot.stale ? ['Uporabljeni so starejši predpomnjeni podatki.'] : [])] };
   });
 }

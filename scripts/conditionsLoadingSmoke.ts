@@ -122,7 +122,7 @@ async function run() {
   for (const path of ['src/domain/mushroomWeather.ts','src/services/weather.ts','src/services/weatherGraphs.ts','src/screens/MapScreen.tsx',
     'src/components/ConditionsAdvancedDetails.tsx','src/components/conditionsAdvancedPresentation.ts','src/components/WeatherGraphs.tsx',
     'src/domain/hotspotRanking.ts','src/domain/conditionsSnapshot.ts','src/navigation/AppNavigator.tsx'])
-    strictEqual(readFileSync(path,'utf8').replace(/\r\n/g,'\n'), execFileSync('git',['show',`b4559ef:${path}`],{encoding:'utf8'}).replace(/\r\n/g,'\n'),path);
+    strictEqual(readFileSync(path,'utf8').replace('export async function cachedFetch<T>', 'async function cachedFetch<T>').replace(/\r\n/g,'\n'), execFileSync('git',['show',`b4559ef:${path}`],{encoding:'utf8'}).replace(/\r\n/g,'\n'),path);
   console.log('PASS actual ConditionsScreen effect/async lifecycle: initial GPS, slow weather, rapid locations/profile switches, stale/warm cache, offline/timeout/retry, genuine insufficient vs source failure, usable partial score, no stale overwrite, no disclosure/profile extra requests or rescore; canonical/transport/map untouched. Native QA separate.');
 }
 void run();
