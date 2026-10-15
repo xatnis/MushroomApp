@@ -9,7 +9,7 @@ import { cardFactors, cardSummary, cardHabitat, cardReliability, cardTechnicalDe
 import { colors, spacing, radii } from '../src/theme';
 import { assessHeatmapWeather } from '../src/domain/heatmap/assessment';
 import { HEATMAP_HABITAT, HEATMAP_PROFILE_IDS, HEATMAP_PILOT_METADATA, habitatStateFor, areaAssessmentFor } from '../src/domain/heatmap/pilot';
-import { MUSHROOM_WEATHER_PROFILES } from '../src/domain/mushroomWeather';
+import { MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../src/domain/mushroomWeather';
 import { slNumber } from '../src/domain/format';
 import { shiftLocalDate } from '../src/services/weather';
 import type { HeatmapAreaAssessment, HeatmapWeatherCellSource } from '../src/domain/heatmap/types';
@@ -162,6 +162,7 @@ const bindings = {
   useMemo: (factory: () => any, deps: any[]) => { const slot = cursor++; if (dependenciesChanged(hooks[slot]?.deps, deps)) { calculations++; hooks[slot] = { deps, value: factory() }; } return hooks[slot].value; },
   Card: 'Card', View: 'View', Text: 'Text', Pressable: 'Pressable', ScrollView: 'ScrollView', AppButton: 'AppButton', Ionicons: 'Icon', WeatherGraphsEntry: 'WeatherGraphsEntry', WeatherGraphsModal: 'WeatherGraphsModal',
   styles: new Proxy({}, { get: (_, key) => key === 'heatmapDetailsContent' ? actualStyles.heatmapDetailsContent : key }), commonStyles: {}, colors: {}, StyleSheet: { flatten: (v: any) => v },
+  useLocationConditions: () => ({ assessments: { [props.assessment.areaId]: props.assessment }, loading: false, complete: true }), calculateMushroomWeatherScore,
   MUSHROOM_WEATHER_PROFILES, HEATMAP_PILOT_METADATA, cardFactors, cardSummary, cardHabitat, cardReliability, cardTechnicalDetails, compactCardMetadata,
 };
 const javascript = ts.transpileModule(functionText(screen, 'HeatmapAreaCard'), { compilerOptions: { jsx: ts.JsxEmit.React, target: ts.ScriptTarget.ES2022 } }).outputText;

@@ -1,5 +1,6 @@
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { assertPointMigrationAwareSource } from './pointMigrationSourceGuards';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
@@ -179,7 +180,7 @@ async function uiTests() {
   const map = readFileSync('src/screens/MapScreen.tsx', 'utf8'); ok(map.includes('<WeatherGraphsEntry compact'));
   ok(readFileSync('src/screens/ConditionsScreen.tsx', 'utf8').includes('<WeatherGraphsEntry'));
   for (const file of ['src/domain/mushroomWeather.ts', 'src/services/heatmap/useLocationConditions.ts', 'src/services/heatmap/regionalWeather.ts', 'src/domain/hotspotRanking.ts'])
-    strictEqual(readFileSync(file, 'utf8'), execFileSync('git', ['show', `b771a23:${file}`], { encoding: 'utf8' }), file);
+    assertPointMigrationAwareSource(file, 'b771a23');
   // Actual hook effect: context-only rerenders do not load, old location cannot publish.
   hooks.length = 0; cursor = 0; effects.length = 0;
   const summary = { latitude: 46, longitude: 14, updatedAt: new Date().toISOString(), errors: {}, stale: false, source: 'open-meteo' };

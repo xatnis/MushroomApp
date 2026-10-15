@@ -1,5 +1,6 @@
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { assertPointMigrationAwareSource } from './pointMigrationSourceGuards';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
@@ -154,7 +155,7 @@ strictEqual(slice(mapSource, '  const observeCameraZoom', '  const heatmapAreaCa
 strictEqual(slice(mapSource, '  useEffect(() => () => heatmapRequestGate', '  // One post-commit'), slice(baseline, '  useEffect(() => () => heatmapRequestGate', '  // One post-commit'), 'regional weather effects unchanged');
 for (const file of ['src/domain/mushroomWeather.ts', 'src/domain/locationConditions.ts', 'src/services/heatmap/regionalWeather.ts', 'src/services/heatmap/pilotHeatmap.ts',
   'src/state/AppContext.tsx', 'src/navigation/AppNavigator.tsx', 'src/components/HotspotConditionsMarkers.tsx'])
-  strictEqual(readFileSync(file, 'utf8'), execFileSync('git', ['show', `e99921b:${file}`], { encoding: 'utf8' }), file);
+  assertPointMigrationAwareSource(file, 'e99921b');
 ok(mapSource.includes('hotspots={hotspots} context={conditionsContext}')); ok(mapSource.includes('topThreeRequested ?'));
 ok(mapSource.includes('topThreePanelMaxHeight(mapViewportHeight, mapControlsBottom, spacing.lg, spacing.sm, HOTSPOT_MARKER_HEIGHT)'));
 strictEqual(topThreePanelMaxHeight(400, 108, 16, 8, 52), 216);
@@ -185,5 +186,5 @@ const functionText = (source: string, name: string) => {
   return file.statements.find(n => ts.isFunctionDeclaration(n) && n.name?.text === name)!.getText(file);
 };
 for (const name of ['sortHotspots', 'rankingScore', 'createRankingOrderCoalescer']) strictEqual(functionText(rankingSource, name), functionText(oldRanking, name));
-strictEqual(readFileSync('src/services/heatmap/useLocationConditions.ts', 'utf8'), execFileSync('git', ['show', 'e59576e:src/services/heatmap/useLocationConditions.ts'], { encoding: 'utf8' }), 'cached completion/hook transport is byte-identical');
+assertPointMigrationAwareSource('src/services/heatmap/useLocationConditions.ts', 'e59576e');
 console.log('PASS Top 3 actual UI, same comparator, all/partial/zero/unavailable/ties, 4 profiles x 2 days, existing focus, visibility, exclusive reducer/back/leave, regional/source/weather/privacy isolation. Native layout requires phone QA.');

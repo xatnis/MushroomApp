@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { createRankingOrderCoalescer, sortHotspots, rankingScore, rankingDetailParams } from '../src/domain/hotspotRanking';
-import { mapConditionsLocation, conditionsForLocation } from '../src/domain/locationConditions';
+import { mapConditionsLocation, legacyConditionsForLocation as conditionsForLocation } from '../src/domain/locationConditions';
 import { createRegionalWeatherLoader } from '../src/services/heatmap/regionalWeather';
 import { HEATMAP_HABITAT, HEATMAP_PILOT_METADATA, REGIONAL_INDEX, buildHeatmapRenderCollection } from '../src/domain/heatmap/regional';
 import { assessHeatmapWeather, localDateFor } from '../src/domain/heatmap/assessment';

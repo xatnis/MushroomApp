@@ -1,5 +1,6 @@
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { assertPointMigrationAwareSource } from './pointMigrationSourceGuards';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
@@ -182,7 +183,7 @@ ok(screen.includes('event.nativeEvent.layout.y, layoutGeneration')); ok(screen.i
 ok(screen.includes('key={`${coords?.latitude}:${coords?.longitude}`}')); ok(!screen.includes('forecast?.days.map'));
 ok(screen.includes('style={styles.screenContent} topSafeArea'), 'only headerless Razmere opts into top safe-area handling');
 strictEqual((screen.match(/getMushroomWeatherSummary\(/g) || []).length, 1);
-ok(screen.includes('[coords?.latitude, coords?.longitude, repository, weatherRetry]'), 'no disclosure/profile dependency in weather acquisition');
+ok(screen.includes('[coords?.latitude, coords?.longitude, repository, weatherRetry, weatherDate]'), 'calendar rollover, no disclosure/profile dependency in weather acquisition');
 ok(screen.includes('[weatherProfileId, displaySummary]'), 'one memoized existing scorer invocation');
 const astFunction = (source: string, name: string) => {
   const ast = ts.createSourceFile('presentation.ts', source, ts.ScriptTarget.Latest, true);
@@ -194,5 +195,5 @@ for (const path of ['src/domain/mushroomWeather.ts', 'src/services/weather.ts', 
   'src/domain/weatherDetails.ts', 'src/components/WeatherGraphs.tsx', 'src/components/weatherGraphPresentation.ts', 'src/components/WeatherGraphsView.tsx',
   'src/screens/MapScreen.tsx', 'src/navigation/AppNavigator.tsx', 'src/domain/hotspotRanking.ts', 'src/domain/hotspotTopThree.ts',
   'src/services/heatmap/useLocationConditions.ts', 'src/services/heatmap/useHeatmapVisuals.ts', 'src/domain/conditionsSnapshot.ts', 'App.tsx', 'src/components/advancedDetailsFocus.ts'])
-  strictEqual(readFileSync(path, 'utf8').replace('export async function cachedFetch<T>', 'async function cachedFetch<T>').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `5ebbdb3:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), path + ' unchanged');
+  assertPointMigrationAwareSource(path, '5ebbdb3');
 console.log('PASS Razmere V2.1: canonical factors/weights/total for 4 profiles, ratio/max/zero/invalid/missing, compact inputs/units/coverage, collapsed disclosures, all explanations/attributions retained, profile updates, unavailable/stale, >=48pt/accessibility, measured post-layout focus/stale/close/gesture protection, unchanged models/weather/cache/graphs/Map/LOD/ranking/snapshots. Native layout and TalkBack require device QA.');

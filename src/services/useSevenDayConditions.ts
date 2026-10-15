@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { MushroomWeatherProfileId, MushroomWeatherSummary } from '../domain/types';
-import { evaluateSevenDayConditions, type SevenDaySnapshot } from '../domain/sevenDayConditions';
+import { CANONICAL_POINT_POLICY, type SevenDaySnapshot } from '../domain/sevenDayConditions';
+import { pointResults } from './pointConditions';
 import { weatherLocalDate, WEATHER_TIMEZONE } from '../domain/weatherSeries';
 import { shiftLocalDate } from './weather';
 import { loadSevenDaySnapshot } from './sevenDayConditions';
@@ -41,15 +42,15 @@ export function useSevenDayConditions(db: SQLiteDatabase, location: { latitude: 
     void loadSevenDaySnapshot(db, location, today, { seedUpdatedAt: seed?.updatedAt }).then(snapshot => {
       if (!active || current.current !== key) return;
       setLoaded({ key, snapshot }); setFailure(undefined);
-      // Only the legacy-compatible contract may synchronize Razmere's production Today.
-      // Civil-hourly candidate inputs must not silently migrate that weather contract.
-      if (!snapshot.blockers.length && !snapshot.inputContract) onLoaded.current(snapshot.today);
+      // V1.3 production Today shares this exact point contract. Untagged V1.2 candidates
+      // still cannot synchronize the overview and bypass the original protective gate.
+      if (!snapshot.blockers.length && (!snapshot.inputContract || snapshot.pointPolicyVersion === CANONICAL_POINT_POLICY)) onLoaded.current(snapshot.today);
     }).catch(cause => { if (active && current.current === key) setFailure({ key, message: cause instanceof Error ? cause.message : 'Napovedi trenutno ni mogoče pridobiti.' }); });
     return () => { active = false; };
     // Profile and day selection are local calculations, not acquisition dependencies.
   }, [db, key]);
   const snapshot = loaded?.key === key ? loaded.snapshot : undefined;
-  const allProfiles = useMemo(() => snapshot ? Object.fromEntries(Object.keys(MUSHROOM_WEATHER_PROFILES).map(id => [id, evaluateSevenDayConditions(snapshot, id as MushroomWeatherProfileId)])) : undefined, [snapshot]);
+  const allProfiles = useMemo(() => snapshot ? Object.fromEntries(Object.keys(MUSHROOM_WEATHER_PROFILES).map(id => [id, pointResults(snapshot, id as MushroomWeatherProfileId)])) : undefined, [snapshot]);
   return { today, snapshot, results: allProfiles?.[profile], loading: !snapshot && failure?.key !== key,
     error: failure?.key === key ? failure.message : undefined, retry: () => setRetry(value => value + 1) };
 }

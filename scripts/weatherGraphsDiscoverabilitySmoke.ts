@@ -1,5 +1,6 @@
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { assertPointMigrationAwareSource, withoutPointMigration } from './pointMigrationSourceGuards';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
@@ -97,7 +98,7 @@ const bindings: Record<string, any> = {
   useApp: () => ({ hotspots: overviewHotspots, repository: {}, online: true, exploreLocation: { ...location, source: 'place' }, requestHotspotFocus: (...args: any[]) => focusCalls.push(args), setExploreLocation() { throw new Error('graphs cannot change global location'); } }),
   ...Object.fromEntries(['Screen', 'Text', 'Card', 'SectionTitle', 'Chip', 'View', 'AppButton', 'Notice', 'ActivityIndicator', 'WeatherGraphsEntry', 'WeatherGraphsModal', 'SevenDayConditionsEntry', 'SevenDayConditionsModal', 'Metric', 'ConditionsAdvancedDetails'].map(s => [s, s])),
   styles: {}, commonStyles: {}, colors, spacing, createAdvancedDetailsFocus, MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore, slNumber, slDateTime,
-  useLocationConditions: (_: any, profile: any, day: any) => { hookContexts.push([profile, day]); return { assessments: overviewAssessments, complete: overviewComplete }; }, topThreeHotspots, buildWeatherDailySeries, summarySeriesInputs, weatherLocalDate, graphPeriodSummary, conditionsNavigationPatch,
+  usePointLocalDate: weatherLocalDate, useLocationConditions: (_: any, profile: any, day: any) => { hookContexts.push([profile, day]); return { assessments: overviewAssessments, complete: overviewComplete }; }, topThreeHotspots, buildWeatherDailySeries, summarySeriesInputs, weatherLocalDate, graphPeriodSummary, conditionsNavigationPatch,
   ScrollView: 'ScrollView', Pressable: 'Pressable', DetailLine: 'DetailLine', debugNumber: (v: any, unit: string) => v == null ? 'ni podatka' : v + ' ' + unit,
   placeDetails: () => '',
 };
@@ -217,7 +218,7 @@ const listBindings = { ...listState, conditionsNavigationPatch, switchHotspotVie
 const enterList = new Function(...Object.keys(listBindings), 'return (' + listEntry!.getText(mapAst) + ');')(...Object.values(listBindings));
 enterList(); deepStrictEqual(listCalls, [['view', 'list'], ['owner', 'mine'], ['query', ''], ['sort', 'conditions'], ['context', { profileId: 'lactariusDeliciosus', targetDay: 'today' }]]);
 enterList(); strictEqual(listCalls.length, 5, 'consumed entry intent cannot reset a later ordinary map visit');
-strictEqual(withoutConditionsListEntry(mapSource).replace(/\r\n/g, '\n'), execFileSync('git', ['show', 'b04d47b:src/screens/MapScreen.tsx'], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), 'map/camera/LOD/source code unchanged outside additive list entry');
+strictEqual(withoutPointMigration('src/screens/MapScreen.tsx', withoutConditionsListEntry(mapSource)), execFileSync('git', ['show', 'b04d47b:src/screens/MapScreen.tsx'], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), 'map/camera/LOD/source unchanged outside list entry and canonical point wiring');
 let press: ts.ArrowFunction | undefined;
 const visit = (n: ts.Node) => {
   if (ts.isJsxOpeningElement(n) && n.tagName.getText(mapAst) === 'GeoJSONSource'
@@ -237,7 +238,7 @@ ok(!mapSource.includes('<WeatherGraphs summary='), 'no duplicate inline charts')
 ok(!source.includes('<WeatherGraphs summary='));
 for (const path of ['src/services/weather.ts', 'src/services/weatherGraphs.ts', 'src/domain/weatherSeries.ts', 'src/domain/mushroomWeather.ts',
   'src/services/heatmap/useLocationConditions.ts', 'src/services/heatmap/useHeatmapVisuals.ts', 'src/domain/hotspotRanking.ts', 'src/domain/heatmap/controlsState.ts', 'src/navigation/AppNavigator.tsx'])
-  strictEqual(readFileSync(path, 'utf8').replace('export async function cachedFetch<T>', 'async function cachedFetch<T>').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `7dcc5cb:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), path);
+  assertPointMigrationAwareSource(path, '7dcc5cb');
 globalThis.cancelAnimationFrame = originalCancelFrame;
 globalThis.requestAnimationFrame = originalFrame;
 console.log('PASS Razmere V2 hierarchy/same scorer/4 profiles, compact weather/coverage, preserved advanced inputs/model explanations, complete-only Top 3/valid zero/unavailable/loading, context/list-sort entry consumed once, graph origin/location/back, GPS errors, unchanged Map outside list intent and unchanged weather/cache/LOD. Native layout/TalkBack require phone QA.');

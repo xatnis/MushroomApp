@@ -243,3 +243,100 @@ New `weatherIntervalsSmoke` and `pointSamplingAuditSmoke` cover endpoint semanti
 Android preview command: `npm run apk -- --name MushroomApp-preview-seven-day-v1-2.apk`. This environment failed with **Unable to establish loopback connection**; no old APK was substituted. No Android device was attached, so native/TalkBack verification remains separate.
 
 Executed on 2026-10-14: TypeScript and **28 deterministic suites passed**: soilSampling, sevenDayConditions, sevenDayUi, weatherIntervals, pointSamplingAudit, conditionsLoading, conditionsAdvanced, weatherGraphsDiscoverability, weatherGraphsNavigation, weatherGraphs, genericWeatherDetails, conditionsCard, screenSafeArea, locationAccuracy, hotspotConditions, hotspotConditionsUi, hotspotRanking, hotspotRankingUi, rankingControls, hotspotTopThree, hotspotHeatmapIntegration, hotspotOverlay, focusedHotspotMap, locationConditionsHook, bottomMapTabNavigation, heatmapNavigation, heatmapTransition and heatmapLod (each `scripts/*Smoke.ts`). The separate public `sevenDayLiveSmoke` probe completed successfully and exposed the real guarded Day 0/+1 differences above. **84,248 regional + 15,688 pilot comparisons were actually executed and remained identical** against baseline 2822a44. Expected offline/timeout fixture warnings are not failed tests. Initial development fixture/type failures were corrected before this final verification; no failed baseline was regenerated.
+
+## V1.3 — Canonical Point Scoring Migration
+
+Status: **COMPLETE for the individual-point contract migration**. Map forecast integration verdict: **READY_WITH_GATES**. This section supersedes V1.2's production migration blocker and four-request cost. It does not promise a numerical score where provider coverage or native soil layers are missing, and it does not implement a map forecast button.
+
+### Root-cause and migration matrix
+
+| Path | Previous production contract | V1.3 contract |
+| --- | --- | --- |
+| Razmere Today | Exact requested coordinates, legacy daily API aggregates, provider-current floor soil sample, host-date default | Exact coordinates, true Ljubljana civil-hourly windows, explicit provider-current as-of soil, shared point snapshot |
+| Seven-Day Day 0/+1 | V1.2 candidate compared against independently acquired legacy daily/soil references; unequal raw inputs correctly blocked publication | Same acquired snapshot and canonical result as production point Today/Tomorrow |
+| Selected map-point details | Regional/cell assessment and centre-based conditions navigation | Actual tapped coordinates; point assessment while regional polygon remains a separate approximation; actual coordinates also passed to Razmere |
+| Saved hotspot detail/ranking/Top 3/badge/popup | Prepared weather-cell centre where available, nearest current hour, provider-labelled 09:00 tomorrow, legacy daily bins | Saved coordinates, shared point as-of/exact local09 contract and canonical point assessment |
+| Visit snapshot capture | Same cell-backed point hook | Same migrated point hook for **new** records; explicit input-policy version and sampling provenance |
+| Regional/pilot polygons and regional batch services | Coarse cell inputs, existing nearest/provider-hour and daily-bin contracts | **Unchanged**, intentionally not represented as identical point weather |
+
+The discrepancies were acquisition/input contracts, not scorer weights. Equal rounded totals sometimes concealed different T14/T20, ET₀, soil instants and D60 floating-point accumulation. Mapping saved locations to different weather coordinates also changed environmental inputs. A regional habitat lookup is retained as descriptive context; it does not replace or modify the point score.
+
+### One canonical point source and time contract
+
+`pointConditions.ts` supplies `loadCanonicalPointSnapshot`, `getCanonicalPointWeatherSummary`, `loadPointSnapshots`, and memoized `pointResults`. The production `loadSevenDaySnapshot` delegates to the same source. The legacy loader and `legacyConditionsForLocation` remain explicitly named **audit/reference** functions, not alternative production scoring paths.
+
+New input policy: **`point-civil-hourly-asof-local09-v1`**, paired with `open-meteo-utc-hourly-civil-v1`:
+
+- Requests identify exact latitude/longitude and Ljubljana base date. No GPS substitution or rounding to a prepared weather-cell centre.
+- Today soil: unique latest native hourly sample **not later than the provider's validated current UTC reference**, less than one elapsed hour old and belonging to the same local date. At local 10:45 the chosen hour is 10:00, not 11:00. Cached current conditions remain a model snapshot as of that reference, not newly observed forest measurements.
+- Tomorrow and +2…+6: unique exact **09:00 Europe/Ljubljana** sample. Metadata retains requested instant, provider epoch, UTC instant, local clock/offset, native depths, units, source and retrieval time.
+- Only native **0–7 cm and 7–28 cm**, in **m³/m³**, satisfy the soil contract. No incompatible-depth substitution, rain-derived soil estimate, interpolation or copying Today's soil into future dates.
+- Completed lookbacks use **[target−N local calendar dates, target)**. Today's provisional forecast is excluded from Day 0 lookbacks and enters later target-date windows as forecast, not observed history.
+- Civil UTC boundaries are resolved independently for each local midnight. Precipitation and ET₀ use preceding-hour endpoints `(start,end]`; temperature uses instantaneous hourly samples `[start,end)`. Units, unique interval membership and complete 23/24/25-hour coverage are validated independently. No fixed +86,400-second day or missing-as-zero fill.
+- D60 remains real 60-day history. Archive owns dates before base−7; the one forecast response owns recent forecast history and all future dates. Raw endpoint margins overlap, but aggregation never double-counts them or substitutes another vintage for gaps.
+- Both source retrieval timestamps and frozen snapshot identity remain explicit. The provider model-run issuance time is **unknown (`null`)**; retrieval is not mislabelled as issuance. A coherent weekly forecast uses one forecast response, not seven independently fetched runs.
+
+The profile matrix is unchanged: Generic D7/D14/D30 + T20; Boletus D26 + T20; Cantharellus D7/D30 + T14; Lactarius D14/D60 + T20. All require their canonical soil factor and D7/ET₀7 drying inputs for a comparable full score. Existing production formulas, maxima, factor explanations and weights are byte-identical.
+
+### Production wiring, parity and retained safeguards
+
+Razmere uses the point summary and guarded point result. The shared `useLocationConditions` hook migrates hotspot detail, ranking, Top 3, badges/popups and record capture together; their profile/day selection semantics and comparator are unchanged. Selected map detail invokes that same hook for the actual tapped coordinate. It shows a loading/unavailable point result instead of briefly substituting a regional number. There is no seven-day map UI or camera/source lifecycle change.
+
+Equivalent requests reuse the **same frozen object and memoized production result**, not merely independently equal rounded totals. `canonicalPointSmoke` exercises actual HTTP adapters, SQL cache rows, the point service, weekly service, main summary scorer and hotspot/map assessment adapter. It compares raw rain/temperature/ET₀ windows, soil/time metadata, full canonical components/maxima, score, reasons, date and availability for every profile and Today/Tomorrow. Its five base dates include ordinary October, both 2026 DST weekends, leap February and a year boundary; all four × seven results are valid on complete fixtures.
+
+The legacy-comparison gate is retired **only for the explicitly migrated, validated point contract**. Untagged V1.2 candidates retain the original independent legacy-parity checks. A point policy label alone is not sufficient: validation requires the interval contract, exact UTC/DST boundaries, appropriate source ownership and retrieval timestamps, expected per-variable coverage, native soil units/depths, correct as-of/future instant and matching Day 0 summary coordinates/date/raw inputs. Negative fixtures alter soil, ET₀, location, date, units, requested instant, hourly coverage and archive vintage; they must suppress the numerical score.
+
+Remaining gates: invalid timestamps/units, duplicate/gapped/overlapping hourly arrays, incompatible layers, missing required components, incomplete D7/D14/D26/D30/D60 or T14/T20/ET₀7, mismatched snapshot/date/coordinates/provenance and partial API failure. Missing input is not zero and is not renormalized into an apparently complete 0–100 result. Available factor information can remain inspectable, but unverified components are not advertised as confirmed. Expired offline fallback is explicitly stale; no source response is an error, not a fabricated forecast.
+
+Main point hooks refresh at true local midnight and on foreground resume. Exact coordinate/date fences and existing request generations reject late old-location results. Profile/day selection does not acquire another source snapshot. Ranking still batches order changes; Top 3 waits for all attempts, excludes unavailable scores and retains the existing deterministic ties.
+
+### Live-path evidence and measured production impact
+
+Public probe **46.5/14.5, 2026-10-14**, forecast retrieved **2026-10-14T14:54:44.606Z**:
+
+| Profile | Day 0 | +1 | +2 | +3 | +4 | +5 | +6 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Splošno | 69 | 68 | 67 | 67 | 57 | 55 | 50 |
+| Jesenski goban | 50 | 48 | 47 | 47 | 45 | 44 | 42 |
+| Navadna lisička | 66 | 64 | 62 | 62 | 46 | 44 | 38 |
+| Užitna sirovka | 88 | 88 | 89 | 88 | 87 | 86 | 83 |
+
+All **28 results ready**, no blockers. The real point/main/weekly source is identical; all four profiles' Today and Tomorrow raw inputs, canonical component/result/reason objects and point soil metadata matched. This is provider availability evidence for that run, not a future golden or universal coverage promise.
+
+Separate pre-migration audits used three **public** points × four profiles × Today/Tomorrow:
+
+- Exact-coordinate legacy daily candidate audit: **24 cases, 0 changed rounded totals/labels**, despite raw aggregate differences. It diagnoses input changes without pretending equal rounded totals establish parity.
+- Former cell-backed hotspot versus migrated exact-coordinate live audit: **24 cases, 9 changed totals, maximum absolute change 5 points, 2 label changes, 0 unavailable**. For public-B (46.6/14.9), the former query was 46.560283/14.858279: T20 changed from **11.985** to **9.813749999999997 °C**, Generic Today **71→69**, Tomorrow **70→68**, Boletus **61→56 / 60→55**, Cantharellus **65→61 / 62→59**, Lactarius **90→91** on both dates. Generic labels changed from very good to good; Generic ordering changed **C,B,A → C,A,B**. The other three profile orderings were unchanged. Endpoint retrievals differ slightly, so this is a representative live migration audit, **not** a controlled same-model-vintage population estimate.
+- The retained same-source synthetic soil gradient audit has **384 cases, 92 changed sample instants, 40 changed rounded scores, maximum 1 point**; the stronger independent 10:45 fixture has differences 2/2/2/3. These isolate floor-versus-nearest effects but are not real-location population counts.
+
+Thus V1.3 intentionally changes production **point inputs and potentially labels/order**. It does not claim zero point-score changes. Regional/pilot golden outputs are unchanged and are not regenerated. Future provider runs can differ; the three-point audit is not a bound on all possible score changes.
+
+### Cache, network, versions and privacy
+
+The existing `cachedFetch` body, SQL schema, timeout/dedupe/stale fallback and **30-minute TTL** are unchanged. Exact-coordinate hourly keys already distinguish range/base date, endpoint, variable set, GMT/Unix/hourly format; a `current-temp-code-v1` suffix prevents reuse of old responses missing the current description. Point memory keys additionally carry the new input policy. Derived snapshots are recursively frozen, bounded to 128 per database and shared with all point consumers. Per-snapshot/profile weekly results are memoized; repeated day/detail selection is local. Civil periods use a bounded 256-date memo, avoiding repeated IANA work across saved locations.
+
+Acquisition reserves pending point identities before batch execution. Up to **16 missing exact points** share one archive and one forecast request, with at most two groups/four endpoint requests concurrently. Duplicate coordinates and overlapping single-point requests reuse that work. API `location_id` mapping handles reordered rows and the real API's omitted default ID 0; ambiguous identities are rejected. Per-point SQL rows are populated from a valid batch so later single-point and new database-wrapper consumers can reuse disk cache.
+
+Measured production cost: **2 cold HTTP requests**, not V1.2's four. One point and the nine-distinct-point mock batch both require two; concurrent overlapping single-point request, warm memory/disk reopen, profile/day selection and factor inspection add **0 HTTP**. Only missing source rows are fetched. The final live single-point decoded payloads were **28,410 bytes / 1,296 archive hours** plus **12,452 bytes / 360 forecast hours**, **40,862 UTF-8 JSON bytes total**, not compressed transfer size. Nine-point payload scales with nine model outputs; it is not claimed to remain 40 KB. Expired offline refresh attempts remain normal network attempts before stale fallback.
+
+WeatherGraphs V4.1 and its independent read-only daily display service are intentionally unchanged. Opening cold graphs may still require its existing daily requests; the new hourly point cache is not silently substituted into the graph model. Regional weather requests are also separate, unchanged work and must not be counted as point warm-cache misses. The migrated point hook no longer starts regional data acquisition. Point cache publications do not rebuild regional GeoJSON, remount native sources or initiate LOD/camera transitions.
+
+New visit snapshots retain schemaVersion 1 and the existing scorer versions/configs but record the **new inputPolicyVersion**, exact query coordinates, snapshot identity and soil UTC/provenance metadata. Old JSON visits remain immutable and readable under their old policy; there is no schema migration, rewrite or reinterpretation of historical scores. Snapshot compatibility/privacy tests exercise the existing persistence code unchanged.
+
+No hotspot identifiers/names, visits or sharing permissions are uploaded or changed. Weather requests still go only to the existing weather provider. **Granularity changes for formerly cell-backed saved locations:** Open-Meteo now receives the actual requested saved coordinate rather than the prepared cell centre. This is explicit point-weather acquisition, not community publication or a claim of on-site measurements. No private test locations or raw weather payloads are committed.
+
+### Verification, limitations and map readiness
+
+Executed on 2026-10-14: **TypeScript and 43 deterministic suites passed**. The original 28 suites listed in V1.2 were rerun, plus `canonicalPointSmoke`, `pointWiringSmoke`, and 13 extended suites: heatmapPilot, heatmapVisual, heatmapControlsResponse, heatmapLodThreshold, overviewWeatherLoading, regionalLoading, regionalSpatial, locationRanking, localityResolver, heatmapAreaLocality, boletusHabitat, chanterelleHabitat and zgsEnrichment (each `scripts/*Smoke.ts`). Live `sevenDayLiveSmoke` and the two public before/after audits were also executed separately. Initial source-identity test failures were corrected with narrowly scoped migration guards; the unrelated old Chanterelle guard now also permits V1.2's existing `cachedFetch` **export keyword only**. Numeric goldens were not changed.
+
+**84,248 regional + 15,688 pilot comparisons actually passed unchanged** against 2822a44. New wiring guards compare production scorer/transport/cache bodies, regional/LOD/native source/camera code, WeatherGraphs, ranking comparator, Top 3 helper and SQLite persistence against f84a188. They permit only the declared point-detail/coordinate migration. UI tests cover profile/date state, old-location cancellation, Today/as-of10:45, future09, local midnight/resume, loading/partial/stale, navigation and visit compatibility. Native GPU/TalkBack/touch performance is not inferred from JavaScript tests.
+
+**READY_WITH_GATES**: a future map entry can pass the actual selected coordinate to the existing one-location forecast without GPS substitution, navigation reset or map reload. Point and weekly data/contracts already agree and reuse cache; late location results cannot overwrite a new selection. Normal provider/coverage/native-depth gates must remain enabled. There is no unconditional promise of seven numbers, no parity claim with coarse regional polygons, and no known quantitative confidence/model-issued timestamp. New map integration UI is deliberately deferred.
+
+Android skill/environment check found no attached device; native Redmi 13C verification remains outstanding. Attempted `npm run apk -- --name MushroomApp-preview-seven-day-v1-3.apk`: Gradle failed with **Unable to establish loopback connection**. No old artifact was copied or renamed. Run that command locally for a new preview.
+
+Changed runtime files: `src/services/pointConditions.ts`, `src/services/usePointLocalDate.ts`, `src/services/sevenDayConditions.ts`, `src/services/sevenDayHourlyWeather.ts`, `src/services/useSevenDayConditions.ts`, `src/services/heatmap/useLocationConditions.ts`, `src/domain/sevenDayConditions.ts`, `src/domain/soilSampling.ts`, `src/domain/weatherIntervals.ts`, `src/domain/locationConditions.ts`, `src/domain/types.ts`, `src/domain/heatmap/types.ts`, `src/screens/ConditionsScreen.tsx`, `src/screens/MapScreen.tsx`. Test-only changes cover the point/audit/source-guard fixtures and corresponding existing presentation/navigation regression suites; no scorer or regional numerical source was edited.
+
+Changed test/audit files (all under `scripts/`): `canonicalPointSmoke.ts`, `pointWiringSmoke.ts`, `pointMigrationAudit.ts`, `pointSpatialImpactLive.ts`, `pointMigrationSourceGuards.ts`, `sevenDayLiveSmoke.ts`, `sevenDayConditionsSmoke.ts`, `soilSamplingSmoke.ts`, `locationConditionsHookSmoke.ts`, `hotspotConditionsSmoke.ts`, `hotspotRankingSmoke.ts`, `hotspotTopThreeSmoke.ts`, `hotspotHeatmapIntegrationSmoke.ts`, `focusedHotspotMapSmoke.ts`, `bottomMapTabNavigationSmoke.ts`, `conditionsAdvancedSmoke.ts`, `conditionsCardSmoke.ts`, `conditionsLoadingSmoke.ts`, `weatherGraphsDiscoverabilitySmoke.ts`, `weatherGraphsNavigationSmoke.ts`, `weatherGraphsSmoke.ts`, `chanterelleHabitatSmoke.ts`. Together with this document: **37 changed files (14 runtime, 22 tests/audits, 1 documentation)**.
+
+Final verification repeated on 2026-10-15: **TypeScript and all 43 suites passed again**, after checking the point weather identity used by new visit snapshots. Staged diff whitespace checks passed; the live measurements above remain explicitly dated to their 2026-10-14 provider snapshot.

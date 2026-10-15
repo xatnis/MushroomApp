@@ -5,7 +5,10 @@ import { calculateMushroomWeatherScore, MUSHROOM_SCORE_V1_CONFIG, BOLETUS_EDULIS
 import { buildHistoricalWeatherSummaryForTarget, shiftLocalDate } from '../services/weather';
 import { validWeatherDate, WEATHER_TIMEZONE, type WeatherSeriesInput } from './weatherSeries';
 import type { DailyPeriod, SoilSampleMetadata } from './soilSampling';
-import type { HOURLY_INTERVAL_CONTRACT, IntervalCoverage, HourlyVariable } from './weatherIntervals';
+import { HOURLY_INTERVAL_CONTRACT, type IntervalCoverage, type HourlyVariable } from './weatherIntervals';
+import { civilDailyPeriod, resolveLjubljanaClock, ljubljanaClock } from './soilSampling';
+
+export const CANONICAL_POINT_POLICY = 'point-civil-hourly-asof-local09-v1';
 
 const configs = { generic: MUSHROOM_SCORE_V1_CONFIG, boletusEdulis: BOLETUS_EDULIS_SCORE_V1_CONFIG,
   cantharellusCibarius: CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, lactariusDeliciosus: LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG };
@@ -28,6 +31,7 @@ export interface SevenDaySnapshot {
   legacyDaily?: WeatherSeriesInput[];
   legacyToday?: MushroomWeatherSummary;
   intervalCoverage?: Record<string, Record<HourlyVariable, IntervalCoverage>>;
+  pointPolicyVersion?: typeof CANONICAL_POINT_POLICY;
 }
 export interface SevenDayResult {
   targetLocalDate: string; horizonDay: number; profileId: MushroomWeatherProfileId;
@@ -73,6 +77,35 @@ export function buildWeatherInputsForTargetDate(snapshot: SevenDaySnapshot, targ
   if (!soil?.time?.startsWith(target + 'T')) missing.push('Čas talne vlage ne pripada ciljnemu dnevu.');
   const required = SEVEN_DAY_REQUIREMENTS[profile];
   const requiredStart = shiftLocalDate(target, -Math.max(...required.rain, required.temperature, 7));
+  if (snapshot.pointPolicyVersion) {
+    if (snapshot.pointPolicyVersion !== CANONICAL_POINT_POLICY || snapshot.inputContract !== HOURLY_INTERVAL_CONTRACT)
+      missing.push('Nezdružljiva kanonična point pogodba.');
+    for (const entry of history.filter(e => e.day.date >= requiredStart)) {
+      const date = entry.day.date, period = civilDailyPeriod(date), actual = snapshot.dailyPeriods[date], coverage = snapshot.intervalCoverage?.[date];
+      if (actual?.basis !== 'local-calendar' || actual.startUtc !== period.startUtc || actual.endUtc !== period.endUtc)
+        missing.push('Dnevna UTC/DST meja ne ustreza kanonični point pogodbi.');
+      const daysBefore = Math.round((Date.parse(target + 'T12:00Z') - Date.parse(date + 'T12:00Z')) / 86400000);
+      const expectedHours = (Date.parse(period.endUtc ?? '') - Date.parse(period.startUtc ?? '')) / 3600000;
+      const verified = (metric: HourlyVariable) => coverage?.[metric]?.complete && coverage[metric].expected === expectedHours
+        && coverage[metric].available === expectedHours && Array.isArray(coverage[metric].issues) && !coverage[metric].issues.length
+        && coverage[metric].semantics === (metric === 'temperature_2m' ? 'hourly-instant-mean' : 'preceding-hour-sum');
+      if (!verified('precipitation') || (daysBefore <= required.temperature && !verified('temperature_2m'))
+        || (daysBefore <= 7 && !verified('et0_fao_evapotranspiration'))) missing.push('Manjka potrjena urna pokritost point vhodov.');
+      const expectedSource = date >= snapshot.baseLocalDate ? 'forecast' : date >= shiftLocalDate(snapshot.baseLocalDate, -7) ? 'recentForecastHistory' : 'archive';
+      if (entry.source !== expectedSource || entry.fetchedAt !== (expectedSource === 'archive' ? snapshot.archiveRetrievedAt : snapshot.forecastRetrievedAt))
+        missing.push('Point vhodi ne pripadajo zamrznjenemu source snapshotu.');
+    }
+    const sample = snapshot.soilSampling?.[target];
+    const instant = Date.parse(sample?.instantUtc ?? ''), reference = Date.parse(sample?.requestedInstantUtc ?? '');
+    const expectedMorning = resolveLjubljanaClock(target + 'T09:00')[0];
+    if (!sample || sample.localTime !== soil?.time || sample.contract !== 'point-asof-or-local09-v1'
+      || sample.units !== 'm³/m³' || sample.source !== 'open-meteo-forecast-hourly' || sample.retrievedAt !== snapshot.forecastRetrievedAt
+      || sample.depthsCm?.join(',') !== '0–7,7–28' || sample.timezone !== WEATHER_TIMEZONE
+      || !finite(instant) || !finite(reference) || sample.providerEpochSeconds !== instant / 1000 || sample.localTime !== ljubljanaClock(instant).slice(0, 16)
+      || (target === snapshot.baseLocalDate ? sample.mode !== 'currentModelled' || instant > reference || reference - instant >= 3600000 || reference > Date.parse(snapshot.forecastRetrievedAt ?? '')
+        : sample.mode !== 'forecast' || instant !== expectedMorning || reference !== expectedMorning))
+      missing.push('Point instant ali provenienca talne vlage nista potrjena.');
+  }
   if (history.some(entry => entry.day.date >= requiredStart && !snapshot.dailyPeriods[entry.day.date]?.compatible))
     missing.push('Dnevna UTC/DST okna ponudnika niso potrjena kot popolni lokalni koledarski dnevi; primerljive ocene ne prikazujemo.');
   for (const days of required.rain) if (historical[`rain${days}dMm`] == null) missing.push(`Manjkajo popolne ${days}-dnevne padavine.`);
@@ -87,6 +120,13 @@ export function buildWeatherInputsForTargetDate(snapshot: SevenDaySnapshot, targ
     // The old Tomorrow path has only its target day in forecast context. Do not add later rain to any score/trend.
     forecast: undefined, errors: snapshot.today.errors, stale: snapshot.stale, updatedAt: snapshot.forecastRetrievedAt ?? snapshot.today.updatedAt, source: 'open-meteo',
   };
+  if (snapshot.pointPolicyVersion && target === snapshot.baseLocalDate) {
+    const keys = [...required.rain.map(days => `rain${days}dMm`), `avgTemp${required.temperature}dC`, 'rain7dMm', 'evapotranspiration7dMm'] as Array<keyof typeof historical>;
+    if (summary.latitude !== snapshot.latitude || summary.longitude !== snapshot.longitude || summary.evaluationLocalDate !== target
+      || summary.inputPolicyVersion !== CANONICAL_POINT_POLICY || keys.some(key => summary.historical?.[key] !== historical[key])
+      || summary.current?.time !== soil?.time || summary.current?.soilMoisture0To7Cm !== soil?.soilMoisture0To7Cm || summary.current?.soilMoisture7To28Cm !== soil?.soilMoisture7To28Cm)
+      missing.push('Point Today summary ne pripada poravnanim vhodom, koordinati ali datumu.');
+  }
   return { summary, historical, history, missing };
 }
 
@@ -103,7 +143,7 @@ export function evaluateSevenDayConditions(snapshot: SevenDaySnapshot, profile: 
       missing.push(`Prispevek za ${key.startsWith('rain') ? 'padavine' : key === 'temperature' ? 'temperaturo' : key === 'soilMoisture' ? 'vlago tal' : 'izsuševanje'} ni na voljo.`);
     if (!finite(canonical.score)) missing.push('Model nima veljavne ocene.');
     // Do not silently turn a snapshot/date alignment or legacy sampling difference into a second Today/Tomorrow score.
-    if (horizonDay <= 1) {
+    if (horizonDay <= 1 && !snapshot.pointPolicyVersion) {
       const source: HeatmapWeatherCellSource = { id: snapshot.snapshotId, latitude: snapshot.latitude, longitude: snapshot.longitude,
         baseLocalDate: snapshot.baseLocalDate, days: (snapshot.legacyDaily ?? snapshot.daily).map(e => e.day).filter(day => day.date <= shiftLocalDate(snapshot.baseLocalDate, 1)),
         currentSoil: snapshot.legacyCurrentSoil, tomorrowMorningSoil: snapshot.legacyTomorrowSoil,
@@ -139,7 +179,8 @@ export function evaluateSevenDayConditions(snapshot: SevenDaySnapshot, profile: 
       if (built.summary.historical?.[`avgTemp${required.temperature}dC`] !== built.historical[`avgTemp${required.temperature}dC`]) missing.push('Današnji temperaturni snapshot ni poravnan z lokalnim datumom.');
     }
     const available = missing.length === 0;
-    const componentsVerified = !snapshot.blockers.length && !missing.some(reason => reason.includes('Today/Tomorrow') || reason.includes('snapshot ni poravnan') || reason.includes('Dnevna UTC/DST'));
+    const componentsVerified = !snapshot.blockers.length && !missing.some(reason => reason.includes('Today/Tomorrow') || reason.includes('snapshot ni poravnan') || reason.includes('Dnevna UTC/DST')
+      || reason.includes('point') || reason.includes('Point') || reason.includes('urna pokritost'));
     return { targetLocalDate: target, horizonDay, profileId: profile, score: available ? canonical.score! : null,
       label: available ? canonical.label : null, status: available ? snapshot.stale ? 'stale' : 'ready'
         : snapshot.today.errors.forecast || snapshot.today.errors.historical ? 'error' : 'insufficient_data',

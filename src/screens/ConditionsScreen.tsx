@@ -7,10 +7,12 @@ import { AppButton, Card, Chip, Field, Notice, Screen, SectionTitle, commonStyle
 import type { RootStackParamList } from '../navigation/types';
 import type { ExploreLocation, MushroomWeatherProfileId, MushroomWeatherSummary } from '../domain/types';
 import { useApp } from '../state/AppContext';
-import { getMushroomWeatherSummary, searchLocations, type PlaceSearchResult } from '../services/weather';
+import { searchLocations, type PlaceSearchResult } from '../services/weather';
+import { getCanonicalPointWeatherSummary as getMushroomWeatherSummary, scoreForPointSummary as calculateMushroomWeatherScore } from '../services/pointConditions';
+import { usePointLocalDate } from '../services/usePointLocalDate';
 import { acquireForegroundPosition, LocationAcquisitionError } from '../services/location';
 import { buildGpsExploreLocation, debugGpsLocality, resolveGpsLocality } from '../services/locality';
-import { MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
+import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
 import { useLocationConditions } from '../services/heatmap/useLocationConditions';
 import { topThreeHotspots } from '../domain/hotspotTopThree';
 import { conditionsNavigationPatch } from '../domain/hotspotHeatmap';
@@ -56,6 +58,7 @@ export function ConditionsScreen() {
   const [weatherLoading, setWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState<string>();
   const [weatherRetry, setWeatherRetry] = useState(0);
+  const weatherDate = usePointLocalDate();
   const [placeSearchLoading, setPlaceSearchLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [locationSettingsRequired, setLocationSettingsRequired] = useState(false);
@@ -180,7 +183,7 @@ export function ConditionsScreen() {
     const requestId = ++weatherRequestId.current;
     const isCurrentRequest = () => mounted.current && weatherRequestId.current === requestId;
     setWeatherSummary(undefined); setWeatherLoading(true); setWeatherError(undefined); setShowWeatherDetails(false);
-    void getMushroomWeatherSummary(repository.database, coords.latitude, coords.longitude)
+    void getMushroomWeatherSummary(repository.database, coords.latitude, coords.longitude, weatherDate)
       .then((data) => { if (isCurrentRequest()) setWeatherSummary(data); })
       .catch((cause) => {
         console.warn('Weather summary request failed', cause);
@@ -190,7 +193,7 @@ export function ConditionsScreen() {
     return () => {
       if (weatherRequestId.current === requestId) weatherRequestId.current += 1;
     };
-  }, [coords?.latitude, coords?.longitude, repository, weatherRetry]);
+  }, [coords?.latitude, coords?.longitude, repository, weatherRetry, weatherDate]);
 
   useEffect(() => {
     if (!placeSearchOpen || placeQuery.trim().length < 2) {
@@ -212,7 +215,8 @@ export function ConditionsScreen() {
   }, [placeQuery, placeSearchOpen]);
 
   // Do not display the previous location's values while the existing loader changes generation.
-  const displaySummary = weatherSummary && coords && weatherSummary.latitude === coords.latitude && weatherSummary.longitude === coords.longitude ? weatherSummary : undefined;
+  const displaySummary = weatherSummary && coords && weatherSummary.latitude === coords.latitude && weatherSummary.longitude === coords.longitude
+    && (!weatherSummary.inputPolicyVersion || weatherSummary.evaluationLocalDate === weatherDate) ? weatherSummary : undefined;
   const score = useMemo(() => calculateMushroomWeatherScore(displaySummary, weatherProfileId), [weatherProfileId, displaySummary]);
   // Derive presentation from the existing loader; undefined scorer input is not a completed evaluation.
   const currentWeatherError = locationKey != null && weatherRequestLocation.current === locationKey ? weatherError : undefined;
@@ -321,6 +325,7 @@ export function ConditionsScreen() {
       location={coords ? { latitude: coords.latitude, longitude: coords.longitude, name: (locationMode === 'gps' ? currentLocationName : selectedPlace?.name) ?? 'Izbrana lokacija' } : undefined}
       summary={displaySummary} onSnapshot={summary => {
         if (mounted.current && currentLocationKey.current === `${summary.latitude}:${summary.longitude}`
+          && (!summary.inputPolicyVersion || summary.evaluationLocalDate === weatherDate)
           && (!displaySummary || Date.parse(summary.updatedAt) >= Date.parse(displaySummary.updatedAt))) {
           // The accepted canonical snapshot completes this location's load; late older requests cannot overwrite it.
           weatherRequestId.current += 1;

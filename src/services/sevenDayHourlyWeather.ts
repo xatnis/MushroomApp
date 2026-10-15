@@ -2,7 +2,9 @@ import type { SQLiteDatabase } from 'expo-sqlite';
 import type { SevenDaySnapshot } from '../domain/sevenDayConditions';
 import { aggregateCivilDay, indexHourlySource, HOURLY_INTERVAL_CONTRACT, type UtcHourlyWeather } from '../domain/weatherIntervals';
 import { civilDailyPeriod, sampleNativeSoil, ljubljanaClock } from '../domain/soilSampling';
-import { cachedFetch, shiftLocalDate, buildHistoricalWeatherSummaryForTarget, buildForecastWeatherSummary } from './weather';
+import { cachedFetch, shiftLocalDate, buildHistoricalWeatherSummaryForTarget, buildForecastWeatherSummary, weatherCodeLabel } from './weather';
+
+export type HourlyFetchResult = PromiseSettledResult<{ data: UtcHourlyWeather; stale: boolean; fetchedAt: string }>;
 
 const variables = 'temperature_2m,precipitation,et0_fao_evapotranspiration';
 const soilVariables = 'soil_moisture_0_to_7cm,soil_moisture_7_to_28cm';
@@ -19,16 +21,16 @@ export function sevenDayHourlyRequestPlan(latitude: number, longitude: number, b
     const fields = endpoint === 'archive' ? variables : `${variables},${soilVariables}`;
     const params = new URLSearchParams({ latitude: String(latitude), longitude: String(longitude), start_date: utcDate(start),
       end_date: utcDate(finish), hourly: fields, timezone: 'GMT', timeformat: 'unixtime', temperature_unit: 'celsius', precipitation_unit: 'mm' });
-    if (endpoint === 'forecast') { params.set('current', 'temperature_2m'); params.set('temporal_resolution', 'hourly'); }
-    return { endpoint, key: `seven-day-hourly-v1:${coordinate}:${baseDate}:${start}:${finish}:${fields}:GMT:unix:hourly`,
+    if (endpoint === 'forecast') { params.set('current', 'temperature_2m,weather_code'); params.set('temporal_resolution', 'hourly'); }
+    return { endpoint, key: `seven-day-hourly-v1:${coordinate}:${baseDate}:${start}:${finish}:${fields}:GMT:unix:hourly:current-temp-code-v1`,
       url: `${endpoint === 'archive' ? 'https://archive-api.open-meteo.com/v1/archive' : 'https://api.open-meteo.com/v1/forecast'}?${params}` };
   });
 }
 
-/** A separate, validated input contract; never silently replaces today's production summary/cache. */
-export async function withCivilHourlyWeather(db: SQLiteDatabase, legacy: SevenDaySnapshot, timeoutMs?: number): Promise<SevenDaySnapshot> {
+/** Validated civil-hourly assembly shared by production point scoring and weekly evaluations. */
+export async function withCivilHourlyWeather(db: SQLiteDatabase, legacy: SevenDaySnapshot, timeoutMs?: number, supplied?: HourlyFetchResult[]): Promise<SevenDaySnapshot> {
   const plan = sevenDayHourlyRequestPlan(legacy.latitude, legacy.longitude, legacy.baseLocalDate);
-  const responses = await Promise.allSettled(plan.map(request => cachedFetch<UtcHourlyWeather>(db, request.key, request.url, true, timeoutMs)));
+  const responses = supplied ?? await Promise.allSettled(plan.map(request => cachedFetch<UtcHourlyWeather>(db, request.key, request.url, true, timeoutMs)));
   const archive = responses[0].status === 'fulfilled' ? responses[0].value : undefined;
   const forecast = responses[1].status === 'fulfilled' ? responses[1].value : undefined;
   const indexedArchive = archive && indexHourlySource({ ...archive, source: 'archive', contract: HOURLY_INTERVAL_CONTRACT });
@@ -76,7 +78,8 @@ export async function withCivilHourlyWeather(db: SQLiteDatabase, legacy: SevenDa
   const today: SevenDaySnapshot['today'] = { latitude: legacy.latitude, longitude: legacy.longitude,
     historical: buildHistoricalWeatherSummaryForTarget(daily.filter(e => e.day.date < legacy.baseLocalDate).map(e => e.day), legacy.baseLocalDate),
     forecast: buildForecastWeatherSummary(daily.filter(e => e.day.date >= legacy.baseLocalDate).map(e => e.day)),
-    current: { ...soilByDate[legacy.baseLocalDate], temperatureC: data?.current_units?.temperature_2m === '°C' && typeof data.current?.temperature_2m === 'number' && Number.isFinite(data.current.temperature_2m) ? data.current.temperature_2m : undefined },
+    current: { ...soilByDate[legacy.baseLocalDate], temperatureC: data?.current_units?.temperature_2m === '°C' && typeof data.current?.temperature_2m === 'number' && Number.isFinite(data.current.temperature_2m) ? data.current.temperature_2m : undefined,
+      weatherCode: data?.current?.weather_code ?? undefined, weatherDescription: weatherCodeLabel(data?.current?.weather_code ?? undefined) },
     errors: { historical: !archive ? 'Urna zgodovina ni dosegljiva.' : legacy.today.errors.historical,
       forecast: !forecast ? 'Urna napoved ni dosegljiva.' : legacy.today.errors.forecast },
     updatedAt: [archive?.fetchedAt, forecast?.fetchedAt].filter((time): time is string => !!time).sort().at(-1) ?? legacy.today.updatedAt, stale, source: 'open-meteo' };

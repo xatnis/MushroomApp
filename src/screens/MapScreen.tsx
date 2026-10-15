@@ -19,7 +19,8 @@ import type { HeatmapAreaAssessment, HeatmapTargetDay } from '../domain/heatmap/
 import { buildHeatmapRenderCollection, HEATMAP_HABITAT, HEATMAP_PILOT_METADATA, REGIONAL_INDEX } from '../domain/heatmap/regional';
 import { heatmapViewportStatus, prioritizedWeatherPointIds, heatmapReadiness, type Bounds } from '../domain/heatmap/spatial';
 import { OVERVIEW_INDEX, OVERVIEW_WEATHER_POINTS, selectHeatmapLod, type HeatmapLod } from '../domain/heatmap/lod';
-import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
+import { MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';
+import { useLocationConditions } from '../services/heatmap/useLocationConditions';
 import { cardFactors, cardSummary, cardHabitat, cardReliability, cardTechnicalDetails, compactCardMetadata } from '../domain/heatmap/cardPresentation';
 import { createHeatmapRequestGate, scheduleSettledHeatmapLoad, loadHeatmapPilot, mergeHeatmapBundles, weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
 import { resolveHeatmapAreaLocality, type HeatmapAreaLocalityResolution } from '../services/heatmap/areaLocality';
@@ -795,7 +796,10 @@ export function MapScreen() {
             longitude: selectedHeatmapFeature.properties.centerLongitude,
             source: 'heatmap',
           };
-          setExploreLocation({ ...areaLocation, source: 'heatmap' });
+          setExploreLocation({ ...areaLocation,
+            latitude: graphMapPoint.current && graphMapPoint.current.areaId === selectedHeatmapAreaId ? graphMapPoint.current.latitude : areaLocation.latitude,
+            longitude: graphMapPoint.current && graphMapPoint.current.areaId === selectedHeatmapAreaId ? graphMapPoint.current.longitude : areaLocation.longitude,
+            source: 'heatmap' });
           navigation.navigate('Tabs', { screen: 'Conditions' });
         }}
       /> : null}
@@ -820,7 +824,15 @@ function TopThreeEntry({ onPress, selected }: { onPress: () => void; selected: b
   </Pressable>;
 }
 
-function HeatmapAreaCard({ assessment, graphLocation, weatherPending, targetDay, maxHeight, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; graphLocation: WeatherGraphsLocation; weatherPending?: boolean; targetDay: HeatmapTargetDay; maxHeight?: number; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
+function HeatmapAreaCard({ assessment: regionalAssessment, graphLocation, weatherPending: regionalWeatherPending, targetDay, maxHeight, areaLabel, areaDetails, onClose, onTargetDayChange, onOpenConditions }: { assessment: HeatmapAreaAssessment; graphLocation: WeatherGraphsLocation; weatherPending?: boolean; targetDay: HeatmapTargetDay; maxHeight?: number; areaLabel: string; areaDetails?: string; onClose: () => void; onTargetDayChange: (targetDay: HeatmapTargetDay) => void; onOpenConditions: () => void }) {
+  const point = useLocationConditions([{ id: regionalAssessment.areaId, latitude: graphLocation.latitude, longitude: graphLocation.longitude }], regionalAssessment.speciesId, targetDay);
+  const weatherPending = point.loading || !point.complete;
+  // Never display a regional number as the current point while exact-coordinate inputs are loading.
+  const assessment: HeatmapAreaAssessment = point.assessments[regionalAssessment.areaId] ?? { ...regionalAssessment, score: null,
+    classLabel: weatherPending ? 'Preračunavam razmere ...' : 'Ocena ni na voljo', dataQuality: 'insufficient',
+    scoreDetails: calculateMushroomWeatherScore(undefined, regionalAssessment.speciesId),
+    summary: { latitude: graphLocation.latitude, longitude: graphLocation.longitude, errors: {}, stale: false, updatedAt: '', source: 'open-meteo' },
+    limitations: [point.error ?? 'Point vremenski podatki še niso na voljo.'], weatherSamplingResolutionM: 0, fetchedAt: '' };
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [openSection, setOpenSection] = useState<'weather' | 'habitat' | 'reliability' | null>(null);
   const [graphsOpen, setGraphsOpen] = useState(false);
@@ -979,7 +991,7 @@ function HeatmapAreaCard({ assessment, graphLocation, weatherPending, targetDay,
                 <Text style={styles.heatmapDetailTitle}>OMEJITEV</Text>
                 <Text style={commonStyles.muted}>Zanesljivost opisuje popolnost vhodnih podatkov, ne statistične gotovosti.</Text>
                 {assessment.limitations.slice(1).map((limitation, index) => <Text key={`${index}-${limitation}`} style={commonStyles.muted}>• {limitation}</Text>)}
-                <Text style={commonStyles.muted}>Vremensko vzorčenje: {assessment.weatherSamplingResolutionM / 1000} km · {assessment.sourceAge}</Text>
+                <Text style={commonStyles.muted}>{assessment.inputPolicyVersion ? 'Point poizvedba za izbrano koordinato; ločljivost modelske mreže določa ponudnik.' : `Vremensko vzorčenje: ${assessment.weatherSamplingResolutionM / 1000} km`} · {assessment.sourceAge}</Text>
                 <Text style={commonStyles.muted}>Vremenski podatki pridobljeni: {assessment.fetchedAt}</Text>
                 {areaDetails ? <Text style={commonStyles.muted}>{areaDetails} · {profile.label}</Text> : null}
               </View>

@@ -122,6 +122,8 @@ export interface ConditionsSnapshot {
   scorerVersion: string;
   scorerConfig: Record<string, unknown>;
   inputPolicyVersion: string;
+  weatherSnapshotId?: string;
+  soilSampling?: import('./soilSampling').SoilSampleMetadata;
   location: { latitude: number; longitude: number; areaId?: string; weatherPointId: string;
     samplingLatitude: number; samplingLongitude: number };
   weather: Omit<NonNullable<MushroomWeatherSummary['historical']>, 'days'> & {
@@ -249,6 +251,9 @@ export interface CurrentWeatherSummary {
 }
 
 export interface MushroomWeatherSummary {
+  /** Weather-input policy, separate from unchanged scorer version/weights. */
+  inputPolicyVersion?: string;
+  evaluationLocalDate?: string;
   latitude: number;
   longitude: number;
   current?: CurrentWeatherSummary;

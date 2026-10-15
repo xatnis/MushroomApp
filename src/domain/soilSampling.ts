@@ -12,6 +12,7 @@ export interface SoilSampleMetadata {
   timezone: typeof WEATHER_TIMEZONE; providerOffsetSeconds: number;
   mode: 'currentModelled' | 'forecast'; retrievedAt: string | null;
   providerEpochSeconds?: number; localOffsetSeconds?: number; depthsCm?: ['0–7', '7–28']; units?: 'm³/m³'; source?: 'open-meteo-forecast-hourly';
+  requestedInstantUtc?: string;
 }
 export interface DailyPeriod {
   startUtc: string | null; endUtc: string | null; compatible: boolean;
@@ -44,11 +45,15 @@ export function resolveLjubljanaClock(time: string): number[] {
   }
   return [...offsets].map(offset => wall - offset).filter(instant => ljubljanaClock(instant) === wanted).sort((a, b) => a - b);
 }
+const civilPeriods = new Map<string, DailyPeriod>();
 export function civilDailyPeriod(date: string): DailyPeriod {
+  const cached = civilPeriods.get(date); if (cached) return cached;
   if (!validWeatherDate(date)) return { startUtc: null, endUtc: null, compatible: false, basis: 'local-calendar' };
   const start = resolveLjubljanaClock(date + 'T00:00'), end = resolveLjubljanaClock(shiftLocalDate(date, 1) + 'T00:00');
-  return { startUtc: start.length === 1 ? new Date(start[0]).toISOString() : null, endUtc: end.length === 1 ? new Date(end[0]).toISOString() : null,
-    compatible: start.length === 1 && end.length === 1, basis: 'local-calendar' };
+  const period: DailyPeriod = Object.freeze({ startUtc: start.length === 1 ? new Date(start[0]).toISOString() : null, endUtc: end.length === 1 ? new Date(end[0]).toISOString() : null,
+    compatible: start.length === 1 && end.length === 1, basis: 'local-calendar' });
+  civilPeriods.set(date, period); if (civilPeriods.size > 256) civilPeriods.delete(civilPeriods.keys().next().value!);
+  return period;
 }
 export function providerDailyPeriod(date: string, offset: number | undefined): DailyPeriod {
   if (!validWeatherDate(date)) return { startUtc: null, endUtc: null, compatible: false, basis: 'provider-fixed-offset' };
@@ -81,5 +86,6 @@ export function sampleNativeSoil(data: NativeSoilResponse | undefined, date: str
   const localTime = ljubljanaClock(chosen.instant).slice(0, 16);
   const point: HeatmapSoilPoint = { time: localTime, soilMoisture0To7Cm: layer('soil_moisture_0_to_7cm', '0–7 cm'), soilMoisture7To28Cm: layer('soil_moisture_7_to_28cm', '7–28 cm') };
   return { point, metadata: { contract: 'point-asof-or-local09-v1', providerTime: chosen.time, instantUtc: new Date(chosen.instant).toISOString(), localTime,
-    timezone: WEATHER_TIMEZONE, providerOffsetSeconds: data.utc_offset_seconds!, mode: mode.kind === 'current' ? 'currentModelled' : 'forecast', retrievedAt }, missing };
+    timezone: WEATHER_TIMEZONE, providerOffsetSeconds: data.utc_offset_seconds!, mode: mode.kind === 'current' ? 'currentModelled' : 'forecast', retrievedAt,
+    requestedInstantUtc: new Date(target).toISOString() }, missing };
 }

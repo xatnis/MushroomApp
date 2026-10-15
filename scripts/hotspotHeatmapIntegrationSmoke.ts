@@ -1,5 +1,6 @@
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { assertPointMigrationAwareSource } from './pointMigrationSourceGuards';
 import { execFileSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
@@ -135,5 +136,5 @@ strictEqual(slice(source, '<GeoJSONSource id="regional-overview-source"', '{loca
 strictEqual(slice(source, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen').replace("    if (mode !== 'map') return;\n", ''),
   slice(baseline, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen'), 'no scoring/visual/LOD rewrite');
 for (const file of ['src/services/heatmap/regionalWeather.ts', 'src/domain/locationConditions.ts', 'src/state/AppContext.tsx'])
-  strictEqual(readFileSync(file, 'utf8'), execFileSync('git', ['show', `03cf830:${file}`], { encoding: 'utf8' }), file);
+  assertPointMigrationAwareSource(file, '03cf830');
 console.log('PASS actual list/map context handlers, row focus intent/current context/exclusive popup, ordinary viewport preservation, sort roundtrip, offscreen render deferral, mounted native sources, untouched evaluation/cache/privacy. Physical Android rendering still requires QA.');

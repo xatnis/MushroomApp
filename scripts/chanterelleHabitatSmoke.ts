@@ -15,8 +15,9 @@ const baseline = JSON.parse(previousFile('src/data/heatmapPilot/zgs-enrichment.j
 // Regional V2 changes orchestration/batching, not these numerical sources.
 for (const path of ['src/domain/mushroomWeather.ts', 'src/services/weather.ts', 'src/domain/heatmap/assessment.ts', 'src/domain/heatmap/config.ts']) {
   const current = readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
-  // Ignore only the explicit read-only graph calendar option and mapper export.
+  // Ignore the read-only graph calendar option, mapper export and V1.2 cache-helper export; bodies remain pinned.
   const productionDefault = path !== 'src/services/weather.ts' ? current : current
+    .replace('export async function cachedFetch<T>', 'async function cachedFetch<T>')
     .replace('  /** Optional calendar anchor for read-only daily charts; scorer callers retain their existing default. */\n  baseLocalDate?: string;\n', '')
     .replace('export const mapDailyWeather', 'const mapDailyWeather')
     .replace('const today = options.baseLocalDate ?? dateAtOffset(0);', 'const today = dateAtOffset(0);')

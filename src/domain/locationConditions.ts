@@ -6,6 +6,8 @@ import { MUSHROOM_WEATHER_PROFILES, MUSHROOM_SCORE_V1_CONFIG, BOLETUS_EDULIS_SCO
 import { localDateFor } from './heatmap/assessment';
 import { HEATMAP_WEATHER_POLICY_VERSION } from './heatmap/config';
 import { weatherAssessmentsFor, type HeatmapPilotBundle } from '../services/heatmap/pilotHeatmap';
+import { pointResults, pointLocationKey } from '../services/pointConditions';
+import { CANONICAL_POINT_POLICY, type SevenDaySnapshot } from './sevenDayConditions';
 
 export interface ConditionsLocation {
   id: string;
@@ -48,7 +50,7 @@ export function mapConditionsLocation(location: ConditionsLocation): ConditionsL
 }
 
 /** Same point/profile/day/source => same production assessment. No transport or rendering side effects. */
-export function conditionsForLocation(mapping: ConditionsLocationMapping, bundle: HeatmapPilotBundle | undefined,
+export function legacyConditionsForLocation(mapping: ConditionsLocationMapping, bundle: HeatmapPilotBundle | undefined,
   profile: MushroomWeatherProfileId, day: HeatmapTargetDay, baseLocalDate = localDateFor()): HeatmapAreaAssessment | undefined {
   if (!bundle || bundle.baseLocalDate !== baseLocalDate) return undefined;
   const weather = weatherAssessmentsFor(bundle, profile, day)[mapping.weatherPoint.id];
@@ -61,6 +63,29 @@ export function conditionsForLocation(mapping: ConditionsLocationMapping, bundle
     sourceAge: weather.summary.stale ? 'Zastarel predpomnilnik' : 'Sveži podatki', fetchedAt: weather.summary.updatedAt,
     weatherSamplingResolutionM: 0, habitatSource: 'Ni podatkov za to lokacijo', habitatSourceVintage: '',
     modelledHistoryDays: weather.modelledHistoryDays };
+}
+
+/** Exact-coordinate point contract. Habitat is context only; regional polygon scores are intentionally separate. */
+export function conditionsForLocation(mapping: ConditionsLocationMapping, snapshot: SevenDaySnapshot | undefined,
+  profile: MushroomWeatherProfileId, day: HeatmapTargetDay, baseLocalDate = localDateFor()): HeatmapAreaAssessment | undefined {
+  if (!snapshot || snapshot.baseLocalDate !== baseLocalDate || snapshot.latitude !== mapping.latitude || snapshot.longitude !== mapping.longitude
+    || snapshot.pointPolicyVersion !== CANONICAL_POINT_POLICY) return undefined;
+  const result = pointResults(snapshot, profile)[day === 'today' ? 0 : 1];
+  const weather = { weatherCellId: pointLocationKey(mapping, baseLocalDate), speciesId: profile, targetDay: day,
+    targetLocalDate: result.targetLocalDate, summary: result.inputs,
+    score: result.score == null ? { ...result.canonical, score: undefined, label: 'Ocena ni na voljo', reasons: result.missing,
+      components: result.componentsVerified ? result.canonical.components : [] } : result.canonical,
+    dataQuality: result.score == null ? 'insufficient' as const : 'complete' as const, modelledHistoryDays: result.modelledHistoryDays,
+    limitations: [...result.missing, ...result.warnings] };
+  const contextual = mapping.feature ? regionalAreaAssessmentFor(mapping.feature, weather) : {
+    areaId: mapping.id, weatherCellId: weather.weatherCellId, speciesId: profile, targetDay: day, targetLocalDate: result.targetLocalDate,
+    score: result.score, classLabel: weather.score.label, dataQuality: weather.dataQuality, habitatState: 'unknown' as const,
+    scoreDetails: weather.score, summary: result.inputs, limitations: weather.limitations, sourceAge: '', fetchedAt: result.inputs.updatedAt,
+    weatherSamplingResolutionM: 0, habitatSource: 'Ni podatkov za to lokacijo', habitatSourceVintage: '', modelledHistoryDays: result.modelledHistoryDays };
+  return { ...contextual, weatherCellId: weather.weatherCellId, score: result.score, classLabel: result.label ?? 'Ocena ni na voljo',
+    weatherSamplingResolutionM: 0, inputPolicyVersion: CANONICAL_POINT_POLICY, weatherSnapshotId: snapshot.snapshotId, soilSampling: result.soilSampling,
+    sourceAge: snapshot.stale ? 'Starejši predpomnjeni podatki' : 'Sveži modelski podatki',
+    limitations: [...new Set([...contextual.limitations, 'Point ocena uporablja dejanske koordinate in lokalna urna okna; regionalni poligon je grobejša, ločena aproksimacija.'])] };
 }
 
 /** Save only a ready assessment for the actual visit day. Never backfill old visits from today's forecast. */
@@ -78,9 +103,12 @@ export function createConditionsSnapshot(mapping: ConditionsLocationMapping, ass
     scorerVersion: assessment.speciesId === 'generic' ? 'generic-v2' : 'species-v1',
     scorerConfig: { generic: MUSHROOM_SCORE_V1_CONFIG, boletusEdulis: BOLETUS_EDULIS_SCORE_V1_CONFIG,
       cantharellusCibarius: CANTHARELLUS_CIBARIUS_SCORE_V1_CONFIG, lactariusDeliciosus: LACTARIUS_DELICIOSUS_SCORE_V1_CONFIG }[assessment.speciesId],
-    inputPolicyVersion: HEATMAP_WEATHER_POLICY_VERSION,
+    inputPolicyVersion: assessment.inputPolicyVersion ?? HEATMAP_WEATHER_POLICY_VERSION,
+    weatherSnapshotId: assessment.weatherSnapshotId, soilSampling: assessment.soilSampling,
     location: { latitude: mapping.latitude, longitude: mapping.longitude, areaId: mapping.feature?.properties.id,
-      weatherPointId: mapping.weatherPoint.id, samplingLatitude: mapping.weatherPoint.latitude, samplingLongitude: mapping.weatherPoint.longitude },
+      weatherPointId: assessment.inputPolicyVersion ? assessment.weatherCellId : mapping.weatherPoint.id,
+      samplingLatitude: assessment.inputPolicyVersion ? mapping.latitude : mapping.weatherPoint.latitude,
+      samplingLongitude: assessment.inputPolicyVersion ? mapping.longitude : mapping.weatherPoint.longitude },
     weather: { ...weather, soilMoisture0To7Cm: assessment.summary.current?.soilMoisture0To7Cm,
       soilMoisture7To28Cm: assessment.summary.current?.soilMoisture7To28Cm, soilTime: assessment.summary.current?.time },
     normalizedComponents: assessment.scoreDetails.components, habitat: { classification: assessment.habitatState,

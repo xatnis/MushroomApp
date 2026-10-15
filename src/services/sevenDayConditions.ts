@@ -7,6 +7,7 @@ import { WEATHER_TIMEZONE, validWeatherDate } from '../domain/weatherSeries';
 import { getMushroomWeatherSummary, mapDailyWeather, shiftLocalDate } from './weather';
 import { sampleNativeSoil, providerDailyPeriod, providerInstant, ljubljanaClock } from '../domain/soilSampling';
 import { withCivilHourlyWeather } from './sevenDayHourlyWeather';
+import { loadCanonicalPointSnapshot } from './pointConditions';
 
 interface CacheRow { payload: string; fetchedAt: string; expiresAt: string }
 interface Location { latitude: number; longitude: number }
@@ -81,7 +82,8 @@ export function forecastSoilAt(data: RawWeather | undefined, date: string, prefe
   return { time: selected.time, soilMoisture0To7Cm: layer('soil_moisture_0_to_7cm'), soilMoisture7To28Cm: layer('soil_moisture_7_to_28cm') };
 }
 
-export function loadSevenDaySnapshot(db: SQLiteDatabase, location: Location, today: string, options: { requestTimeoutMs?: number; seedUpdatedAt?: string } = {}): Promise<SevenDaySnapshot> {
+/** Pre-migration diagnostic adapter only. No production surface calls this policy. */
+export function loadLegacySevenDaySnapshotForAudit(db: SQLiteDatabase, location: Location, today: string, options: { requestTimeoutMs?: number; seedUpdatedAt?: string } = {}): Promise<SevenDaySnapshot> {
   if (!validWeatherDate(today) || !Number.isFinite(location.latitude) || !Number.isFinite(location.longitude)
     || Math.abs(location.latitude) > 90 || Math.abs(location.longitude) > 180) return Promise.reject(new Error('Neveljavna lokacija ali datum.'));
   const key = `${location.latitude}:${location.longitude}:${today}:civil-hourly-point-v1-2`;
@@ -168,3 +170,6 @@ export function loadSevenDaySnapshot(db: SQLiteDatabase, location: Location, tod
   })().finally(() => requests!.delete(key));
   requests.set(key, task); return task;
 }
+
+/** Weekly and Today/Tomorrow point surfaces acquire the same immutable production snapshot. */
+export const loadSevenDaySnapshot = loadCanonicalPointSnapshot;

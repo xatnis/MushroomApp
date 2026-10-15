@@ -7,22 +7,15 @@ import ts from 'typescript';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { MushroomWeatherProfileId } from '../src/domain/types';
 import type { HeatmapTargetDay } from '../src/domain/heatmap/types';
-import { mapConditionsLocation } from '../src/domain/locationConditions';
 import { localDateFor, targetLocalDate } from '../src/domain/heatmap/assessment';
-import { shiftLocalDate } from '../src/services/weather';
-import { regionalWeatherKey } from '../src/services/heatmap/regionalWeather';
-import * as service from '../src/services/heatmap/pilotHeatmap';
+import * as service from '../src/services/pointConditions';
+import { hourlyWeatherFixture } from './sevenDayHourlyFixture';
 
 const requireHere = createRequire(__filename), Module = requireHere('node:module').Module;
-const p = { id: 'test', latitude: 46.47045, longitude: 14.85009 }, mapping = mapConditionsLocation(p), date = localDateFor();
-const source = { ...mapping.weatherPoint, baseLocalDate: date, fetchedAt: new Date().toISOString(), stale: false, errors: {},
-  days: Array.from({ length: 62 }, (_, i) => ({ date: shiftLocalDate(date, i - 60), kind: i < 60 ? 'historical' : 'forecast',
-    precipitationMm: 2, temperatureMeanC: 13, evapotranspirationMm: 1 })),
-  currentSoil: { time: date + 'T10:00', soilMoisture0To7Cm: .25, soilMoisture7To28Cm: .26 },
-  tomorrowMorningSoil: { time: shiftLocalDate(date, 1) + 'T09:00', soilMoisture0To7Cm: .26, soilMoisture7To28Cm: .27 } };
-const rows = new Map([[regionalWeatherKey([mapping.weatherPoint], date), { payload: JSON.stringify(source) }]]);
+const p = { id: 'test', latitude: 46.47045, longitude: 14.85009 }, date = localDateFor();
+const rows = new Map<string, { payload: string; fetchedAt: string; expiresAt: string }>();
 const db = { getFirstAsync: async (_: string, key: string) => rows.get(key) ?? null,
-  runAsync: async (_: string, key: string, payload: string) => rows.set(key, { payload }) } as unknown as SQLiteDatabase;
+  runAsync: async (_: string, key: string, payload: string, fetchedAt: string, expiresAt: string) => rows.set(key, { payload, fetchedAt, expiresAt }) } as unknown as SQLiteDatabase;
 let focused = true, loads = 0, foregroundListener: ((state: string) => void) | undefined;
 let holdLoads = false;
 const heldLoads: Array<{ reject: (error: Error) => void }> = [];
@@ -47,9 +40,10 @@ mod.require = (id: string) => {
   } } };
   if (id === '@react-navigation/native') return { useIsFocused: () => focused };
   if (id === 'expo-sqlite') return { useSQLiteContext: () => db };
-  if (id === './pilotHeatmap') return { ...service, loadHeatmapPilot: (...args: Parameters<typeof service.loadHeatmapPilot>) => {
+  if (id === '../usePointLocalDate') return { usePointLocalDate: () => date };
+  if (id === '../pointConditions') return { ...service, loadPointSnapshots: (...args: Parameters<typeof service.loadPointSnapshots>) => {
     loads++;
-    return holdLoads ? new Promise((_, reject) => heldLoads.push({ reject })) : service.loadHeatmapPilot(...args);
+    return holdLoads ? new Promise((_, reject) => heldLoads.push({ reject })) : service.loadPointSnapshots(...args);
   } };
   return original(id);
 };
@@ -64,6 +58,8 @@ function render(profile: MushroomWeatherProfileId = 'generic', day: HeatmapTarge
 async function run() {
   let http = 0;
   const fetch = globalThis.fetch;
+  globalThis.fetch = (async (url: any) => ({ ok: true, json: async () => hourlyWeatherFixture(String(url), date) })) as any;
+  await service.loadCanonicalPointSnapshot(db, p, date);
   globalThis.fetch = async () => { http++; throw new Error('Warm selection must never fetch'); };
   try {
     strictEqual(render().complete, false, 'initial render is pending BEFORE loading effect commits');

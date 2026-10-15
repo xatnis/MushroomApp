@@ -9,7 +9,7 @@ import ts from 'typescript';
 import { DatabaseSync } from 'node:sqlite';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { FindRecord, ProfileSummary } from '../src/domain/types';
-import { conditionsForLocation, conditionsProfileForItems, createConditionsSnapshot, initialHotspotProfile,
+import { legacyConditionsForLocation as conditionsForLocation, conditionsProfileForItems, createConditionsSnapshot, initialHotspotProfile,
   mapConditionsLocation, validConditionsLocation } from '../src/domain/locationConditions';
 import { visitConditionsText, withoutLocalConditions } from '../src/domain/conditionsSnapshot';
 import { HEATMAP_HABITAT, HEATMAP_PILOT_METADATA, buildHeatmapRenderCollection, REGIONAL_INDEX } from '../src/domain/heatmap/regional';
@@ -124,7 +124,7 @@ async function run() {
   ok(!/GeoJSON|useHeatmapVisuals|heatmapLod/.test(marker.replace(/\/\*\*.*?\*\//gs, '')), 'badge cannot rebuild or remount a heatmap source');
   const hook = readFileSync('src/services/heatmap/useLocationConditions.ts', 'utf8');
   ok(hook.includes('[db, key, baseDate, active, attempt, foreground, debounceMs]'), 'transport effect excludes profile/day');
-  ok(hook.includes('controller.abort()')); ok(hook.includes('listener.remove()'));
+  ok(hook.includes('generation.current === loadKey')); ok(hook.includes('listener.remove()'));
   const detail = readFileSync('src/screens/HotspotDetailScreen.tsx', 'utf8');
   ok(detail.includes('requestHotspotFocus(hotspot, { profileId: conditionsProfile, targetDay: conditionsDay })'));
   ok(detail.indexOf('<HotspotConditionsCard') < detail.indexOf('title="Dodaj obisk"'));

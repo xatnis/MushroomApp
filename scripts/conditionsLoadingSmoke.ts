@@ -1,4 +1,5 @@
 import { deepStrictEqual, ok, strictEqual } from 'node:assert';
+import { assertPointMigrationAwareSource } from './pointMigrationSourceGuards';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import ts from 'typescript';
@@ -50,7 +51,7 @@ async function run() {
     LocationAcquisitionError: class extends Error {},
     useLocationConditions: () => ({ assessments: {}, complete: true }), topThreeHotspots: () => [], conditionsNavigationPatch: () => ({}),
     MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore: (...args: any[]) => { scorerCalls++; return calculateMushroomWeatherScore(args[0], args[1]); },
-    buildWeatherDailySeries, summarySeriesInputs, weatherLocalDate, graphPeriodSummary, createAdvancedDetailsFocus, colors, spacing, slNumber, slDateTime,
+    usePointLocalDate: weatherLocalDate, buildWeatherDailySeries, summarySeriesInputs, weatherLocalDate, graphPeriodSummary, createAdvancedDetailsFocus, colors, spacing, slNumber, slDateTime,
     debugNumber: (v: any, unit: string) => v == null ? 'ni podatka' : v + ' ' + unit, placeDetails: () => '',
     ...Object.fromEntries(['Screen', 'Text', 'View', 'Card', 'Chip', 'Field', 'Notice', 'SectionTitle', 'Pressable', 'ScrollView', 'ActivityIndicator', 'AppButton', 'ConditionsAdvancedDetails', 'WeatherGraphsEntry', 'WeatherGraphsModal', 'SevenDayConditionsEntry', 'SevenDayConditionsModal'].map(s => [s, s])),
   };
@@ -122,7 +123,7 @@ async function run() {
   for (const path of ['src/domain/mushroomWeather.ts','src/services/weather.ts','src/services/weatherGraphs.ts','src/screens/MapScreen.tsx',
     'src/components/ConditionsAdvancedDetails.tsx','src/components/conditionsAdvancedPresentation.ts','src/components/WeatherGraphs.tsx',
     'src/domain/hotspotRanking.ts','src/domain/conditionsSnapshot.ts','src/navigation/AppNavigator.tsx'])
-    strictEqual(readFileSync(path,'utf8').replace('export async function cachedFetch<T>', 'async function cachedFetch<T>').replace(/\r\n/g,'\n'), execFileSync('git',['show',`b4559ef:${path}`],{encoding:'utf8'}).replace(/\r\n/g,'\n'),path);
+    assertPointMigrationAwareSource(path, 'b4559ef');
   console.log('PASS actual ConditionsScreen effect/async lifecycle: initial GPS, slow weather, rapid locations/profile switches, stale/warm cache, offline/timeout/retry, genuine insufficient vs source failure, usable partial score, no stale overwrite, no disclosure/profile extra requests or rescore; canonical/transport/map untouched. Native QA separate.');
 }
 void run();

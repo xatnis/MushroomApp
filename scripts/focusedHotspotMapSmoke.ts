@@ -5,6 +5,7 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { colors, radii, spacing } from '../src/theme';
 import { MUSHROOM_WEATHER_PROFILES } from '../src/domain/mushroomWeather';
+import { assertPointMigrationAwareSource } from './pointMigrationSourceGuards';
 
 const source = readFileSync('src/screens/MapScreen.tsx', 'utf8');
 const ast = ts.createSourceFile('MapScreen.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
@@ -93,8 +94,10 @@ const withoutOptionalScrollFocus = (source: string) => source
   .replace('; scrollRef?: Ref<ScrollView>; onScrollBeginDrag?: () => void', '')
   .replace(' ref={scrollRef} onScrollBeginDrag={onScrollBeginDrag}', '');
 for (const file of ['src/domain/mushroomWeather.ts', 'src/domain/locationConditions.ts',
-  'src/services/heatmap/regionalWeather.ts', 'src/domain/hotspotRanking.ts', 'src/navigation/AppNavigator.tsx', 'src/components/ui.tsx', 'src/state/AppContext.tsx'])
+  'src/services/heatmap/regionalWeather.ts', 'src/domain/hotspotRanking.ts', 'src/navigation/AppNavigator.tsx', 'src/components/ui.tsx', 'src/state/AppContext.tsx']) {
+  if (file === 'src/domain/locationConditions.ts') { assertPointMigrationAwareSource(file, 'e4cff79'); continue; }
   strictEqual(file === 'src/components/ui.tsx' ? withoutOptionalScrollFocus(readFileSync(file, 'utf8')) : readFileSync(file, 'utf8'),
     execFileSync('git', ['show', `e4cff79:${file}`], { encoding: 'utf8' }), file);
+}
 ok(source.includes('style={styles.preview}') && !source.includes('insets.bottom'), 'popup remains inside already tab-inset map; no double bottom safe-area');
 console.log('PASS actual icon/context UI, current selection, existing filter, responsive wrap/44pt contract, location clearance, unchanged selection/weather/scoring/GeoJSON/LOD/sources/privacy/tab insets. Native text/GPU/camera projection needs phone QA.');

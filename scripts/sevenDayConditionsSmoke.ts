@@ -1,10 +1,12 @@
 import { deepStrictEqual, ok, strictEqual, throws } from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { assertPointMigrationAwareSource } from './pointMigrationSourceGuards';
 import { execFileSync } from 'node:child_process';
 import { calculateMushroomWeatherScore, MUSHROOM_WEATHER_PROFILES } from '../src/domain/mushroomWeather';
 import { assessHeatmapWeather } from '../src/domain/heatmap/assessment';
 import { buildWeatherInputsForTargetDate, evaluateSevenDayConditions, SEVEN_DAY_REQUIREMENTS } from '../src/domain/sevenDayConditions';
-import { loadSevenDaySnapshot, forecastSoilAt, weatherUtcOffsetAtDate, compatibleWeatherTimezone, matchesCanonicalVintage } from '../src/services/sevenDayConditions';
+// Retain the old independent-reference safety regression as an audit, not the migrated production entry.
+import { loadLegacySevenDaySnapshotForAudit as loadSevenDaySnapshot, forecastSoilAt, weatherUtcOffsetAtDate, compatibleWeatherTimezone, matchesCanonicalVintage } from '../src/services/sevenDayConditions';
 import { shiftLocalDate, getHeatmapWeatherBatch } from '../src/services/weather';
 import { HEATMAP_WEATHER_POLICY_VERSION } from '../src/domain/heatmap/config';
 import { weatherLocalDate } from '../src/domain/weatherSeries';
@@ -168,5 +170,5 @@ async function transport() {
 }
 for (const path of ['src/domain/mushroomWeather.ts','src/domain/heatmap/assessment.ts','src/services/weather.ts','src/services/weatherGraphs.ts',
   'src/components/WeatherGraphs.tsx','src/screens/MapScreen.tsx','src/domain/hotspotRanking.ts','src/navigation/AppNavigator.tsx'])
-  strictEqual(readFileSync(path,'utf8').replace('export async function cachedFetch<T>', 'async function cachedFetch<T>').replace(/\r\n/g,'\n'), execFileSync('git',['show',`d7fc1e7:${path}`],{encoding:'utf8'}).replace(/\r\n/g,'\n'),path);
+  assertPointMigrationAwareSource(path, 'd7fc1e7');
 void transport().then(() => console.log('PASS 4 profiles x 7 dates x calendar/DST/leap/year cases, D7/14/26/30/60 T14/20, Today/Tomorrow full-input parity/gate, native soil/ET0/units, missing/null/partial/stale, no future leakage, immutable vintage/dedupe/cache and production-source guards.'));

@@ -8,7 +8,8 @@ export interface UtcHourlyWeather {
   timezone?: string; utc_offset_seconds?: number;
   hourly_units?: Record<string, string>;
   current_units?: Record<string, string>;
-  current?: { time?: number; temperature_2m?: number | null };
+  current?: { time?: number; temperature_2m?: number | null; weather_code?: number | null };
+  location_id?: number;
   hourly?: { time?: number[]; precipitation?: Array<number | null>; temperature_2m?: Array<number | null>;
     et0_fao_evapotranspiration?: Array<number | null>; soil_moisture_0_to_7cm?: Array<number | null>; soil_moisture_7_to_28cm?: Array<number | null> };
 }

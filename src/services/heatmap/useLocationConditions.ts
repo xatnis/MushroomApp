@@ -5,10 +5,12 @@ import { useIsFocused } from '@react-navigation/native';
 import { conditionsForLocation, mapConditionsLocation, validConditionsLocation, type ConditionsLocation } from '../../domain/locationConditions';
 import type { MushroomWeatherProfileId } from '../../domain/types';
 import type { HeatmapTargetDay } from '../../domain/heatmap/types';
-import { localDateFor } from '../../domain/heatmap/assessment';
-import { cachedHeatmapBundle, loadHeatmapPilot, scheduleSettledHeatmapLoad, subscribeHeatmapConditions, type HeatmapPilotBundle } from './pilotHeatmap';
+import { cachedPointSnapshot, loadPointSnapshots, subscribePointConditions } from '../pointConditions';
+import { scheduleSettledHeatmapLoad } from './pilotHeatmap';
+import type { SevenDaySnapshot } from '../../domain/sevenDayConditions';
+import { usePointLocalDate } from '../usePointLocalDate';
 
-/** One grouped request for missing points, shared with the map; selection only evaluates cached inputs. */
+/** Canonical exact-coordinate point cache. Regional sources/LOD do not subscribe to these updates. */
 export function useLocationConditions(locations: ConditionsLocation[], profile: MushroomWeatherProfileId,
   day: HeatmapTargetDay, enabled = true, debounceMs = 0) {
   const db = useSQLiteContext();
@@ -16,27 +18,25 @@ export function useLocationConditions(locations: ConditionsLocation[], profile: 
   const active = enabled && focused;
   const key = JSON.stringify(locations.map(p => [p.id, p.latitude, p.longitude]));
   const mappings = useMemo(() => locations.filter(validConditionsLocation).map(mapConditionsLocation), [key]);
-  const [bundle, setBundle] = useState<HeatmapPilotBundle | undefined>(() => cachedHeatmapBundle(db));
+  const [snapshots, setSnapshots] = useState<Record<string, SevenDaySnapshot | undefined>>({});
   const [loading, setLoading] = useState(false);
   const [attempt, retry] = useState(0);
   const [foreground, refreshForeground] = useState(0);
   const [error, setError] = useState<string>();
-  const baseDate = localDateFor();
+  const baseDate = usePointLocalDate();
   const loadKey = JSON.stringify([key, baseDate, active, attempt, foreground, debounceMs]);
   const [settledKey, setSettledKey] = useState<string>();
-  const previous = useRef<HeatmapPilotBundle | undefined>(bundle);
+  const generation = useRef(loadKey); generation.current = loadKey;
+  const read = () => Object.fromEntries(mappings.map(m => [m.id, cachedPointSnapshot(db, m, baseDate)]));
   useEffect(() => {
     if (!active || !mappings.length) return;
     const update = () => {
-      const next = cachedHeatmapBundle(db);
-      // Other viewport batches must not rerender cards/markers with unchanged inputs.
-      if (next?.baseLocalDate === previous.current?.baseLocalDate && mappings.every(m =>
-        next?.weather.cells[m.weatherPoint.id] === previous.current?.weather.cells[m.weatherPoint.id])) return;
-      previous.current = next; setBundle(next);
+      const next = read();
+      setSnapshots(previous => mappings.every(m => previous[m.id] === next[m.id]) ? previous : next);
     };
     update();
-    return subscribeHeatmapConditions(db, update);
-  }, [db, key, active]);
+    return subscribePointConditions(db, update);
+  }, [db, key, baseDate, active]);
   useEffect(() => {
     const listener = AppState.addEventListener('change', state => {
       if (state === 'active') refreshForeground(value => value + 1);
@@ -46,29 +46,26 @@ export function useLocationConditions(locations: ConditionsLocation[], profile: 
   useEffect(() => {
     if (!active || !mappings.length) { setLoading(false); setSettledKey(undefined); return; }
     let current = true;
-    const controller = new AbortController();
     setLoading(true); setError(undefined);
     const cancel = scheduleSettledHeatmapLoad(() => {
-      const points = [...new Map(mappings.map(m => [m.weatherPoint.id, m.weatherPoint])).values()];
-      const started = Date.now();
-      void loadHeatmapPilot(db, { pointIds: points.map(p => p.id), pointDefinitions: points, signal: controller.signal })
-        .catch(() => { if (current) setError('Ocene trenutno ni mogoče izračunati.'); })
+      void loadPointSnapshots(db, mappings, baseDate)
+        .then(() => { if (current && generation.current === loadKey) {
+          const next = read(); setSnapshots(next);
+          if (Object.values(next).some(snapshot => snapshot?.today.errors.forecast || snapshot?.today.errors.historical)) setError('Ocene trenutno ni mogoče izračunati.');
+        } })
+        .catch(() => { if (current && generation.current === loadKey) setError('Ocene trenutno ni mogoče izračunati.'); })
         .finally(() => {
-          if (current) {
-            const next = cachedHeatmapBundle(db);
-            previous.current = next; setBundle(next);
+          if (current && generation.current === loadKey) {
             setSettledKey(loadKey);
             setLoading(false);
-            if (__DEV__) console.info('[location conditions]', { locations: mappings.length,
-              weatherPoints: points.length, durationMs: Date.now() - started, sharedCacheAndDedupe: true });
           }
         });
     }, debounceMs);
-    return () => { current = false; cancel(); controller.abort(); setSettledKey(undefined); };
+    return () => { current = false; cancel(); };
     // Profile and target day intentionally absent: one snapshot contains all profiles and both dates.
   }, [db, key, baseDate, active, attempt, foreground, debounceMs]);
   const assessments = useMemo(() => Object.fromEntries(enabled ? mappings.map(m =>
-    [m.id, conditionsForLocation(m, bundle, profile, day, baseDate)]) : []), [mappings, bundle, profile, day, baseDate, enabled]);
+    [m.id, conditionsForLocation(m, snapshots[m.id], profile, day, baseDate)]) : []), [mappings, snapshots, profile, day, baseDate, enabled]);
   // False on the FIRST render of a new location/date/load generation, even before
   // the effect sets loading. Species/day use the same snapshot and don't reset it.
   const complete = !mappings.length || (active && settledKey === loadKey);

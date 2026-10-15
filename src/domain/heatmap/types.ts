@@ -156,6 +156,9 @@ export interface HeatmapWeatherAssessment {
 }
 
 export interface HeatmapAreaAssessment {
+  inputPolicyVersion?: string;
+  weatherSnapshotId?: string;
+  soilSampling?: import('../soilSampling').SoilSampleMetadata;
   areaId: string;
   weatherCellId: string;
   speciesId: MushroomWeatherProfileId;
