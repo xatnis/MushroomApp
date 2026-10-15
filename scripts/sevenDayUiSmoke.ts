@@ -60,6 +60,9 @@ modal = ui.SevenDayConditionsModal({ ...props(), visible: false }); strictEqual(
 const invalid = expand(ui.SevenDayConditionsModal({ ...props(), location: undefined })); ok(text(invalid).includes('najprej izberi lokacijo'));
 const safe = walk(expand(ui.SevenDayConditionsModal({ ...props(), location: undefined }))).find(n => n.type === 'SafeAreaView');
 deepStrictEqual(safe.props.edges, ['top','bottom','left','right']); ok(safe.props.accessibilityViewIsModal);
+loading = false; error = undefined; data = fixture; context = 'generic'; states.length = 0; stateCursor = 0;
+tree = expand(ui.SevenDayContent({ ...props(), initialDay: 5 }));
+strictEqual(dayButtons()[5].props.accessibilityState.selected, true, 'map preview date preselects the reused full-screen content without changing global day mode');
 
 // Execute actual acquisition hook: no profile-dependent fetching, current-key/cleanup guards, clock/resume lifecycle.
 async function hooks() {

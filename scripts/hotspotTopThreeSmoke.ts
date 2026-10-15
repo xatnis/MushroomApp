@@ -1,4 +1,5 @@
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
+import { withoutMapForecast } from './mapForecastSourceGuards';
 import { readFileSync } from 'node:fs';
 import { assertPointMigrationAwareSource } from './pointMigrationSourceGuards';
 import { execFileSync } from 'node:child_process';
@@ -70,6 +71,7 @@ function inspect(n: ts.Node) {
 }
 inspect(ast);
 const state: any = { controls: INITIAL_HEATMAP_CONTROLS, selectedId: 'old', showMyHotspots: false, mode: 'map', isFocused: true,
+  closeMapForecast() {}, currentMapForecast: undefined,
   topThreeVisible: true, heatmapEnabled: true, heatmapAreaCardOpen: false, listSort: 'conditions', query: 'hidden search',
   locationRequestGate: { cancel() {} }, cancelPendingHotspotFocus() {}, setLocating() {},
   nav: { enabled: true, profileId: 'boletusEdulis', targetDay: 'tomorrow' } };
@@ -148,8 +150,8 @@ state.controls = heatmapControlsReducer(state.controls, { type: 'leave' }); stri
 
 const baseline = execFileSync('git', ['show', 'e99921b:src/screens/MapScreen.tsx'], { encoding: 'utf8' });
 // Graph coordinate capture is presentation-only; Top 3/native data paths remain pinned.
-const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b))
-  .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, '');
+const slice = (s: string, a: string, b: string) => { s = withoutMapForecast(s); return s.slice(s.indexOf(a), s.indexOf(b))
+  .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, ''); };
 strictEqual(slice(mapSource, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'), slice(baseline, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'));
 strictEqual(slice(mapSource, '  const observeCameraZoom', '  const heatmapAreaCardOpen'), slice(baseline, '  const observeCameraZoom', '  const heatmapAreaCardOpen'), 'visual preparation unchanged');
 strictEqual(slice(mapSource, '  useEffect(() => () => heatmapRequestGate', '  // One post-commit'), slice(baseline, '  useEffect(() => () => heatmapRequestGate', '  // One post-commit'), 'regional weather effects unchanged');

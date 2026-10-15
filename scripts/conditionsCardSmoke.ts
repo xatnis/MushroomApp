@@ -2,6 +2,7 @@
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { withoutMapForecast } from './mapForecastSourceGuards';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import ts from 'typescript';
@@ -105,11 +106,11 @@ const heatmapLogic = (s: string) => s.slice(s.indexOf('  const selectHeatmapSpec
 const heatmapSources = (s: string) => s.slice(s.indexOf('<GeoJSONSource id="regional-overview-source"'), s.indexOf('{locationGranted ?'))
   .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, '');
 strictEqual(heatmapLogic(screen), heatmapLogic(baseline), 'heatmap/LOD/weather calculation untouched');
-strictEqual(heatmapSources(screen), heatmapSources(baseline), 'native heatmap sources/layers untouched');
+strictEqual(heatmapSources(withoutMapForecast(screen)), heatmapSources(baseline), 'native heatmap sources/layers untouched; explicit forecast tap interception tested separately');
 const previousCard = functionText(execFileSync('git', ['show', '1d737ed:src/screens/MapScreen.tsx']).toString(), 'HeatmapAreaCard');
 const currentCard = functionText(screen, 'HeatmapAreaCard');
 const mainView = (s: string) => s.slice(s.indexOf('return <Card'), s.indexOf('<Pressable accessibilityRole="button" accessibilityState={{ expanded: detailsExpanded }}'));
-const withoutScrollHooks = (s: string) => s
+const withoutScrollHooks = (s: string) => withoutMapForecast(s)
   .replace(/      <WeatherGraphsEntry compact[^\n]*\/>\r?\n/, '')
   .replace(/onPress=\{\(\) => \{ cancelSectionScroll\(\); setDetailsExpanded\(false\); setOpenSection\(null\); onClose\(\); \}\}/, 'onPress={onClose}')
   .replace(/      ref=\{scrollRef\}[\s\S]*?      onMomentumScrollEnd=\{[^\n]*\}\r?\n/, '');

@@ -1,11 +1,14 @@
 import { strictEqual, ok } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { withoutMapForecast, withoutForecastModalInputs } from './mapForecastSourceGuards';
 
 /** Permit ONLY the explicitly tested V1.3 point wiring, never changes to native sources/camera/regional scorers. */
 export function withoutPointMigration(path: string, text: string): string {
   let source = text.replace(/\r\n/g, '\n').replace('export async function cachedFetch<T>', 'async function cachedFetch<T>');
+  if (path === 'src/components/SevenDayConditionsView.tsx') source = withoutForecastModalInputs(source);
   if (path === 'src/screens/MapScreen.tsx') {
+    source = withoutMapForecast(source);
     source = source.replace("import { MUSHROOM_WEATHER_PROFILES, calculateMushroomWeatherScore } from '../domain/mushroomWeather';", "import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';")
       .replace("import { useLocationConditions } from '../services/heatmap/useLocationConditions';\n", '')
       .replace('assessment: regionalAssessment, graphLocation, weatherPending: regionalWeatherPending', 'assessment, graphLocation, weatherPending');

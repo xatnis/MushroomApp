@@ -2,6 +2,7 @@ import { strictEqual, deepStrictEqual, ok } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
+import { withoutMapForecast } from './mapForecastSourceGuards';
 import ts from 'typescript';
 import { INITIAL_HEATMAP_CONTROLS, heatmapControlsReducer, heatmapControlsPanelVisible,
   hotspotPopupVisible, hotspotFocusPadding, type HeatmapControlsAction } from '../src/domain/heatmap/controlsState';
@@ -28,6 +29,7 @@ const state: any = { isFocused: true, pendingHotspotFocus: {
   requestId: 'entry-1', hotspotId: 'pikovo', longitude: 14.82, latitude: 46.42,
   conditions: { profileId: 'lactariusDeliciosus', targetDay: 'tomorrow' },
 }, consumedHotspotFocus: { current: undefined }, mapWasMoved: { current: false }, controls: INITIAL_HEATMAP_CONTROLS,
+  closeMapForecast() {}, currentMapForecast: undefined,
   heatmapEnabled: true, heatmapAreaCardOpen: false, selectedId: undefined,
   cameraTargetRef: { current: undefined }, focusLayout: undefined, HOTSPOT_MARKER_HEIGHT: 52,
   focusLayoutRevision: 0,
@@ -150,8 +152,8 @@ for (const [height, popupHeight, controlsEnd] of [[300, 124, 80], [400, 150, 96]
 }
 const baseline = execFileSync('git', ['show', '01b2038:src/screens/MapScreen.tsx'], { encoding: 'utf8' });
 // Graph coordinate capture is read-only; all underlying layers/actions stay pinned.
-const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b))
-  .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, '');
+const slice = (s: string, a: string, b: string) => { s = withoutMapForecast(s); return s.slice(s.indexOf(a), s.indexOf(b))
+  .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, ''); };
 strictEqual(slice(source, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'),
   slice(baseline, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'), 'native sources/layers unchanged');
 strictEqual(slice(source, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen').replace("    if (mode !== 'map') return;\n", ''),

@@ -229,7 +229,7 @@ const visit = (n: ts.Node) => {
   ts.forEachChild(n, visit);
 }; visit(mapAst);
 const point = { current: undefined as any }; let selection: any;
-const tap = new Function('graphMapPoint', 'setSelectedId', 'updateHeatmapNavigation', `return (${press!.getText(mapAst)});`)(point, () => {}, (patch: any) => selection = patch);
+const tap = new Function('graphMapPoint', 'setSelectedId', 'updateHeatmapNavigation', 'currentMapForecast', 'closeMapForecast', `return (${press!.getText(mapAst)});`)(point, () => {}, (patch: any) => selection = patch, undefined, () => {});
 tap({ stopPropagation() {}, nativeEvent: { lngLat: [14.9, 46.6], features: [{ properties: { id: 'cell-1' } }] } });
 deepStrictEqual(point.current, { areaId: 'cell-1', latitude: 46.6, longitude: 14.9 });
 deepStrictEqual(selection, { selectedAreaId: 'cell-1' });

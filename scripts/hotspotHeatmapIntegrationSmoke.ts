@@ -1,4 +1,5 @@
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
+import { withoutMapForecast } from './mapForecastSourceGuards';
 import { readFileSync } from 'node:fs';
 import { assertPointMigrationAwareSource } from './pointMigrationSourceGuards';
 import { execFileSync } from 'node:child_process';
@@ -20,6 +21,7 @@ function visit(n: ts.Node) {
 }
 visit(ast);
 const state: any = { mode: 'list', ownerFilter: 'mine', listSort: 'conditions', showMyHotspots: true, isFocused: true,
+  closeMapForecast() {}, currentMapForecast: undefined, graphMapPoint: { current: undefined },
   nav: { ...DEFAULT_HEATMAP_NAVIGATION_STATE, enabled: false }, controls: INITIAL_HEATMAP_CONTROLS,
   mapWasMoved: { current: false }, consumedHotspotFocus: { current: undefined }, requests: [],
   cameraTargetRef: { current: undefined }, locationRequestGate: { cancel() {} }, clearHotspotFocus: () => undefined,
@@ -47,7 +49,8 @@ const show = compile(`(${vars.get('showRankingHotspot')})`), entry = compile(`($
 const species = compile(`(${vars.get('selectHeatmapSpecies')})`), day = compile(`(${vars.get('selectHeatmapDay')})`);
 const toggle = compile(`(${vars.get('toggleMyHotspots')})`), openDetail = compile(`(${vars.get('openSelectedHotspot')})`);
 state.__DEV__ = false;
-const contextDeclaration = source.slice(source.indexOf('  const conditionsContext ='), source.indexOf('  const [heatmapBundle'));
+const normalizedSource = withoutMapForecast(source);
+const contextDeclaration = normalizedSource.slice(normalizedSource.indexOf('  const conditionsContext ='), normalizedSource.indexOf('  const [heatmapBundle'));
 const renderInputs = () => compile(`(() => { ${contextDeclaration} return { conditionsContext, heatmapProfileId, heatmapTargetDay }; })()`) as any;
 // Initialize offscreen render snapshot before changing the shared choice.
 const initialRenderProfile = renderInputs().heatmapProfileId;
@@ -104,34 +107,35 @@ for (const enabled of [false, true]) {
 }
 // Evaluate the actual toggle JSX conditional. Null leaves no layout placeholder.
 let modeToggle: ts.JsxElement | undefined;
+const modeAst = ts.createSourceFile('mode.tsx', normalizedSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 function findModeToggle(n: ts.Node) {
-  if (ts.isJsxElement(n) && n.openingElement.attributes.getText(ast).includes('styles.mapModeSwitch')) modeToggle = n;
+  if (ts.isJsxElement(n) && n.openingElement.attributes.getText(modeAst).includes('styles.mapModeSwitch')) modeToggle = n;
   ts.forEachChild(n, findModeToggle);
 }
-findModeToggle(ast); ok(modeToggle);
+findModeToggle(modeAst); ok(modeToggle);
 const toggleExpression = modeToggle.parent as ts.ConditionalExpression;
-ok(ts.isConditionalExpression(toggleExpression)); strictEqual(toggleExpression.condition.getText(ast), "mode === 'map'");
+ok(ts.isConditionalExpression(toggleExpression)); strictEqual(toggleExpression.condition.getText(modeAst), "mode === 'map'");
 const element = (type: any, props: any) => ({ type, props });
 Object.assign(state, { View: 'View', Text: 'Text', Pressable: 'Pressable', Ionicons: 'Icon', styles: {}, colors: { primary: 'green', white: 'white' },
   exports: {},
   require: (id: string) => { strictEqual(id, 'react/jsx-runtime'); return { jsx: element, jsxs: element }; } });
-state.mode = 'map'; const toggleTree = compile(`(${toggleExpression.getText(ast)})`);
+state.mode = 'map'; const toggleTree = compile(`(${toggleExpression.getText(modeAst)})`);
 strictEqual(toggleTree.props.accessibilityRole, 'tablist');
 deepStrictEqual(Array.from(toggleTree.props.children, (child: any) => child.props.accessibilityLabel), ['Način Rastišča', 'Način Pogoji']);
-state.mode = 'list'; strictEqual(compile(`(${toggleExpression.getText(ast)})`), null, 'no invisible spacer on list');
+state.mode = 'list'; strictEqual(compile(`(${toggleExpression.getText(modeAst)})`), null, 'no invisible spacer on list');
 const baselineAst = ts.createSourceFile('previous.tsx', execFileSync('git', ['show', '87b7532:src/screens/MapScreen.tsx'], { encoding: 'utf8' }), ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 let oldModeToggle = '';
 function oldToggle(n: ts.Node) {
   if (ts.isJsxElement(n) && n.openingElement.attributes.getText(baselineAst).includes('styles.mapModeSwitch')) oldModeToggle = n.getText(baselineAst);
   ts.forEachChild(n, oldToggle);
 }
-oldToggle(baselineAst); strictEqual(modeToggle.getText(ast), oldModeToggle, 'map controls and their actions unchanged');
+oldToggle(baselineAst); strictEqual(modeToggle.getText(modeAst), oldModeToggle, 'map controls and their actions unchanged apart from explicit forecast selection cleanup');
 ok(source.includes("mode === 'list' ? <View style={styles.listOverlay}"));
 ok(source.includes('<HotspotRankingList hotspots={filtered}'));
 strictEqual(readFileSync('src/components/HotspotRankingList.tsx', 'utf8'), execFileSync('git', ['show', '87b7532:src/components/HotspotRankingList.tsx'], { encoding: 'utf8' }), 'list conditions controls/rows untouched');
 // Allow only the graph's read-only tapped-coordinate capture; keep native data/layers and actions pinned.
-const slice = (s: string, a: string, b: string) => s.slice(s.indexOf(a), s.indexOf(b))
-  .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, '');
+const slice = (s: string, a: string, b: string) => { s = withoutMapForecast(s); return s.slice(s.indexOf(a), s.indexOf(b))
+  .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, ''); };
 strictEqual(slice(source, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'), slice(baseline, '<GeoJSONSource id="regional-overview-source"', '{locationGranted ?'));
 strictEqual(slice(source, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen').replace("    if (mode !== 'map') return;\n", ''),
   slice(baseline, '  const selectHeatmapSpecies', '  const heatmapAreaCardOpen'), 'no scoring/visual/LOD rewrite');

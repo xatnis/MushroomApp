@@ -12,7 +12,7 @@ import { useSevenDayConditions } from '../services/useSevenDayConditions';
 import { AppButton, Card, commonStyles } from './ui';
 import { colors, radii, spacing } from '../theme';
 
-interface Location { latitude: number; longitude: number; name: string }
+export interface SevenDayLocation { latitude: number; longitude: number; name: string; source?: 'conditions' | 'map-point' | 'hotspot' }
 const dateLabel = (date: string) => validWeatherDate(date) ? new Intl.DateTimeFormat('sl-SI', { timeZone: WEATHER_TIMEZONE, weekday: 'short', day: 'numeric', month: 'numeric' }).format(new Date(date + 'T12:00:00Z')) : date;
 const number = (value: number | undefined, unit: string, digits = 1) => value == null || !Number.isFinite(value) ? 'Ni podatka' : `${slNumber(value, digits)} ${unit}`;
 
@@ -21,9 +21,9 @@ export function SevenDayConditionsEntry({ onPress, disabled }: { onPress: () => 
     <Text style={styles.action}>Napoved pogojev · 7 dni →</Text>
   </Pressable>;
 }
-export function SevenDayConditionsModal({ visible, location, profileId, onProfileChange, summary, database, onSnapshot, onClose }: {
-  visible: boolean; location?: Location; profileId: MushroomWeatherProfileId; onProfileChange: (profile: MushroomWeatherProfileId) => void;
-  summary?: MushroomWeatherSummary; database: SQLiteDatabase; onSnapshot: (summary: MushroomWeatherSummary) => void; onClose: () => void;
+export function SevenDayConditionsModal({ visible, location, profileId, onProfileChange, summary, database, onSnapshot, onClose, initialDay = 0 }: {
+  visible: boolean; location?: SevenDayLocation; profileId: MushroomWeatherProfileId; onProfileChange: (profile: MushroomWeatherProfileId) => void;
+  summary?: MushroomWeatherSummary; database: SQLiteDatabase; onSnapshot: (summary: MushroomWeatherSummary) => void; onClose: () => void; initialDay?: number;
 }) {
   const heading = useRef<Text>(null);
   const valid = location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude) && Math.abs(location.latitude) <= 90 && Math.abs(location.longitude) <= 180;
@@ -33,15 +33,15 @@ export function SevenDayConditionsModal({ visible, location, profileId, onProfil
       <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="Nazaj iz napovedi pogojev" onPress={onClose} style={styles.back}><Text style={styles.action}>←</Text></Pressable>
         <View style={styles.headerCopy}><Text ref={heading} accessibilityRole="header" style={commonStyles.heading}>Napoved pogojev · 7 dni</Text><Text style={commonStyles.body}>{location?.name || 'Lokacija ni določena'}</Text></View></View>
       {valid ? <SevenDayContent key={`${location.latitude}:${location.longitude}`} location={location} database={database} profileId={profileId}
-        onProfileChange={onProfileChange} summary={summary} onSnapshot={onSnapshot} /> : <Text style={commonStyles.body}>Za napoved najprej izberi lokacijo.</Text>}
+        onProfileChange={onProfileChange} summary={summary} onSnapshot={onSnapshot} initialDay={initialDay} /> : <Text style={commonStyles.body}>Za napoved najprej izberi lokacijo.</Text>}
     </SafeAreaView></SafeAreaProvider> : null}
   </Modal>;
 }
-export function SevenDayContent({ location, database, profileId, onProfileChange, summary, onSnapshot }: {
-  location: Location; database: SQLiteDatabase; profileId: MushroomWeatherProfileId; onProfileChange: (profile: MushroomWeatherProfileId) => void;
-  summary?: MushroomWeatherSummary; onSnapshot: (summary: MushroomWeatherSummary) => void;
+export function SevenDayContent({ location, database, profileId, onProfileChange, summary, onSnapshot, initialDay = 0 }: {
+  location: SevenDayLocation; database: SQLiteDatabase; profileId: MushroomWeatherProfileId; onProfileChange: (profile: MushroomWeatherProfileId) => void;
+  summary?: MushroomWeatherSummary; onSnapshot: (summary: MushroomWeatherSummary) => void; initialDay?: number;
 }) {
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(Number.isInteger(initialDay) && initialDay >= 0 && initialDay <= 6 ? initialDay : 0);
   const week = useSevenDayConditions(database, location, profileId, summary, onSnapshot);
   const selected = week.results?.[selectedIndex], profile = MUSHROOM_WEATHER_PROFILES[profileId];
   const factors = selected?.componentsVerified ? advancedFactors(selected.canonical) : [];

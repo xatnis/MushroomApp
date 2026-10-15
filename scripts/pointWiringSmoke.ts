@@ -43,4 +43,4 @@ try {
   strictEqual(now + timer!.milliseconds, realDate.parse('2026-10-25T23:00:00Z'));
   cleanup!(); strictEqual(timer, undefined); strictEqual(listener, undefined); ok(removed > 0);
 } finally { globalThis.Date = realDate; globalThis.setTimeout = originalTimeout; globalThis.clearTimeout = originalClear; }
-console.log('PASS production point/weekly/Razmere/map coordinate wiring, no regional native source/camera/weights/graphs/cache-body changes, stale date fences, actual spring/autumn midnight/resume hook and cleanup, no GPS fallback/no new map forecast UI.');
+console.log('PASS production point/weekly/Razmere/map coordinate wiring, no regional native source/camera/weights/graphs/cache-body changes, stale date fences, actual spring/autumn midnight/resume hook and cleanup, no GPS fallback; map forecast presentation tested separately.');

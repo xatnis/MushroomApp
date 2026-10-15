@@ -61,9 +61,9 @@ export function HotspotConditionsPopup({ hotspot, profile, day, compact = false 
 }
 
 /** Same point evaluator; map presentation only. Close and open are sibling targets. */
-export function HotspotMapCard({ hotspot, profile, day, conditionsEnabled, visits, onOpen, onClose, onBackToTopThree }: {
+export function HotspotMapCard({ hotspot, profile, day, conditionsEnabled, visits, onOpen, onClose, onBackToTopThree, forecastAction }: {
   hotspot: Hotspot; profile: MushroomWeatherProfileId; day: HeatmapTargetDay; conditionsEnabled: boolean;
-  visits: number; onOpen: () => void; onClose: () => void; onBackToTopThree?: () => void;
+  visits: number; onOpen: () => void; onClose: () => void; onBackToTopThree?: () => void; forecastAction?: import('react').ReactNode;
 }) {
   const close = <Pressable accessibilityRole="button" accessibilityLabel="Zapri kartico rastišča" onPress={onClose}
     style={({ pressed }) => [styles.mapClose, pressed && styles.mapPressed]}><Ionicons name="close" size={22} color={colors.primary} /></Pressable>;
@@ -72,7 +72,7 @@ export function HotspotMapCard({ hotspot, profile, day, conditionsEnabled, visit
       <Pressable accessibilityRole="button" accessibilityLabel="Nazaj na Top 3" onPress={onBackToTopThree}
         style={({ pressed }) => [styles.mapBack, pressed && styles.mapPressed]}>
         <Ionicons name="arrow-back" size={18} color={colors.primary} /><Text style={styles.mapBackLabel}>Nazaj na Top 3</Text>
-      </Pressable>{close}</View> : null}
+      </Pressable>{forecastAction}{close}</View> : null}
     <Pressable accessibilityRole="button" accessibilityLabel={`Odpri rastišče ${hotspot.title || 'brez naslova'}`}
       onPress={onOpen} style={({ pressed }) => [styles.mapOpen, onBackToTopThree && styles.mapTopThreeOpen, pressed && styles.mapPressed]}>
       <View style={styles.mapBody}><Text numberOfLines={2} ellipsizeMode="tail" style={styles.mapTitle}>{hotspot.title || 'Rastišče brez naslova'}</Text>
@@ -81,7 +81,7 @@ export function HotspotMapCard({ hotspot, profile, day, conditionsEnabled, visit
         <StatusPill state={hotspot.syncState} />
       </View><Ionicons name="chevron-forward" size={22} color={colors.primary} />
     </Pressable>
-    {!onBackToTopThree ? close : null}
+    {!onBackToTopThree ? <View style={styles.mapActions}>{close}{forecastAction}</View> : null}
   </View>;
 }
 
@@ -91,6 +91,7 @@ const styles = StyleSheet.create({ row: { flexDirection: 'row', alignItems: 'cen
   mapOpen: { flex: 1, minWidth: 0, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   mapTopThreeCard: { flexDirection: 'column', alignItems: 'stretch' },
   mapTopThreeOpen: { flex: 0 },
+  mapActions: { gap: spacing.xs },
   mapBackRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   mapBack: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   mapBackLabel: { color: colors.primary, fontSize: 14, fontWeight: '600', flexShrink: 1 },
