@@ -63,6 +63,12 @@ deepStrictEqual(safe.props.edges, ['top','bottom','left','right']); ok(safe.prop
 loading = false; error = undefined; data = fixture; context = 'generic'; states.length = 0; stateCursor = 0;
 tree = expand(ui.SevenDayContent({ ...props(), initialDay: 5 }));
 strictEqual(dayButtons()[5].props.accessibilityState.selected, true, 'map preview date preselects the reused full-screen content without changing global day mode');
+let chosenDate = evaluateSevenDayConditions(data, context)[3].targetLocalDate;
+const controlled = () => { stateCursor = 0; tree = expand(ui.SevenDayContent({ ...props(), initialDay: 5, selectedDate: chosenDate,
+  onSelectDate: (_index: number, date: string) => chosenDate = date })); };
+controlled(); ok(dayButtons()[3].props.accessibilityState.selected, 'explicit calendar date takes precedence over index');
+dayButtons()[6].props.onPress(); controlled(); ok(dayButtons()[6].props.accessibilityState.selected);
+strictEqual(chosenDate, evaluateSevenDayConditions(data, context)[6].targetLocalDate); strictEqual(requests, 0);
 
 // Execute actual acquisition hook: no profile-dependent fetching, current-key/cleanup guards, clock/resume lifecycle.
 async function hooks() {

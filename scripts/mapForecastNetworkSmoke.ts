@@ -6,6 +6,7 @@ import { conditionsForLocation, mapConditionsLocation } from '../src/domain/loca
 import { MUSHROOM_WEATHER_PROFILES } from '../src/domain/mushroomWeather';
 import type { MushroomWeatherProfileId } from '../src/domain/types';
 import { weatherLocalDate } from '../src/domain/weatherSeries';
+import { forecastComparison, forecastFactorInsights } from '../src/components/mapForecastPresentation';
 
 async function run() {
   const realDate = globalThis.Date, originalFetch = globalThis.fetch, date = '2026-10-14'; let now = realDate.parse(date + 'T12:00:00Z');
@@ -24,6 +25,13 @@ async function run() {
     strictEqual(await loadSevenDaySnapshot(db, point, date), preview); strictEqual(http, cold, 'full from preview is warm');
     for (const profile of Object.keys(MUSHROOM_WEATHER_PROFILES) as MushroomWeatherProfileId[]) {
       const week = pointResults(preview, profile); ok(week.every(day => day.score != null));
+      for (const result of week) {
+        const comparison = forecastComparison(result, week[0], preview);
+        ok(!comparison.includes('ni na voljo'), 'real production snapshot/input contract supports comparison');
+        if (result.score === week[0].score) strictEqual(comparison, 'Enaka ocena kot danes');
+        else ok(comparison.startsWith(result.score! > week[0].score! ? '+' : '−'));
+        ok(forecastFactorInsights(result).every(factor => result.canonical.components.some(c => c.key === factor.key && c.weightedPoints === factor.points && c.weight === factor.maximum)));
+      }
       for (const [index, day] of [[0, 'today'], [1, 'tomorrow']] as const) {
         const detail = conditionsForLocation(mapConditionsLocation(point), preview, profile, day, date)!;
         deepStrictEqual(detail.summary, week[index].inputs); deepStrictEqual(detail.scoreDetails, week[index].canonical);

@@ -3,11 +3,12 @@ import type { SevenDayLocation } from '../components/SevenDayConditionsView';
 
 export interface MapForecastRequest {
   environment: string;
-  phase: 'picking' | 'preview' | 'full';
+  phase: 'picking' | 'preview' | 'full' | 'graphs';
   location?: SevenDayLocation;
   hotspotId?: string;
   profileId: MushroomWeatherProfileId;
   initialDay: number;
+  selectedDate?: string;
 }
 const valid = (p: { latitude: number; longitude: number } | undefined) => p && Number.isFinite(p.latitude) && Number.isFinite(p.longitude)
   && Math.abs(p.latitude) <= 90 && Math.abs(p.longitude) <= 180;

@@ -1,7 +1,7 @@
 /** Strip only the declared map forecast presentation/selection additions for older full-source guards.
  * mapForecastSmoke independently exercises those actual handlers; canonical services stay byte-pinned. */
 export function withoutMapForecast(text: string): string {
-  let s = text.replace(/\r\n/g, '\n');
+  let s = withoutMapForecastUx(text);
   s = s.replace(/^import .* from '..\/(components\/(SevenDayMapForecast|SevenDayConditionsView)|domain\/mapForecast)';\n/gm, '')
     .replace('  const [mapForecast, setMapForecast] = useState<MapForecastRequest>();\n', '');
   const start = s.indexOf('  const forecastEnvironment =');
@@ -38,9 +38,27 @@ export function withoutMapForecast(text: string): string {
 
 export function withoutForecastModalInputs(text: string): string {
   return text.replace(/\r\n/g, '\n')
+    .replaceAll(', selectedDate, onSelectDate }', ' }')
+    .replaceAll('  selectedDate?: string; onSelectDate?: (index: number, date: string) => void;\n', '')
+    .replace(' selectedDate={selectedDate} onSelectDate={onSelectDate}', '')
+    .replace('week.results?.find(day => day.targetLocalDate === selectedDate) ?? week.results?.[selectedIndex]', 'week.results?.[selectedIndex]')
+    .replaceAll('selected === day', 'selectedIndex === index')
+    .replace('() => { setSelectedIndex(index); onSelectDate?.(index, day.targetLocalDate); }', '() => setSelectedIndex(index)')
     .replace("export interface SevenDayLocation { latitude: number; longitude: number; name: string; source?: 'conditions' | 'map-point' | 'hotspot' }", 'interface Location { latitude: number; longitude: number; name: string }')
     .replaceAll('location?: SevenDayLocation', 'location?: Location').replaceAll('location: SevenDayLocation', 'location: Location')
     .replaceAll(', initialDay = 0 }', ' }').replaceAll('; initialDay?: number', '')
     .replace(' onSnapshot={onSnapshot} initialDay={initialDay}', ' onSnapshot={onSnapshot}')
     .replace('useState(Number.isInteger(initialDay) && initialDay >= 0 && initialDay <= 6 ? initialDay : 0)', 'useState(0)');
+}
+
+/** V1.1 allowlist: only forecast request presentation callbacks, not native map or data effects. */
+export function withoutMapForecastUx(text: string): string {
+  return text.replace(/\r\n/g, '\n')
+    .replace("currentMapForecast.phase === 'full' || currentMapForecast.phase === 'graphs'", "currentMapForecast.phase === 'full'")
+    .replace(/          selectedDate=\{currentMapForecast.selectedDate\}[^\n]*\n/, '')
+    .replace(/          onSelectDate=\{[^\n]*\n          onWeatherGraphs=\{[^\n]*\n          onHotspotDetail=\{[^\n]*\n          onSavePoint=\{[\s\S]*?          \} : undefined\}\n/, '')
+    .replace(/          onFull=\{\(day, date\)[^\n]*/, "          onFull={day => setMapForecast(previous => previous && ({ ...previous, phase: 'full', initialDay: day }))} />")
+    .replace('      selectedDate={currentMapForecast.selectedDate}\n', '')
+    .replace(/      onSelectDate=\{[^\n]*\n/, '')
+    .replace(/    \{currentMapForecast\?\.phase === 'graphs'[^\n]*\n[^\n]*\n/, '');
 }

@@ -7,7 +7,11 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { mapForecastLocation, forecastPointFromTap } from '../src/domain/mapForecast';
 import { heatmapControlsReducer, heatmapControlsPanelVisible, INITIAL_HEATMAP_CONTROLS } from '../src/domain/heatmap/controlsState';
-import { withoutMapForecast } from './mapForecastSourceGuards';
+import { withoutMapForecast, withoutMapForecastUx } from './mapForecastSourceGuards';
+import { forecastComparison, forecastDateLabel, forecastFactorInsights } from '../src/components/mapForecastPresentation';
+import { CANONICAL_POINT_POLICY } from '../src/domain/sevenDayConditions';
+import { HOURLY_INTERVAL_CONTRACT } from '../src/domain/weatherIntervals';
+import { advancedFactors } from '../src/components/conditionsAdvancedPresentation';
 import { sevenDayFixture } from './sevenDayFixture';
 import { evaluateSevenDayConditions } from '../src/domain/sevenDayConditions';
 import { MUSHROOM_WEATHER_PROFILES } from '../src/domain/mushroomWeather';
@@ -15,6 +19,7 @@ import { MUSHROOM_WEATHER_PROFILES } from '../src/domain/mushroomWeather';
 const source = readFileSync('src/screens/MapScreen.tsx', 'utf8');
 const baseline = execFileSync('git', ['show', '6c80905:src/screens/MapScreen.tsx'], { encoding: 'utf8' }).replace(/\r\n/g, '\n');
 strictEqual(withoutMapForecast(source), baseline, 'only declared forecast UI/selection changes; original camera, regional effects, data and source wiring remain exact');
+strictEqual(withoutMapForecastUx(source), execFileSync('git', ['show', '1b71f11:src/screens/MapScreen.tsx'], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), 'V1.1 changes only preview/modal presentation callbacks and graphs phase');
 for (const path of ['src/domain/sevenDayConditions.ts','src/domain/soilSampling.ts','src/domain/weatherIntervals.ts','src/domain/mushroomWeather.ts',
   'src/services/pointConditions.ts','src/services/sevenDayConditions.ts','src/services/sevenDayHourlyWeather.ts','src/services/useSevenDayConditions.ts',
   'src/services/weather.ts','src/services/heatmap/useLocationConditions.ts','src/services/heatmap/regionalWeather.ts','src/services/heatmap/useHeatmapVisuals.ts',
@@ -96,6 +101,29 @@ compile(attrs(forecast, 'onProfileChange'))('lactariusDeliciosus'); strictEqual(
 strictEqual(state.conditionsContext, preserved.context, 'full-view profile is local; regional map context stays unchanged');
 compile(attrs(forecast, 'onSnapshot'))({ latitude: 99 }); strictEqual(state.navWrites, preserved.writes, 'no Razmere snapshot synchronization');
 compile(attrs(forecast, 'onClose'))(); strictEqual(state.mapForecast.phase, 'preview'); strictEqual(state.selectedId, preserved.selected);
+const preview = element('SevenDayMapForecastPreview');
+compile(attrs(preview, 'onSelectDate'))(5, '2026-10-19'); strictEqual(state.mapForecast.selectedDate, '2026-10-19');
+const rapidSelection = compile(`((currentMapForecast) => (${attrs(preview, 'onSelectDate')}))(currentMapForecast)`);
+rapidSelection(4, '2026-10-18'); rapidSelection(5, '2026-10-19'); strictEqual(state.mapForecast.selectedDate, '2026-10-19', 'latest batched day tap wins within the same point intent');
+compile(attrs(preview, 'onFull'))(5, '2026-10-19'); strictEqual(state.mapForecast.phase, 'full');
+compile(attrs(forecast, 'onSelectDate'))(6, '2026-10-20'); compile(attrs(forecast, 'onClose'))();
+strictEqual(state.mapForecast.selectedDate, '2026-10-20'); strictEqual(state.mapForecast.initialDay, 6, 'full-screen selection survives return');
+const obsoleteSelection = compile(`((currentMapForecast) => (${attrs(preview, 'onSelectDate')}))(currentMapForecast)`); // React render's lexical A, not the VM's dynamic global getter.
+state.closeMapForecast(); state.selectedId = hotspots[1].id; state.openMapForecast(); obsoleteSelection(2, '2026-10-16');
+strictEqual(state.mapForecast.selectedDate, undefined, 'a stale native callback cannot update B with A date');
+state.closeMapForecast(); state.selectedId = hotspots[0].id; state.openMapForecast();
+compile(attrs(preview, 'onWeatherGraphs'))(); strictEqual(state.mapForecast.phase, 'graphs');
+const graphs = element('WeatherGraphsModal', n => tag(n).attributes.getText(ast).includes('currentMapForecast.location'));
+strictEqual(compile(attrs(graphs, 'location')), state.mapForecast.location, 'graphs use exact selected point, not GPS');
+compile(attrs(graphs, 'onClose'))(); strictEqual(state.mapForecast.phase, 'preview');
+const obsoleteSamePoint = compile(`((currentMapForecast) => (${attrs(preview, 'onSelectDate')}))(currentMapForecast)`);
+state.closeMapForecast(); state.openMapForecast(); obsoleteSamePoint(4, '2026-10-18');
+strictEqual(state.mapForecast.selectedDate, undefined, 'reopening the same coordinates creates a new UI intent, not a stale date callback target');
+strictEqual(compile(attrs(preview, 'onSavePoint')), undefined, 'saved hotspots do not expose another save-point action');
+const navigations: any[] = []; state.navigation = { navigate: (...args: any[]) => navigations.push(args) };
+state.showPointForecast({ latitude: 46.33, longitude: 15.17, name: 'Ročno izbrana točka', source: 'map-point' });
+compile(attrs(preview, 'onSavePoint'))(); strictEqual(navigations[0][0], 'Record'); strictEqual(navigations[0][1].latitude, 46.33); strictEqual(navigations[0][1].longitude, 15.17);
+state.openMapForecast();
 let back: (() => boolean) | undefined, removed = 0;
 state.BackHandler = { addEventListener: (_: string, f: () => boolean) => { back = f; return { remove: () => removed++ }; } };
 const cleanup = compile(effects.find(e => e.includes("'hardwareBackPress'"))!)(); ok(back!()); strictEqual(state.mapForecast, undefined); cleanup(); strictEqual(removed, 1);
@@ -118,7 +146,7 @@ const text = (n: any): string => Array.isArray(n) ? n.map(text).join('') : n?.pr
 const expand = (n: any): any => Array.isArray(n) ? n.map(expand) : n?.props ? typeof n.type === 'function' ? expand(n.type(n.props)) : { ...n, props: { ...n.props, children: expand(n.props.children) } } : n;
 const file = resolve('src/components/SevenDayMapForecast.tsx'), requireHere = createRequire(file), Module = requireHere('node:module'), mod = new Module(file);
 mod.filename = file; mod.paths = Module._nodeModulePaths(resolve('src/components'));
-let cursor = 0, hookCalls = 0, fontScale = 1, width = 360, selectedDay: number | undefined, closed = 0, fullDay: number | undefined, focused = 0;
+let cursor = 0, hookCalls = 0, fontScale = 1, width = 360, selectedDay: number | undefined, selectedDate: string | undefined, closed = 0, fullDay: number | undefined, focused = 0;
 let loading = false, error: string | undefined, data = sevenDayFixture(), profile: any = 'generic';
 mod.require = (id: string) => id === 'react/jsx-runtime' ? { jsx, jsxs: jsx } : id === 'react' ? { useRef: (initial: any) => ({ current: initial }), useState: (initial: number) => { cursor++; selectedDay ??= initial; return [selectedDay, (v: number) => selectedDay = v]; } }
   : id === 'react-native' ? { ...Object.fromEntries(['View','Text','ScrollView','Pressable','ActivityIndicator'].map(t => [t,t])), StyleSheet: { create: (s: any) => s }, useWindowDimensions: () => ({ width, fontScale }), AccessibilityInfo: { setAccessibilityFocus: () => focused++ }, findNodeHandle: () => 1 }
@@ -133,7 +161,8 @@ for (width of [320,360,412]) for (fontScale of [1,1.3,2]) {
   ok(styles[0].minHeight >= 48); ok(styles[1].minWidth <= width - 48); strictEqual(entry.props.accessibilityRole, 'button');
 }
 const pick = expand(ui.MapForecastPicker({ onClose: () => closed++ })); ok(text(pick).includes('Izberi točko')); strictEqual(hookCalls, 0);
-const render = () => expand(ui.SevenDayMapForecastPreview({ location, database: {}, profileId: profile, initialDay: 1, maxHeight: 220, onClose: () => closed++, onFull: (v: number) => fullDay = v }));
+const render = () => expand(ui.SevenDayMapForecastPreview({ location, database: {}, profileId: profile, initialDay: selectedDay ?? 1, selectedDate, maxHeight: 220,
+  onSelectDate: (index: number, date: string) => { selectedDay = index; selectedDate = date; }, onWeatherGraphs() {}, onClose: () => closed++, onFull: (v: number) => fullDay = v }));
 let tree = render();
 const previewHeading = walk(tree).find(n => n.type === 'Text' && n.props.onLayout); previewHeading.props.ref.current = {};
 previewHeading.props.onLayout(); previewHeading.props.onLayout(); strictEqual(focused, 1, 'preview announces its heading once after real layout, not on every weather update');
@@ -142,6 +171,36 @@ strictEqual(days().length, 7); ok(days()[1].props.accessibilityState.selected);
 days()[5].props.onPress(); tree = render(); ok(days()[5].props.accessibilityState.selected);
 walk(tree).find(n => n.props.accessibilityLabel === `Vseh 7 dni za ${location.name}`).props.onPress(); strictEqual(fullDay, 5);
 for (profile of Object.keys(MUSHROOM_WEATHER_PROFILES)) { tree = render(); ok(text(tree).includes(MUSHROOM_WEATHER_PROFILES[profile as keyof typeof MUSHROOM_WEATHER_PROFILES].label)); }
+for (profile of Object.keys(MUSHROOM_WEATHER_PROFILES)) for (let index = 0; index < 7; index++) {
+  tree = render(); days()[index].props.onPress(); tree = render();
+  const result = evaluateSevenDayConditions(data, profile)[index];
+  ok(days()[index].props.accessibilityState.selected); strictEqual(selectedDate, result.targetLocalDate);
+  const detail = walk(tree).find(n => n.type === 'View' && n.props.accessibilityLiveRegion === 'polite');
+  ok(text(detail).includes(forecastDateLabel(result.targetLocalDate))); ok(text(detail).includes(`${result.score}/100`));
+  for (const f of forecastFactorInsights(result)) ok(text(detail).includes(`${f.label}: ${f.status} · ${f.contribution}`));
+  walk(tree).find(n => n.props.accessibilityLabel === `Vseh 7 dni za ${location.name}`).props.onPress(); strictEqual(fullDay, index);
+}
+ok(text(tree).includes('Vremenski grafi')); ok(text(tree).includes('Nazaj na zemljevid')); ok(text(tree).includes('Zemljevid: Danes'));
+
+// Delta tests use real scorer results; only comparison identity/score edge cases are altered.
+const fixtureWeek = evaluateSevenDayConditions(data, 'generic'), today = fixtureWeek[0];
+const comparisonSnapshot: typeof data = { ...data, pointPolicyVersion: CANONICAL_POINT_POLICY, inputContract: HOURLY_INTERVAL_CONTRACT };
+const candidate = { ...fixtureWeek[5], score: today.score! + 8 };
+strictEqual(forecastComparison(candidate, today, comparisonSnapshot), '+8 točk glede na danes');
+strictEqual(forecastComparison({ ...candidate, score: today.score! - 4 }, today, comparisonSnapshot), '−4 točke glede na danes');
+strictEqual(forecastComparison({ ...candidate, score: today.score }, today, comparisonSnapshot), 'Enaka ocena kot danes');
+strictEqual(forecastComparison({ ...candidate, score: 0 }, { ...today, score: 0 }, comparisonSnapshot), 'Enaka ocena kot danes', 'real zero is comparable, not missing');
+for (const invalid of [undefined, { ...today, score: null }, { ...today, status: 'error' }, { ...today, componentsVerified: false },
+  { ...today, latitude: today.latitude + 1 }, { ...today, profileId: 'boletusEdulis' }, { ...today, snapshotId: 'old' },
+  { ...today, forecastRetrievedAt: 'old' }, { ...today, assembledAt: 'old' }])
+  strictEqual(forecastComparison(candidate, invalid as any, comparisonSnapshot), 'Primerjava z današnjim dnem ni na voljo.');
+strictEqual(forecastComparison(candidate, today, data), 'Primerjava z današnjim dnem ni na voljo.', 'unknown contract is not assumed comparable');
+const normalized = { ...candidate, canonical: { ...candidate.canonical, components: candidate.canonical.components.map((c, index) => ({ ...c, weightedPoints: c.weight * (index ? .9 : .1) })) } };
+const normalizedFactors = forecastFactorInsights(normalized), all = advancedFactors(normalized.canonical).filter(f => f.ratio != null);
+strictEqual(normalizedFactors[0].ratio, Math.max(...all.map(f => f.ratio!))); strictEqual(normalizedFactors[1].ratio, Math.min(...all.map(f => f.ratio!)));
+deepStrictEqual(forecastFactorInsights({ ...candidate, componentsVerified: false }), []);
+strictEqual(forecastDateLabel('2026-10-16'), 'petek, 16. oktober');
+for (const date of ['2026-03-29', '2026-10-25', '2024-02-29', '2026-12-31']) ok(forecastDateLabel(date).includes(String(Number(date.slice(8)))));
 data = { ...data, soilByDate: {} }; tree = render(); ok(text(tree).includes('Ocena ni na voljo')); ok(!text(tree).includes('0/100'));
 data = { ...sevenDayFixture(), stale: true }; tree = render(); ok(text(tree).includes('Starejša predpomnjena napoved'));
 loading = true; tree = render(); ok(text(tree).includes('Preračunavam')); strictEqual(days().length, 0);

@@ -517,7 +517,7 @@ export function MapScreen() {
     if (!isFocused || mode !== 'map' || (!heatmapEnabled && !currentMapForecast)) return;
     const listener = BackHandler.addEventListener('hardwareBackPress', () => {
       if (currentMapForecast) {
-        if (currentMapForecast.phase === 'full') setMapForecast(previous => previous && ({ ...previous, phase: 'preview' }));
+        if (currentMapForecast.phase === 'full' || currentMapForecast.phase === 'graphs') setMapForecast(previous => previous && ({ ...previous, phase: 'preview' }));
         else closeMapForecast();
         return true;
       }
@@ -874,16 +874,28 @@ export function MapScreen() {
       {currentMapForecast?.phase === 'preview' && currentMapForecast.location ? <View style={styles.preview}>
         <SevenDayMapForecastPreview key={`${currentMapForecast.location.latitude}:${currentMapForecast.location.longitude}`}
           location={currentMapForecast.location} database={db} profileId={currentMapForecast.profileId} initialDay={currentMapForecast.initialDay}
+          selectedDate={currentMapForecast.selectedDate} mapDay={conditionsContext.dayMode} mapProfileId={conditionsContext.targetProfile} conditionsEnabled={heatmapEnabled} hasPointDetails={Boolean(selected || heatmapAreaCardOpen)}
+          onSelectDate={(day, date) => setMapForecast(previous => previous && previous.location === currentMapForecast.location ? { ...previous, initialDay: day, selectedDate: date } : previous)}
+          onWeatherGraphs={() => setMapForecast(previous => previous && previous.location === currentMapForecast.location ? { ...previous, phase: 'graphs' } : previous)}
+          onHotspotDetail={currentMapForecast.hotspotId ? openSelectedHotspot : undefined}
+          onSavePoint={currentMapForecast.location.source !== 'hotspot' ? () => {
+            const point = currentMapForecast.location!;
+            closeMapForecast(); navigation.navigate('Record', { latitude: point.latitude, longitude: point.longitude });
+          } : undefined}
           maxHeight={topThreePanelMaxHeight(mapViewportHeight, 0, spacing.lg, spacing.sm, HOTSPOT_MARKER_HEIGHT)} onClose={closeMapForecast}
-          onFull={day => setMapForecast(previous => previous && ({ ...previous, phase: 'full', initialDay: day }))} />
+          onFull={(day, date) => setMapForecast(previous => previous && previous.location === currentMapForecast.location ? { ...previous, phase: 'full', initialDay: day, selectedDate: date } : previous)} />
       </View> : null}
     </View>{mode === 'list' ? <View style={styles.listOverlay}><View style={styles.list}>{ownerFilter === 'friends' ? friendHotspots.map((hotspot) => <Pressable key={hotspot.id} onPress={() => void Linking.openURL(`geo:${hotspot.latitude},${hotspot.longitude}?q=${hotspot.latitude},${hotspot.longitude}`)}><Card><Text style={commonStyles.heading}>{hotspot.title || 'Deljeno rastišče'}</Text><Text style={commonStyles.muted}>@{hotspot.owner_username} · točna lokacija, izrecno deljena s prijatelji</Text></Card></Pressable>) : filtered.length
       ? <HotspotRankingList hotspots={filtered} finds={finds} context={conditionsContext} onContext={setConditionsContext} sort={listSort} onSort={setListSort} onShowMap={showRankingHotspot} />
       : <EmptyState title={query.trim() ? 'Ni zadetkov med rastišči' : 'Še ni rastišč'} message={query.trim() ? 'Poskusite z drugim nazivom ali vrsto.' : 'Dodajte prvo rastišče z gumbom + ali z dolgim pritiskom na zemljevid.'} />}</View></View> : null}</View>
     {currentMapForecast?.phase === 'full' && currentMapForecast.location ? <SevenDayConditionsModal visible
       location={currentMapForecast.location} profileId={currentMapForecast.profileId} initialDay={currentMapForecast.initialDay} database={db}
+      selectedDate={currentMapForecast.selectedDate}
+      onSelectDate={(day, date) => setMapForecast(previous => previous && previous.location === currentMapForecast.location ? { ...previous, initialDay: day, selectedDate: date } : previous)}
       onProfileChange={profileId => setMapForecast(previous => previous && ({ ...previous, profileId }))} onSnapshot={() => {}}
       onClose={() => setMapForecast(previous => previous && ({ ...previous, phase: 'preview' }))} /> : null}
+    {currentMapForecast?.phase === 'graphs' && currentMapForecast.location ? <WeatherGraphsModal visible location={currentMapForecast.location}
+      onClose={() => setMapForecast(previous => previous && previous.location === currentMapForecast.location ? { ...previous, phase: 'preview' } : previous)} /> : null}
   </Screen>;
 }
 
