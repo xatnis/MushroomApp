@@ -7,6 +7,16 @@ import { advancedFactors } from './conditionsAdvancedPresentation';
 export const forecastDateLabel = (date: string) => validWeatherDate(date)
   ? new Intl.DateTimeFormat('sl-SI', { timeZone: WEATHER_TIMEZONE, weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(date + 'T12:00:00Z')) : date;
 
+/** Panel plus its existing bottom anchor may cover at most half the measured map. */
+export const compactMapForecastHeight = (mapHeight: number, bottom: number) =>
+  Number.isFinite(mapHeight) && mapHeight > 0 ? Math.max(0, mapHeight / 2 - Math.max(0, bottom)) : 0;
+
+/** Readable text/48dp controls budget, not a device-specific screen size or native text measurement. */
+export function compactForecastHasDateStrip(height: number, fontScale: number) {
+  const scale = Math.max(1, fontScale);
+  return height >= Math.max(48, 44 * scale) + Math.max(48, 34 * scale) + 58 * scale + 28 + Math.max(48, 20 * scale + 16);
+}
+
 /** Presentation only. Never compare different points, profiles, vintages or input contracts. */
 export function forecastComparison(day?: SevenDayResult, today?: SevenDayResult, snapshot?: SevenDaySnapshot): string {
   const valid = (result?: SevenDayResult): result is SevenDayResult & { score: number } => !!result

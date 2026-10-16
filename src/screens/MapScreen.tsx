@@ -40,6 +40,7 @@ import { conditionsContextFromNavigation, conditionsNavigationPatch } from '../d
 import { MapForecastEntry, MapForecastPicker, SevenDayMapForecastPreview } from '../components/SevenDayMapForecast';
 import { SevenDayConditionsModal, type SevenDayLocation } from '../components/SevenDayConditionsView';
 import { forecastPointFromTap, mapForecastLocation, type MapForecastRequest } from '../domain/mapForecast';
+import { compactMapForecastHeight } from '../components/mapForecastPresentation';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const SLOVENIA_CENTER: [number, number] = [14.82, 46.12];
@@ -106,6 +107,7 @@ export function MapScreen() {
   const [mapForecast, setMapForecast] = useState<MapForecastRequest>();
   const consumedConditionsListRequest = useRef<number | undefined>(undefined);
   const [query, setQuery] = useState('');
+  const [mapSearchExpanded, setMapSearchExpanded] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState<'mine' | 'friends'>('mine');
   const [friendHotspots, setFriendHotspots] = useState<FriendHotspot[]>([]);
   const [selectedId, setSelectedId] = useState<string>();
@@ -284,6 +286,13 @@ export function MapScreen() {
   const selectedForecastLocation = () => mapForecastLocation({ hotspot: selected, point: graphMapPoint.current,
     areaId: selectedHeatmapAreaId, conditionsEnabled: heatmapEnabled, owner: ownerFilter, label: heatmapAreaLocality?.location.name });
   const openMapForecast = () => currentMapForecast ? closeMapForecast() : showPointForecast(selectedForecastLocation(), selectedId);
+  const mapSearchVisible = mode === 'list' || mapSearchExpanded || Boolean(query.trim());
+  const toggleMapSearch = () => {
+    const visible = mapSearchVisible && !currentMapForecast;
+    closeMapForecast();
+    if (visible) { setMapSearchExpanded(false); setQuery(''); Keyboard.dismiss(); }
+    else setMapSearchExpanded(true);
+  };
 
   useEffect(() => () => heatmapRequestGate.invalidate(), [heatmapRequestGate]);
 
@@ -532,6 +541,7 @@ export function MapScreen() {
   }, [isFocused, mode, heatmapEnabled, heatmapControls, heatmapAreaCardOpen, topThreeOriginPopup, topThreeVisible, currentMapForecast]);
 
   const selectPlace = (place: PlaceSearchResult) => {
+    setMapSearchExpanded(false);
     closeMapForecast();
     locationRequestGate.cancel(); setLocating(false);
     Keyboard.dismiss(); setSelectedId(undefined); setMode('map'); setQuery('');
@@ -541,6 +551,7 @@ export function MapScreen() {
   };
 
   const selectHotspot = (hotspot: (typeof hotspots)[number]) => {
+    setMapSearchExpanded(false);
     Keyboard.dismiss(); focusHotspot(hotspot); setQuery('');
     setPlaceResults([]); setPlaceSearchError(undefined);
   };
@@ -579,13 +590,17 @@ export function MapScreen() {
     }
   };
 
-  return <Screen scroll={false} style={styles.screen}>
-    <View style={styles.header}>
-      <View><Text style={commonStyles.title}>Rastišča</Text><Text style={commonStyles.muted}>{hotspots.length} shranjenih lokacij</Text></View>
-      <View style={commonStyles.row}><Chip label="Zemljevid" selected={mode === 'map'} onPress={() => switchHotspotView('map')} /><Chip label="Seznam" selected={mode === 'list'} onPress={() => switchHotspotView('list')} /></View>
+  return <Screen scroll={false} topSafeArea style={styles.screen}>
+    <View style={[styles.header, mode === 'map' && styles.compactHeader]}>
+      {mode === 'list' ? <View><Text style={commonStyles.title}>Rastišča</Text><Text style={commonStyles.muted}>{hotspots.length} shranjenih lokacij</Text></View> : null}
+      <View style={[commonStyles.row, styles.viewRow]}><Chip label="Zemljevid" selected={mode === 'map'} onPress={() => switchHotspotView('map')} /><Chip label="Seznam" selected={mode === 'list'} onPress={() => switchHotspotView('list')} />
+        {mode === 'map' ? <Pressable accessibilityRole="button" accessibilityLabel={mapSearchVisible && !currentMapForecast ? 'Zapri iskanje in počisti poizvedbo' : 'Poišči kraj ali rastišče'}
+          accessibilityState={{ expanded: mapSearchVisible && !currentMapForecast }} onPress={toggleMapSearch} style={styles.mapSearchButton}>
+          <Ionicons name={mapSearchVisible && !currentMapForecast ? 'close' : 'search'} size={22} color={colors.primary} />
+        </Pressable> : null}</View>
     </View>
     <View style={styles.controls}>
-      <Field label="Poišči" placeholder="Poišči kraj, rastišče ali vrsto" value={query} onChangeText={setQuery} autoCorrect={false} returnKeyType="search" />
+      {mapSearchVisible && !currentMapForecast ? <Field label="Poišči" placeholder="Poišči kraj, rastišče ali vrsto" value={query} onChangeText={setQuery} autoCorrect={false} returnKeyType="search" autoFocus={mode === 'map'} /> : null}
       {mode === 'map' ? <View style={styles.mapModeRow}><View style={styles.mapModeSwitch} accessibilityRole="tablist">
         <Pressable
           accessibilityRole="tab"
@@ -619,7 +634,7 @@ export function MapScreen() {
           <Text style={[styles.mapModeText, heatmapEnabled && styles.mapModeTextActive]}>Pogoji</Text>
         </Pressable>
       </View><MapForecastEntry onPress={openMapForecast} expanded={Boolean(currentMapForecast)} /></View> : null}
-      {searchOpen ? <View style={styles.searchPanel}>
+      {searchOpen && !currentMapForecast ? <View style={styles.searchPanel}>
         <ScrollView style={styles.searchScroll} contentContainerStyle={styles.searchContent} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
           {placeSearchLoading ? <ActivityIndicator color={colors.primary} /> : null}
           {placeResults.length ? <><Text style={styles.searchSectionTitle}>Kraji</Text>{placeResults.map((place) => <Pressable key={`place-${place.id}`} accessibilityRole="button" onPress={() => selectPlace(place)} style={({ pressed }) => [styles.searchResult, pressed && styles.searchResultPressed]}>
@@ -652,7 +667,7 @@ export function MapScreen() {
         mapStyle={MAP_STYLE_URL}
         androidView="texture"
         attribution
-        attributionPosition={currentMapForecast ? { top: spacing.sm, right: spacing.sm } : { bottom: spacing.sm, left: spacing.sm }}
+        attributionPosition={currentMapForecast ? { top: spacing.sm, left: spacing.sm } : { bottom: spacing.sm, left: spacing.sm }}
         logo={false}
         scaleBar={false}
         onDidFinishLoadingMap={() => {
@@ -776,9 +791,9 @@ export function MapScreen() {
           <View style={styles.friendMarker}><Ionicons name="people" size={20} color={colors.white} /></View>
         </Marker>)}
       </Map>
+      <Pressable accessibilityRole="button" accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
       <View pointerEvents={currentMapForecast ? 'none' : 'box-none'} accessibilityElementsHidden={Boolean(currentMapForecast)}
         importantForAccessibility={currentMapForecast ? 'no-hide-descendants' : 'auto'} style={[StyleSheet.absoluteFill, currentMapForecast && styles.forecastOccluded]}>
-      <Pressable accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
       {heatmapEnabled && !heatmapAreaCardOpen && !heatmapControlsVisible ? <View ref={contextView} collapsable={false} onLayout={event => {
         setMapControlsBottom(event.nativeEvent.layout.y + event.nativeEvent.layout.height); refreshPendingFocusLayout();
       }} style={styles.contextControls}><Pressable
@@ -882,7 +897,7 @@ export function MapScreen() {
             const point = currentMapForecast.location!;
             closeMapForecast(); navigation.navigate('Record', { latitude: point.latitude, longitude: point.longitude });
           } : undefined}
-          maxHeight={topThreePanelMaxHeight(mapViewportHeight, 0, spacing.lg, spacing.sm, HOTSPOT_MARKER_HEIGHT)} onClose={closeMapForecast}
+          maxHeight={compactMapForecastHeight(mapViewportHeight, spacing.lg)} onClose={closeMapForecast}
           onFull={(day, date) => setMapForecast(previous => previous && previous.location === currentMapForecast.location ? { ...previous, phase: 'full', initialDay: day, selectedDate: date } : previous)} />
       </View> : null}
     </View>{mode === 'list' ? <View style={styles.listOverlay}><View style={styles.list}>{ownerFilter === 'friends' ? friendHotspots.map((hotspot) => <Pressable key={hotspot.id} onPress={() => void Linking.openURL(`geo:${hotspot.latitude},${hotspot.longitude}?q=${hotspot.latitude},${hotspot.longitude}`)}><Card><Text style={commonStyles.heading}>{hotspot.title || 'Deljeno rastišče'}</Text><Text style={commonStyles.muted}>@{hotspot.owner_username} · točna lokacija, izrecno deljena s prijatelji</Text></Card></Pressable>) : filtered.length
@@ -1125,6 +1140,8 @@ const styles = StyleSheet.create({
   topThreeEntryActive: { backgroundColor: colors.surfaceSoft }, topThreeText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
   screen: { flex: 1, minHeight: 0, padding: 0, gap: 0 },
   header: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md, gap: spacing.md },
+  compactHeader: { paddingTop: spacing.sm, paddingBottom: spacing.xs }, viewRow: { flexWrap: 'wrap' },
+  mapSearchButton: { minWidth: 48, minHeight: 48, justifyContent: 'center', alignItems: 'center', marginLeft: 'auto', borderRadius: radii.md, backgroundColor: colors.surfaceSoft },
   controls: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: spacing.sm },
   mapModeSwitch: { flex: 1, minWidth: 170, flexDirection: 'row', padding: 3, gap: 3, borderRadius: radii.round, backgroundColor: colors.surfaceSoft, borderWidth: 1, borderColor: colors.border },
   mapModeOption: { minHeight: 42, flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderRadius: radii.round },

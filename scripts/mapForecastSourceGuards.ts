@@ -53,7 +53,7 @@ export function withoutForecastModalInputs(text: string): string {
 
 /** V1.1 allowlist: only forecast request presentation callbacks, not native map or data effects. */
 export function withoutMapForecastUx(text: string): string {
-  return text.replace(/\r\n/g, '\n')
+  return withoutCompactMapForecast(text)
     .replace("currentMapForecast.phase === 'full' || currentMapForecast.phase === 'graphs'", "currentMapForecast.phase === 'full'")
     .replace(/          selectedDate=\{currentMapForecast.selectedDate\}[^\n]*\n/, '')
     .replace(/          onSelectDate=\{[^\n]*\n          onWeatherGraphs=\{[^\n]*\n          onHotspotDetail=\{[^\n]*\n          onSavePoint=\{[\s\S]*?          \} : undefined\}\n/, '')
@@ -61,4 +61,30 @@ export function withoutMapForecastUx(text: string): string {
     .replace('      selectedDate={currentMapForecast.selectedDate}\n', '')
     .replace(/      onSelectDate=\{[^\n]*\n/, '')
     .replace(/    \{currentMapForecast\?\.phase === 'graphs'[^\n]*\n[^\n]*\n/, '');
+}
+
+/** V1.2 allowlist. Its actual header/search handlers and panel sizing are exercised separately. */
+export function withoutCompactMapForecast(text: string): string {
+  let s = text.replace(/\r\n/g, '\n')
+    .replace('<Screen scroll={false} topSafeArea style={styles.screen}>', '<Screen scroll={false} style={styles.screen}>')
+    .replace('attributionPosition={currentMapForecast ? { top: spacing.sm, left: spacing.sm }', 'attributionPosition={currentMapForecast ? { top: spacing.sm, right: spacing.sm }')
+    .replace('      <Pressable accessibilityRole="button" accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>\n', '')
+    .replace("importantForAccessibility={currentMapForecast ? 'no-hide-descendants' : 'auto'} style={[StyleSheet.absoluteFill, currentMapForecast && styles.forecastOccluded]}>\n",
+      match => match + (text.includes('accessibilityRole="button" accessibilityLabel="Prikaži mojo lokacijo"') ? '      <Pressable accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>\n' : ''))
+    .replace("import { compactMapForecastHeight } from '../components/mapForecastPresentation';\n", '')
+    .replace("  const [mapSearchExpanded, setMapSearchExpanded] = useState(false);\n", '')
+    .replace(/^    setMapSearchExpanded\(false\);\n/gm, '')
+    .replace(/  const mapSearchVisible =[^\n]*\n  const toggleMapSearch = \(\) => \{[\s\S]*?\n  \};\n/, '');
+  const header = s.indexOf('    <View style={[styles.header,');
+  if (header >= 0) s = s.slice(0, header) + `    <View style={styles.header}>
+      <View><Text style={commonStyles.title}>Rastišča</Text><Text style={commonStyles.muted}>{hotspots.length} shranjenih lokacij</Text></View>
+      <View style={commonStyles.row}><Chip label="Zemljevid" selected={mode === 'map'} onPress={() => switchHotspotView('map')} /><Chip label="Seznam" selected={mode === 'list'} onPress={() => switchHotspotView('list')} /></View>
+    </View>
+` + s.slice(s.indexOf('    <View style={styles.controls}>', header));
+  return s.replace(/      \{mapSearchVisible && !currentMapForecast \? <Field([^\n]*) autoFocus=\{mode === 'map'\} \/> : null\}/,
+      '      <Field$1 />')
+    .replace('{searchOpen && !currentMapForecast ? <View', '{searchOpen ? <View')
+    .replace('maxHeight={compactMapForecastHeight(mapViewportHeight, spacing.lg)} onClose={closeMapForecast}',
+      'maxHeight={topThreePanelMaxHeight(mapViewportHeight, 0, spacing.lg, spacing.sm, HOTSPOT_MARKER_HEIGHT)} onClose={closeMapForecast}')
+    .replace(/  compactHeader: \{[^\n]*\n  mapSearchButton: \{[^\n]*\n/, '');
 }

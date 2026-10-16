@@ -146,10 +146,11 @@ const text = (n: any): string => Array.isArray(n) ? n.map(text).join('') : n?.pr
 const expand = (n: any): any => Array.isArray(n) ? n.map(expand) : n?.props ? typeof n.type === 'function' ? expand(n.type(n.props)) : { ...n, props: { ...n.props, children: expand(n.props.children) } } : n;
 const file = resolve('src/components/SevenDayMapForecast.tsx'), requireHere = createRequire(file), Module = requireHere('node:module'), mod = new Module(file);
 mod.filename = file; mod.paths = Module._nodeModulePaths(resolve('src/components'));
-let cursor = 0, hookCalls = 0, fontScale = 1, width = 360, selectedDay: number | undefined, selectedDate: string | undefined, closed = 0, fullDay: number | undefined, focused = 0;
+let cursor = 0, hookCalls = 0, fontScale = 1, width = 360, selectedDay: number | undefined, selectedDate: string | undefined, closed = 0, fullDay: number | undefined, fullDate: string | undefined, focused = 0, menuOpen = false, panelHeight = 280;
 let loading = false, error: string | undefined, data = sevenDayFixture(), profile: any = 'generic';
-mod.require = (id: string) => id === 'react/jsx-runtime' ? { jsx, jsxs: jsx } : id === 'react' ? { useRef: (initial: any) => ({ current: initial }), useState: (initial: number) => { cursor++; selectedDay ??= initial; return [selectedDay, (v: number) => selectedDay = v]; } }
-  : id === 'react-native' ? { ...Object.fromEntries(['View','Text','ScrollView','Pressable','ActivityIndicator'].map(t => [t,t])), StyleSheet: { create: (s: any) => s }, useWindowDimensions: () => ({ width, fontScale }), AccessibilityInfo: { setAccessibilityFocus: () => focused++ }, findNodeHandle: () => 1 }
+mod.require = (id: string) => id === 'react/jsx-runtime' ? { jsx, jsxs: jsx } : id === 'react' ? { useRef: (initial: any) => ({ current: initial }), useState: () => [menuOpen, (v: boolean) => menuOpen = v] }
+  : id === 'react-native' ? { ...Object.fromEntries(['Modal','View','Text','ScrollView','Pressable','ActivityIndicator'].map(t => [t,t])), StyleSheet: { create: (s: any) => s }, useWindowDimensions: () => ({ width, fontScale }), AccessibilityInfo: { setAccessibilityFocus: () => focused++ }, findNodeHandle: () => 1 }
+  : id === 'react-native-safe-area-context' ? { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' }
   : id === '@expo/vector-icons' ? { Ionicons: 'Icon' } : id === '../services/useSevenDayConditions' ? { useSevenDayConditions: (_db: any, location: any, p: any) => {
     hookCalls++; strictEqual(location.latitude, hotspots[0].latitude); strictEqual(p, profile);
     return { loading, error, snapshot: data, results: loading || error ? undefined : evaluateSevenDayConditions(data, p), retry: () => {} };
@@ -161,8 +162,9 @@ for (width of [320,360,412]) for (fontScale of [1,1.3,2]) {
   ok(styles[0].minHeight >= 48); ok(styles[1].minWidth <= width - 48); strictEqual(entry.props.accessibilityRole, 'button');
 }
 const pick = expand(ui.MapForecastPicker({ onClose: () => closed++ })); ok(text(pick).includes('Izberi točko')); strictEqual(hookCalls, 0);
-const render = () => expand(ui.SevenDayMapForecastPreview({ location, database: {}, profileId: profile, initialDay: selectedDay ?? 1, selectedDate, maxHeight: 220,
-  onSelectDate: (index: number, date: string) => { selectedDay = index; selectedDate = date; }, onWeatherGraphs() {}, onClose: () => closed++, onFull: (v: number) => fullDay = v }));
+fontScale = 1; width = 360;
+const render = () => expand(ui.SevenDayMapForecastPreview({ location, database: {}, profileId: profile, initialDay: selectedDay ?? 1, selectedDate, maxHeight: panelHeight,
+  onSelectDate: (index: number, date: string) => { selectedDay = index; selectedDate = date; }, onWeatherGraphs() {}, onClose: () => closed++, onFull: (v: number, date: string) => { fullDay = v; fullDate = date; } }));
 let tree = render();
 const previewHeading = walk(tree).find(n => n.type === 'Text' && n.props.onLayout); previewHeading.props.ref.current = {};
 previewHeading.props.onLayout(); previewHeading.props.onLayout(); strictEqual(focused, 1, 'preview announces its heading once after real layout, not on every weather update');
@@ -177,10 +179,15 @@ for (profile of Object.keys(MUSHROOM_WEATHER_PROFILES)) for (let index = 0; inde
   ok(days()[index].props.accessibilityState.selected); strictEqual(selectedDate, result.targetLocalDate);
   const detail = walk(tree).find(n => n.type === 'View' && n.props.accessibilityLiveRegion === 'polite');
   ok(text(detail).includes(forecastDateLabel(result.targetLocalDate))); ok(text(detail).includes(`${result.score}/100`));
-  for (const f of forecastFactorInsights(result)) ok(text(detail).includes(`${f.label}: ${f.status} · ${f.contribution}`));
+  for (const f of forecastFactorInsights(result)) ok(!text(detail).includes(`${f.label}: ${f.status} · ${f.contribution}`), 'factor analysis belongs to the unchanged full view, not compact preview');
   walk(tree).find(n => n.props.accessibilityLabel === `Vseh 7 dni za ${location.name}`).props.onPress(); strictEqual(fullDay, index);
 }
-ok(text(tree).includes('Vremenski grafi')); ok(text(tree).includes('Nazaj na zemljevid')); ok(text(tree).includes('Zemljevid: Danes'));
+ok(!text(tree).includes('Vremenski grafi')); ok(!text(tree).includes(location.latitude.toFixed(4))); ok(text(tree).includes('Zemljevid: Danes'));
+const actionTrigger = () => walk(tree).find(n => n.props.accessibilityLabel === 'Dejanja točke');
+strictEqual(actionTrigger().props.accessibilityState.expanded, false); actionTrigger().props.onPress(); tree = render();
+ok(actionTrigger().props.accessibilityState.expanded); ok(text(tree).includes('Vremenski grafi')); ok(text(tree).includes('Pogoji točke · Danes'));
+walk(tree).find(n => n.type === 'Modal').props.onRequestClose(); tree = render(); ok(!menuOpen, 'Android Back dismisses only the action menu');
+strictEqual(closed, 0); strictEqual(selectedDay, 6);
 
 // Delta tests use real scorer results; only comparison identity/score edge cases are altered.
 const fixtureWeek = evaluateSevenDayConditions(data, 'generic'), today = fixtureWeek[0];
@@ -204,7 +211,14 @@ for (const date of ['2026-03-29', '2026-10-25', '2024-02-29', '2026-12-31']) ok(
 data = { ...data, soilByDate: {} }; tree = render(); ok(text(tree).includes('Ocena ni na voljo')); ok(!text(tree).includes('0/100'));
 data = { ...sevenDayFixture(), stale: true }; tree = render(); ok(text(tree).includes('Starejša predpomnjena napoved'));
 loading = true; tree = render(); ok(text(tree).includes('Preračunavam')); strictEqual(days().length, 0);
+walk(tree).find(n => n.props.accessibilityLabel === `Vseh 7 dni za ${location.name}`).props.onPress(); strictEqual(fullDate, selectedDate, 'loading must not discard the explicit previously selected calendar date');
 loading = false; error = 'Ni povezave'; tree = render(); ok(text(tree).includes('Ni povezave')); ok(text(tree).includes('Poskusi znova'));
 ok(walk(tree).find(n => n.type === 'ScrollView').props.style.minHeight === 0, 'bounded outer scroll keeps last content reachable with large fonts');
+loading = false; error = undefined; data = sevenDayFixture(); panelHeight = 160; fontScale = 2; tree = render();
+strictEqual(days().length, 0, 'small/large-font fallback deliberately moves date choice to the full view');
+const fullAction = walk(tree).find(n => n.props.accessibilityLabel === `Vseh 7 dni za ${location.name}`);
+ok(fullAction.props.accessibilityHint.includes('celotnem pogledu')); fullAction.props.onPress(); strictEqual(fullDay, selectedDay);
+const outerScroll = walk(tree).find(n => n.type === 'ScrollView');
+ok(!walk(outerScroll).includes(fullAction), 'primary full-view action is pinned outside the scrollable body');
 walk(tree).find(n => n.props.accessibilityLabel === 'Zapri predogled napovedi').props.onPress(); strictEqual(closed, 1);
 console.log('PASS real map entry/tap/marker/full/back handlers: explicit coordinates/no GPS/centre, mode/blur invalidation, profile/day/camera/Top3 restoration, 7-day preview/full preselection, loading/null/stale/error, 48dp/font-wrap/scroll accessibility; canonical weather/weights/gates/cache/native sources unchanged. Native layout requires device QA.');
