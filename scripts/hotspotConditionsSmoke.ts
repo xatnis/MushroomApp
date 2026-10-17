@@ -1,5 +1,6 @@
 /// <reference types="node" />
 import { deepStrictEqual, strictEqual, ok, throws } from 'node:assert';
+import { withoutPointDiagnostics } from './pointRefreshSourceGuards';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
@@ -144,7 +145,7 @@ function regressionTests() {
   const old = baseline.exports as typeof import('../src/domain/heatmap/regional');
   for (const file of ['src/domain/mushroomWeather.ts', 'src/domain/heatmap/assessment.ts', 'src/domain/heatmap/pilot.ts',
     'src/services/weather.ts', 'src/services/heatmap/regionalWeather.ts', 'src/domain/heatmap/lod.ts', 'src/domain/heatmap/visual.ts']) {
-    const current = readFileSync(file, 'utf8').replace(/\r\n/g, '\n');
+    const current = withoutPointDiagnostics(file, readFileSync(file, 'utf8'));
     const productionDefault = file !== 'src/services/weather.ts' ? current : current
       .replace('export async function cachedFetch<T>', 'async function cachedFetch<T>')
       .replace('  /** Optional calendar anchor for read-only daily charts; scorer callers retain their existing default. */\n  baseLocalDate?: string;\n', '')

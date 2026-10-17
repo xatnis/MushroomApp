@@ -1,3 +1,4 @@
+import { withoutPointDiagnostics } from './pointRefreshSourceGuards';
 /** Strip only the declared map forecast presentation/selection additions for older full-source guards.
  * mapForecastSmoke independently exercises those actual handlers; canonical services stay byte-pinned. */
 export function withoutMapForecast(text: string): string {
@@ -65,7 +66,7 @@ export function withoutMapForecastUx(text: string): string {
 
 /** V1.2 allowlist. Its actual header/search handlers and panel sizing are exercised separately. */
 export function withoutCompactMapForecast(text: string): string {
-  let s = text.replace(/\r\n/g, '\n')
+  let s = withoutPointDiagnostics('src/screens/MapScreen.tsx', text)
     .replace('<Screen scroll={false} topSafeArea style={styles.screen}>', '<Screen scroll={false} style={styles.screen}>')
     .replace('attributionPosition={currentMapForecast ? { top: spacing.sm, left: spacing.sm }', 'attributionPosition={currentMapForecast ? { top: spacing.sm, right: spacing.sm }')
     .replace('      <Pressable accessibilityRole="button" accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>\n', '')

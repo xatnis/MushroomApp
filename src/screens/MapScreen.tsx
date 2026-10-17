@@ -41,6 +41,7 @@ import { MapForecastEntry, MapForecastPicker, SevenDayMapForecastPreview } from 
 import { SevenDayConditionsModal, type SevenDayLocation } from '../components/SevenDayConditionsView';
 import { forecastPointFromTap, mapForecastLocation, type MapForecastRequest } from '../domain/mapForecast';
 import { compactMapForecastHeight } from '../components/mapForecastPresentation';
+import { beginPointTiming } from '../services/pointTiming';
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const SLOVENIA_CENTER: [number, number] = [14.82, 46.12];
@@ -143,6 +144,7 @@ export function MapScreen() {
       && h.latitude === mapForecast.location?.latitude && h.longitude === mapForecast.location?.longitude)) ? mapForecast : undefined;
   const closeMapForecast = () => setMapForecast(undefined);
   const showPointForecast = (location?: SevenDayLocation, hotspotId?: string) => {
+    if (location) beginPointTiming(location);
     locationRequestGate.cancel(); setLocating(false);
     if (!location) cancelPendingHotspotFocus();
     setMapForecast({ environment: forecastEnvironment, phase: location ? 'preview' : 'picking', location, hotspotId,

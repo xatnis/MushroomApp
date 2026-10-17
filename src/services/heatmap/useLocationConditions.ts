@@ -47,6 +47,7 @@ export function useLocationConditions(locations: ConditionsLocation[], profile: 
     if (!active || !mappings.length) { setLoading(false); setSettledKey(undefined); return; }
     let current = true;
     setLoading(true); setError(undefined);
+    setSnapshots(read()); // Expired same-location data is explicitly stale while refresh is in flight.
     const cancel = scheduleSettledHeatmapLoad(() => {
       void loadPointSnapshots(db, mappings, baseDate)
         .then(() => { if (current && generation.current === loadKey) {
@@ -66,6 +67,14 @@ export function useLocationConditions(locations: ConditionsLocation[], profile: 
   }, [db, key, baseDate, active, attempt, foreground, debounceMs]);
   const assessments = useMemo(() => Object.fromEntries(enabled ? mappings.map(m =>
     [m.id, conditionsForLocation(m, snapshots[m.id], profile, day, baseDate)]) : []), [mappings, snapshots, profile, day, baseDate, enabled]);
+  useEffect(() => {
+    if (!active) return;
+    const deadlines = Object.values(snapshots).filter((s): s is SevenDaySnapshot => !!s && !s.stale && s.expiresAt > Date.now()).map(s => s.expiresAt);
+    if (!deadlines.length) return;
+    // Only mounted points; one actual TTL deadline, never periodic polling or visible-cell prefetch.
+    const timer = setTimeout(() => retry(value => value + 1), Math.max(1, Math.min(...deadlines) - Date.now()));
+    return () => clearTimeout(timer);
+  }, [snapshots, active, key, baseDate]);
   // False on the FIRST render of a new location/date/load generation, even before
   // the effect sets loading. Species/day use the same snapshot and don't reset it.
   const complete = !mappings.length || (active && settledKey === loadKey);

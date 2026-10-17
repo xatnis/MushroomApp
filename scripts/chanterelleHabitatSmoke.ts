@@ -2,6 +2,7 @@
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { deepStrictEqual, strictEqual, ok } from 'node:assert';
+import { withoutPointDiagnostics } from './pointRefreshSourceGuards';
 import { chanterelleHabitatState, boletusHabitatState, lactariusHabitatState } from '../src/domain/heatmap/zgs';
 import { HEATMAP_HABITAT, habitatStateFor, areaAssessmentFor, habitatExplanation } from '../src/domain/heatmap/pilot';
 import { assessHeatmapWeather } from '../src/domain/heatmap/assessment';
@@ -14,7 +15,7 @@ const baseline = JSON.parse(previousFile('src/data/heatmapPilot/zgs-enrichment.j
 // Exact source regression plus assessment comparison below: no new weather formula.
 // Regional V2 changes orchestration/batching, not these numerical sources.
 for (const path of ['src/domain/mushroomWeather.ts', 'src/services/weather.ts', 'src/domain/heatmap/assessment.ts', 'src/domain/heatmap/config.ts']) {
-  const current = readFileSync(path, 'utf8').replace(/\r\n/g, '\n');
+  const current = withoutPointDiagnostics(path, readFileSync(path, 'utf8'));
   // Ignore the read-only graph calendar option, mapper export and V1.2 cache-helper export; bodies remain pinned.
   const productionDefault = path !== 'src/services/weather.ts' ? current : current
     .replace('export async function cachedFetch<T>', 'async function cachedFetch<T>')

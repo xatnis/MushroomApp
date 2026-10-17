@@ -1,4 +1,5 @@
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
+import { withoutPointDiagnostics } from './pointRefreshSourceGuards';
 import { readFileSync } from 'node:fs';
 import { withoutPointMigration } from './pointMigrationSourceGuards';
 import { execFileSync } from 'node:child_process';
@@ -58,7 +59,7 @@ ok(!/fetch|loadHeatmap|setCamera|updateHeatmapNavigation|navigate\(/.test(regist
 // Everything else in MapScreen, including camera/source/LOD/loading hooks, remains exact.
 strictEqual(withoutPointMigration('src/screens/MapScreen.tsx', withoutBottomMapTabEntry(source)), execFileSync('git', ['show', '5ae2089:src/screens/MapScreen.tsx'], { encoding: 'utf8' }).replace(/\r\n/g, '\n'));
 for (const path of ['src/navigation/AppNavigator.tsx', 'src/navigation/types.ts', 'src/services/heatmap/useHeatmapVisuals.ts', 'src/services/weather.ts', 'src/domain/mushroomWeather.ts'])
-  strictEqual(readFileSync(path, 'utf8').replace('export async function cachedFetch<T>', 'async function cachedFetch<T>').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `5ae2089:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), path);
+  strictEqual(withoutPointDiagnostics(path, readFileSync(path, 'utf8')).replace('export async function cachedFetch<T>', 'async function cachedFetch<T>'), execFileSync('git', ['show', `5ae2089:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), path);
 // Installed tab bar emits the route-targeted event even if the Map tab is already focused.
 const tabBar = readFileSync('node_modules/@react-navigation/bottom-tabs/src/views/BottomTabBar.tsx', 'utf8');
 ok(tabBar.includes("type: 'tabPress'")); ok(tabBar.includes('if (!focused && !event.defaultPrevented)'));

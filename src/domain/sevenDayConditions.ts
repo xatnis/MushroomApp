@@ -131,11 +131,12 @@ export function buildWeatherInputsForTargetDate(snapshot: SevenDaySnapshot, targ
 }
 
 /** Seven independent calls to the unchanged production scorer; incomplete numerical totals are never published. */
-export function evaluateSevenDayConditions(snapshot: SevenDaySnapshot, profile: MushroomWeatherProfileId): SevenDayResult[] {
+export function evaluateSevenDayConditions(snapshot: SevenDaySnapshot, profile: MushroomWeatherProfileId, onInputsBuilt?: () => void): SevenDayResult[] {
   return Array.from({ length: 7 }, (_, horizonDay) => {
     const required = SEVEN_DAY_REQUIREMENTS[profile];
     const target = shiftLocalDate(snapshot.baseLocalDate, horizonDay);
     const built = buildWeatherInputsForTargetDate(snapshot, target, profile);
+    onInputsBuilt?.(); // Optional development timing boundary; no input/result mutation.
     const canonical = calculateMushroomWeatherScore(built.summary, profile);
     const missing = [...built.missing];
     const expected = Object.keys(configs[profile].componentWeights);

@@ -211,3 +211,73 @@ The production-adapter fixture still measures cold point **2 HTTP**, full-from-p
 Native checklist remains outstanding: Redmi 13C three-button navigation; actual compact height and last summary line; 320/360/412dp and enlarged fonts; fallback discoverability; horizontal-strip vs map gestures; TalkBack focus/return; menu-to-graph/modal transition; search keyboard/result selection; attribution and location-button spacing; Top 3 → hotspot → forecast → Back roundtrip; pan/zoom during loading and offline/stale states. No device was attached, so these are **not** claimed physically verified.
 
 APK attempted: `npm run apk -- --name MushroomApp-preview-map-ux-v1-2.apk`. Gradle failed with **Unable to establish loopback connection**. No older APK was copied or renamed. Build with the same command locally, then perform the native checklist. Remaining UX limitations are the deliberate full-view date selection on constrained layouts and possible short summary scrolling for unusually long/missing-data text.
+
+## Map Score Refresh & Forecast Performance V1
+
+### Identity audit and reproduced bugs
+
+The recording's marker 56/57 versus selected-point 61 is **not** enough to establish an inconsistency. The production identities are:
+
+| Surface | Location and date | Source/result identity |
+| --- | --- | --- |
+| Regional polygon | Regional weather sampling location + habitat polygon; global map profile/Today–Tomorrow | Existing regional weather policy/cache and regional scorer; intentionally not an exact-point forecast |
+| Private marker, ranking, Top 3, hotspot detail | Actual saved coordinates; shared global profile/day | Exact `latitude:longitude:baseLocalDate:CANONICAL_POINT_POLICY`, frozen hourly snapshot, profile-specific `pointResults` |
+| Selected point card | Actual tap coordinates, including two distinct taps inside one cell; global map profile/day | Same canonical exact-point service, never the polygon's number while loading |
+| Seven-day preview/full view | Explicit selected coordinates; forecast-local profile and selected calendar date | Same snapshot/reference and per-profile seven-day results; local Day +5 never changes marker/map Today–Tomorrow |
+
+Point raw-cache keys still include exact coordinates (no rounding/cell-centre substitution), requested range, variables, resolution, UTC timestamps and horizon. Snapshot provenance includes each source's retrieval timestamp, canonical policy and civil-hourly contract. Derived results remain a WeakMap keyed by the immutable snapshot object and profile; a newly acquired snapshot cannot reuse the previous snapshot's derived results. The native Android `Marker` renders React Native child views; no source-level frozen badge/memo bug was found. Map profile/day dependencies, moved/deleted-hotspot fences and selection generations were already correct and remain unchanged.
+
+The **committed pre-fix hook is executed** in `pointRefreshSmoke`, not just inferred from source. It reproduces (1) a loading flash on a valid warm snapshot; (2) an open forecast retaining its old score after the shared point store refreshed to changed soil values/scores; (3) no same-day foreground revalidation. Additionally, both point consumers could remain mounted beyond the 30-minute source deadline without initiating refresh. No coordinate-key collision or A/B response overwrite was reproduced.
+
+### Refresh and presentation fix
+
+The weekly hook subscribes to the existing point store, reads a matching warm snapshot on its first render, and rechecks freshness on foreground resume even when the calendar date has not changed. It now derives only the requested profile, instead of eagerly evaluating all four profiles before presenting the requested one. Previously evaluated profiles still use the same result memo; switching profiles/dates does not acquire weather.
+
+Both mounted point consumers use one cancellable **actual source-expiry deadline**, not a periodic poll, arbitrary loading timer or visible-region prefetch. The existing two-request acquisition and in-flight point deduplication handle overlapping refreshes. Failed/stale responses do not reschedule an already-expired deadline, avoiding an offline retry loop. Manual retry and foreground/focus checks remain available.
+
+An expired same-location snapshot is presented as an immutable stale view while replacement data are acquired. Only freshness flags change; timestamps, coordinates, weather values, canonical weights/windows and source snapshot ID are not rewritten. Its score is explicitly stale rather than current. A zero expiry caused by missing sources is **not** interpreted as old cached data. New location/date identities immediately hide old results; late responses and callbacks remain generation-guarded. Source-store notifications for another location cannot change the currently displayed point. Midnight still uses Europe/Ljubljana calendar deadlines, including DST.
+
+The compact panel immediately identifies the new point before network completion. Its existing loading message now also states that weather data are being acquired; it does not imply that the scorer alone is busy for several seconds. No fake progress, placeholder zero, regional score fallback or temporary cross-coordinate result was added. Compact height, strip, selected-date detail, full-screen action, point actions, Back, camera and native sources are unchanged.
+
+### Timing and verified optimization
+
+Development-only `[PointTiming]` records T0 explicit forecast selection, T1 header native layout callback, T2 memory/source-cache decisions, T3 HTTP start, T4 response/received sources, T5 JSON decode and civil-hourly adaptation, T6 each date's canonical input assembly, T7 completed profile evaluation, T8 hook effect after commit, and T9 next animation-frame callback. T9 is a **JS frame checkpoint, not proof of native pixels displayed**. Full gesture-to-paint timing, JS-thread contention, native rerenders and camera stability still need a connected phone. Release builds emit no timing records or diagnostic animation-frame callback. The bounded local development trace logs only opaque sequence number, stage, elapsed time and optional endpoint/cache category: no coordinates, dates, hotspot IDs, names, notes, payloads or external analytics.
+
+Before optimization, the live Windows/Node production path measured cold A/B **5017.54 / 5385.01 ms**, including eager evaluation of four profiles; warm A/return A **0.04 / 0.03 ms**. Forecast response waits were **4867.35 / 5341.48 ms**, versus archive **270.61 / 147.53 ms**, JSON decoding **1.02–4.11 ms**. The dominant measured cold bottleneck was the remote forecast response. The two independent requests were already parallel, with no per-date waterfall; their semantics/variables/ranges have not been cut to make loading appear faster.
+
+The CPU trace also found repeated IANA conversions for **every** soil hour on **each** target date. The sampler now checks its existing exact/as-of eligibility before converting an eligible hour into Ljubljana local time. It still parses actual provider timestamps, validates local date, enforces the same one-hour as-of/exact-09:00 policies, rejects duplicates and validates both original depth layers/units. **2,400 complete before/after sampler-result comparisons** cover spring/autumn transitions, leap/year boundaries, offsets, missing values, duplicates and incompatible units; outputs including metadata/missing reasons are identical. No new parsed-axis cache or weaker validation was introduced.
+
+The subsequent live public-coordinate run (2026-10-17, 46.5/14.5 and 46.6/14.9) measured:
+
+| Metric (Windows/Node, not Redmi) | Before | After |
+| --- | ---: | ---: |
+| Cold A, requested profile ready | 5003.39 ms | 4681.92 ms |
+| Cold B, requested profile ready | 5374.73 ms | 4667.20 ms |
+| Warm A / return A | 0.04 / 0.03 ms | 0.03 / 0.03 ms |
+| Soil sampling CPU, 14 calls across two points | 51.75 ms | 16.19 ms |
+| Indexing + daily aggregation CPU across two points | 14.71 ms | 17.64 ms |
+| All-profile evaluation CPU across two points (benchmark diagnostic only) | 35.26 ms | 40.68 ms |
+
+The earlier production UI also waited for the other profiles (14.15 / 10.28 ms in the baseline run); it no longer does so. The benchmark explicitly evaluates those other profiles separately for comparison, not because the new UI requires them. After-run forecast response waits were **4606.42 / 4642.93 ms** and JSON decoding **0.90–3.39 ms**. Cold improvements are **observations, not a causal network-speed claim or guaranteed Android load time**; remote timing and runtime warm-up vary. The reported 18-second native delay could not be reproduced/attributed on a phone here. Slow network can still dominate and reach the unchanged 18-second request timeout.
+
+### Network, parity and preserved invariants
+
+Before and after: cold A **2 HTTP**, cold B **2**, concurrent full view **0 extra**, full from preview **0**, warm reopen/return A **0**, cached profile/date/strip interaction **0**. Valid cache refresh on foreground is **0**; expiry correctly requires the existing two source refreshes, deduplicated across subscribers. Offline expired-cache refresh attempts two requests and retains explicitly stale data; it does not poll repeatedly. No per-day requests, pan/zoom forecast acquisition, regional-cell prefetch or weather requests from explanation/scroll gestures were added. SQLite read/write timing in the benchmark uses an in-memory DB adapter, so real device disk contention is not claimed measured.
+
+The changed-source fixture proves that a new score really reaches an already-open preview. It also checks the actual shared marker/detail/ranking/Top 3 assessment's **raw inputs, canonical factors and total** against weekly Day 0/Day +1 across all four profiles. Existing production-adapter parity/safety suites cover the other dates. Different coordinates, source snapshots or regional resolution may legitimately differ; the UI does not override or round values into artificial equality.
+
+No weights, production formula, rolling window, soil policy, DST aggregation, safety gate, raw cache key/TTL, source variable, historic visit snapshot, persistence/privacy rule, MapLibre lifecycle, regional GeoJSON or LOD calculation changed. `weather.ts` only accepts an optional timing observer around the existing fetch/decode boundaries. Source guards narrowly normalize these diagnostic additions and the proven-equivalent sampler short-circuit, rather than regenerating model goldens. Runtime point-cache/hook tests replace the obsolete assertion that these intentionally repaired lifecycle files must remain byte-identical.
+
+### Verification and native checklist
+
+Executed: TypeScript; all **48 deterministic root smoke/regression suites**; APK-helper smoke; synthetic Android performance-helper smoke (not device telemetry); production-service live timing probe. Regional **84,248** and pilot **15,688** comparisons remain identical to the existing baseline, without golden updates. Focused coverage includes warm first render, changed source adoption, same-day resume, exact TTL, stale/offline/no-loop, failure versus stale, A→nearby B→A, profile selection, midnight rollover, source/score parity and privacy of timing logs. Existing tests retain map mode/selection/full-view/Back/Top 3 preservation, moved/deleted hotspots, 23/25-hour periods, missing-source gates and no regional acquisition path.
+
+No Android device was attached. Remaining physical checks: record T0–T9 with a development build; cold A/warm A/cold B/return A/profile/date changes; aircraft-mode expired cache; profile/day marker updates; two taps in the same polygon; moved/deleted hotspots; background/resume and midnight; map pan/zoom during acquisition; TalkBack and compact loading text at larger fonts; frame responsiveness and camera stability. Implementation is verified at source/service/React-hook level; **native latency verification remains PARTIAL**. A selected hotspot may already belong to an in-flight marker batch; the development memory-cache `pending` event helps identify that wait. Heavy native marker/batch contention has not been measured here, and the existing batch/concurrency policy was not speculatively changed. Ordinary regional viewport and newly visible hotspot weather can still load as before; the claim is no **new preview** pan/zoom acquisition, not universally zero weather traffic while exploring the map.
+
+APK attempted: `npm run apk -- --name MushroomApp-preview-score-refresh-performance-v1.apk`. Gradle failed with **Unable to establish loopback connection**. No old APK was copied or renamed. Build with that same command locally, then perform the Redmi checklist. A release build omits development timing logs; use an Expo development build for the stage trace.
+
+Changed-file manifest:
+
+- Runtime: `src/components/SevenDayMapForecast.tsx`, `src/screens/MapScreen.tsx`, `src/domain/sevenDayConditions.ts`, `src/domain/soilSampling.ts`, `src/services/pointConditions.ts`, `src/services/pointTiming.ts`, `src/services/useSevenDayConditions.ts`, `src/services/heatmap/useLocationConditions.ts`, `src/services/weather.ts`.
+- Tests/helpers: `scripts/pointPerformanceSmoke.ts`, `scripts/pointRefreshSmoke.ts`, `scripts/pointRefreshSourceGuards.ts`, `scripts/soilSamplingSmoke.ts`, `scripts/mapForecastSmoke.ts`, `scripts/mapForecastSourceGuards.ts`, `scripts/pointMigrationSourceGuards.ts`, `scripts/pointWiringSmoke.ts`, `scripts/bottomMapTabNavigationSmoke.ts`, `scripts/chanterelleHabitatSmoke.ts`, `scripts/hotspotConditionsSmoke.ts`, `scripts/weatherGraphsSmoke.ts`.
+- Documentation: `docs/SEVEN_DAY_MAP_INTEGRATION_V1.md`.

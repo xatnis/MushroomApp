@@ -1,4 +1,5 @@
 import { strictEqual, deepStrictEqual, ok } from 'node:assert';
+import { withoutPointDiagnostics } from './pointRefreshSourceGuards';
 import { readFileSync } from 'node:fs';
 import { assertPointMigrationAwareSource } from './pointMigrationSourceGuards';
 import { execFileSync } from 'node:child_process';
@@ -173,7 +174,7 @@ async function uiTests() {
   const futureLines = walk(complete).filter(n => n.props.testID === 'weather-forecast-line');
   strictEqual(futureLines.length, 7); ok(futureLines.every(n => n.props.children.length > 1));
   for (const file of ['src/services/weather.ts', 'src/services/weatherGraphs.ts', 'src/domain/weatherSeries.ts'])
-    strictEqual(readFileSync(file, 'utf8').replace('export async function cachedFetch<T>', 'async function cachedFetch<T>').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `dcd8cdf:${file}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), `presentation-only: ${file}`);
+    strictEqual(withoutPointDiagnostics(file, readFileSync(file, 'utf8')).replace('export async function cachedFetch<T>', 'async function cachedFetch<T>'), execFileSync('git', ['show', `dcd8cdf:${file}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), `presentation-only: ${file}`);
   scale = 2; cursor = 0;
   const large = mod.exports.DailyWeatherChart({ series: data, metric: 'rain', selectedDate: '2026-10-08', onSelect() {} });
   strictEqual(walk(large).find(n => n.type === 'Pressable').props.style[1].width, 96); ok(text(large).includes('0 mm'));

@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import ts from 'typescript';
 import { withoutPointMigration } from './pointMigrationSourceGuards';
+import { withoutPointDiagnostics } from './pointRefreshSourceGuards';
 
 const screen = readFileSync('src/screens/ConditionsScreen.tsx', 'utf8');
 ok(screen.includes('getCanonicalPointWeatherSummary as getMushroomWeatherSummary'));
@@ -19,7 +20,7 @@ strictEqual(withoutPointMigration('src/screens/MapScreen.tsx', map), execFileSyn
 for (const path of ['src/services/weather.ts', 'src/domain/mushroomWeather.ts', 'src/domain/heatmap/assessment.ts', 'src/domain/heatmap/regional.ts', 'src/domain/heatmap/pilot.ts',
   'src/services/heatmap/pilotHeatmap.ts', 'src/services/heatmap/regionalWeather.ts', 'src/services/heatmap/useHeatmapVisuals.ts', 'src/domain/hotspotRanking.ts', 'src/domain/hotspotTopThree.ts',
   'src/components/WeatherGraphs.tsx', 'src/services/weatherGraphs.ts', 'src/domain/weatherSeries.ts', 'src/domain/conditionsSnapshot.ts', 'src/storage/database.ts']) {
-  strictEqual(readFileSync(path, 'utf8').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `f84a188:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), path);
+  strictEqual(withoutPointDiagnostics(path, readFileSync(path, 'utf8')), execFileSync('git', ['show', `f84a188:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), path);
 }
 // Execute the real new calendar hook with mocked native timers/app-state (not a device renderer).
 const requireHere = createRequire(__filename), Module = requireHere('node:module').Module;

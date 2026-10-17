@@ -15,16 +15,19 @@ import { advancedFactors } from '../src/components/conditionsAdvancedPresentatio
 import { sevenDayFixture } from './sevenDayFixture';
 import { evaluateSevenDayConditions } from '../src/domain/sevenDayConditions';
 import { MUSHROOM_WEATHER_PROFILES } from '../src/domain/mushroomWeather';
+import { withoutPointDiagnostics } from './pointRefreshSourceGuards';
 
 const source = readFileSync('src/screens/MapScreen.tsx', 'utf8');
 const baseline = execFileSync('git', ['show', '6c80905:src/screens/MapScreen.tsx'], { encoding: 'utf8' }).replace(/\r\n/g, '\n');
 strictEqual(withoutMapForecast(source), baseline, 'only declared forecast UI/selection changes; original camera, regional effects, data and source wiring remain exact');
 strictEqual(withoutMapForecastUx(source), execFileSync('git', ['show', '1b71f11:src/screens/MapScreen.tsx'], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), 'V1.1 changes only preview/modal presentation callbacks and graphs phase');
 for (const path of ['src/domain/sevenDayConditions.ts','src/domain/soilSampling.ts','src/domain/weatherIntervals.ts','src/domain/mushroomWeather.ts',
-  'src/services/pointConditions.ts','src/services/sevenDayConditions.ts','src/services/sevenDayHourlyWeather.ts','src/services/useSevenDayConditions.ts',
-  'src/services/weather.ts','src/services/heatmap/useLocationConditions.ts','src/services/heatmap/regionalWeather.ts','src/services/heatmap/useHeatmapVisuals.ts',
+  'src/services/sevenDayConditions.ts','src/services/sevenDayHourlyWeather.ts',
+  'src/services/weather.ts','src/services/heatmap/regionalWeather.ts','src/services/heatmap/useHeatmapVisuals.ts',
   'src/domain/hotspotRanking.ts','src/domain/hotspotTopThree.ts','src/domain/heatmap/controlsState.ts','src/state/AppContext.tsx','src/storage/database.ts','src/domain/conditionsSnapshot.ts'])
-  strictEqual(readFileSync(path, 'utf8').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `6c80905:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), path);
+  strictEqual(withoutPointDiagnostics(path, readFileSync(path, 'utf8')), execFileSync('git', ['show', `6c80905:${path}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), path);
+// Point cache/hooks intentionally change in Refresh V1. pointRefreshSmoke executes the old/new
+// lifecycle and production acquisition, TTL, exact identities, parity and HTTP counts.
 
 const ast = ts.createSourceFile('map.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const vars = new Map<string, string>(), effects: string[] = [], elements: Array<ts.JsxElement | ts.JsxSelfClosingElement> = [];
@@ -41,6 +44,7 @@ const attrs = (n: typeof elements[number], key: string) => {
 };
 const element = (name: string, condition: (n: typeof elements[number]) => boolean = () => true) => elements.find(n => tag(n).tagName.getText(ast) === name && condition(n))!;
 const state: any = { isFocused: true, mode: 'map', ownerFilter: 'mine', heatmapEnabled: true, forecastEnvironment: 'true/mine', mapForecast: undefined,
+  beginPointTiming() {},
   selectedId: undefined, graphMapPoint: { current: undefined }, selectedHeatmapAreaId: undefined, heatmapAreaLocality: undefined,
   conditionsContext: { targetProfile: 'cantharellusCibarius', dayMode: 'tomorrow' }, mapForecastLocation, forecastPointFromTap,
   spacing: { sm: 8 },

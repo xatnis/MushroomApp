@@ -70,7 +70,10 @@ export function sampleNativeSoil(data: NativeSoilResponse | undefined, date: str
   const target = targets[0];
   const candidates = data.hourly.time.flatMap((time, index) => {
     const instant = providerInstant(time, data.utc_offset_seconds);
-    return instant != null && ljubljanaClock(instant).startsWith(date + 'T') ? [{ time, index, instant }] : [];
+    // Reject instants that cannot be selected BEFORE the expensive IANA clock conversion.
+    // The exact/as-of eligibility, local-date and duplicate checks below remain identical.
+    const eligible = instant != null && (mode.kind === 'morning' ? instant === target : instant <= target && target - instant < 3600000);
+    return eligible && ljubljanaClock(instant!).startsWith(date + 'T') ? [{ time, index, instant: instant! }] : [];
   });
   const selected = mode.kind === 'morning' ? candidates.filter(p => p.instant === target)
     : candidates.filter(p => p.instant <= target && target - p.instant < 3600000).sort((a, b) => b.instant - a.instant).slice(0, 1);

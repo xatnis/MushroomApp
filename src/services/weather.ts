@@ -90,7 +90,7 @@ const weatherDebug = (event: string, details: Record<string, unknown>) => {
 
 const errorMessage = (error: unknown) => error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 
-async function fetchOpenMeteoJson<T>(url: string, key: string, timeoutMs: number): Promise<T> {
+async function fetchOpenMeteoJson<T>(url: string, key: string, timeoutMs: number, onTiming?: (stage: 'start' | 'response' | 'decoded') => void): Promise<T> {
   const controller = new AbortController();
   const startedAt = Date.now();
   let timedOut = false;
@@ -99,11 +99,15 @@ async function fetchOpenMeteoJson<T>(url: string, key: string, timeoutMs: number
     controller.abort();
   }, timeoutMs);
   weatherDebug('request-start', { key, url, timeoutMs });
+  onTiming?.('start');
   try {
     const response = await fetch(url, { signal: controller.signal });
+    onTiming?.('response');
     weatherDebug('response', { key, status: response.status, durationMs: Date.now() - startedAt });
     if (!response.ok) throw new Error(`Open-Meteo ${response.status}`);
-    return await response.json() as T;
+    const data = await response.json() as T;
+    onTiming?.('decoded');
+    return data;
   } catch (error) {
     if (timedOut) {
       const timeoutError = new Error(`Open-Meteo request timed out after ${timeoutMs} ms.`);
@@ -150,6 +154,7 @@ export async function cachedFetch<T>(
   url: string,
   allowStale = true,
   requestTimeoutMs = OPEN_METEO_REQUEST_TIMEOUT_MS,
+  onTiming?: (stage: 'start' | 'response' | 'decoded') => void,
 ): Promise<{ data: T; stale: boolean; fetchedAt: string }> {
   const cached = await db.getFirstAsync<{ payload: string; fetchedAt: string; expiresAt: string }>(`SELECT payload, fetchedAt, expiresAt FROM weather_cache WHERE cacheKey=?`, key);
   if (cached && new Date(cached.expiresAt).getTime() > Date.now()) {
@@ -164,7 +169,7 @@ export async function cachedFetch<T>(
   }
   const request = (async () => {
     try {
-      const data = await fetchOpenMeteoJson<T>(url, key, requestTimeoutMs);
+      const data = await fetchOpenMeteoJson<T>(url, key, requestTimeoutMs, onTiming);
       const fetchedAt = new Date().toISOString();
       await db.runAsync(
         `INSERT INTO weather_cache(cacheKey,payload,fetchedAt,expiresAt) VALUES(?,?,?,?) ON CONFLICT(cacheKey) DO UPDATE SET payload=excluded.payload,fetchedAt=excluded.fetchedAt,expiresAt=excluded.expiresAt`,

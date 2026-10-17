@@ -9,6 +9,8 @@ import { assessHeatmapWeather } from '../src/domain/heatmap/assessment';
 import { shiftLocalDate } from '../src/services/weather';
 import type { MushroomWeatherProfileId } from '../src/domain/types';
 import { sevenDayFixture } from './sevenDayFixture';
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
 
 const clone = <T,>(data: T): T => JSON.parse(JSON.stringify(data));
 const providerClock = (instant: number, offset: number) => new Date(instant + offset * 1000).toISOString().slice(0, 16);
@@ -18,6 +20,30 @@ function response(date: string, offset: number) {
   return { utc_offset_seconds: offset, hourly_units: { soil_moisture_0_to_7cm: 'm³/m³', soil_moisture_7_to_28cm: 'm³/m³' },
     hourly: { time: instants.map(i => providerClock(i, offset)), soil_moisture_0_to_7cm: instants.map((_, i) => .18 + i / 1000), soil_moisture_7_to_28cm: instants.map((_, i) => .24 + i / 1000) } };
 }
+// Direct before/after proof for the eligibility short-circuit. Compare the complete result,
+// not just rounded scores: timestamps, values, missing reasons, provenance and duplicate gates.
+const samplerPath = resolve('src/domain/soilSampling.ts'), requireHere = createRequire(samplerPath), Module = requireHere('node:module');
+const oldSampler = new Module(samplerPath); oldSampler.filename = samplerPath; oldSampler.paths = Module._nodeModulePaths(resolve('src/domain'));
+const ts = requireHere('typescript');
+oldSampler._compile(ts.transpileModule(execFileSync('git', ['show', '9b0c6b1:src/domain/soilSampling.ts'], { encoding: 'utf8' }),
+  { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, samplerPath);
+let samplerComparisons = 0;
+for (const date of ['2026-03-28', '2026-03-29', '2026-03-30', '2026-10-24', '2026-10-25', '2026-10-26', '2026-12-31', '2024-02-29']) {
+  for (const offset of [0, 3600, 7200]) {
+    const original = response(date, offset);
+    for (const variant of ['valid', 'missing', 'duplicates', 'units'] as const) {
+      const data = clone(original);
+      if (variant === 'missing') { data.hourly.soil_moisture_0_to_7cm[0] = null as any; data.hourly.time.splice(9, 1); }
+      if (variant === 'duplicates') data.hourly.time.push(...data.hourly.time);
+      if (variant === 'units') data.hourly_units.soil_moisture_0_to_7cm = '%';
+      for (const mode of [{ kind: 'morning' as const }, ...original.hourly.time.map(time => ({ kind: 'current' as const, providerReference: time.replace(':00', ':45') }))]) {
+        deepStrictEqual(sampleNativeSoil(data, date, mode, '2026-10-14T08:00:00Z'), oldSampler.exports.sampleNativeSoil(data, date, mode, '2026-10-14T08:00:00Z'));
+        samplerComparisons++;
+      }
+    }
+  }
+}
+console.log('Identical pre-optimization soil samples including DST/duplicates/missing/units:', samplerComparisons);
 for (const [date, offset, count, rawHour, utc] of [
   ['2026-03-29', 3600, 23, '08', '2026-03-29T07:00:00.000Z'],
   ['2026-10-25', 7200, 25, '10', '2026-10-25T08:00:00.000Z'],

@@ -3,11 +3,11 @@ import { AppState } from 'react-native';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import type { MushroomWeatherProfileId, MushroomWeatherSummary } from '../domain/types';
 import { CANONICAL_POINT_POLICY, type SevenDaySnapshot } from '../domain/sevenDayConditions';
-import { pointResults } from './pointConditions';
+import { cachedPointSnapshot, pointResults, pointSnapshotForDisplay, subscribePointConditions } from './pointConditions';
+import { markPointTiming, pointTimingEnabled } from './pointTiming';
 import { weatherLocalDate, WEATHER_TIMEZONE } from '../domain/weatherSeries';
 import { shiftLocalDate } from './weather';
 import { loadSevenDaySnapshot } from './sevenDayConditions';
-import { MUSHROOM_WEATHER_PROFILES } from '../domain/mushroomWeather';
 
 /** Calendar deadline, not an arbitrary loading delay. Recalculate offsets at the actual local midnight (DST safe). */
 export function nextWeatherMidnight(now = new Date()): number {
@@ -28,15 +28,27 @@ export function useSevenDayConditions(db: SQLiteDatabase, location: { latitude: 
   const [loaded, setLoaded] = useState<{ key: string; snapshot: SevenDaySnapshot }>();
   const [failure, setFailure] = useState<{ key: string; message: string }>();
   const [retry, setRetry] = useState(0);
+  const [refresh, setRefresh] = useState(0);
   const key = `${location.latitude}:${location.longitude}:${today}:${retry}`;
   const current = useRef(key); current.current = key;
   const onLoaded = useRef(onSnapshot); onLoaded.current = onSnapshot;
   useEffect(() => {
     const refreshDay = () => setToday(weatherLocalDate());
     const timer = setTimeout(refreshDay, Math.max(1, nextWeatherMidnight() - Date.now()));
-    const subscription = AppState.addEventListener('change', state => { if (state === 'active') refreshDay(); });
+    const subscription = AppState.addEventListener('change', state => { if (state === 'active') { refreshDay(); setRefresh(value => value + 1); } });
     return () => { clearTimeout(timer); subscription.remove(); };
   }, [today]);
+  useEffect(() => {
+    const update = () => {
+      const snapshot = cachedPointSnapshot(db, location, today);
+      if (snapshot && current.current === key) {
+        setLoaded(previous => previous?.key === key && previous.snapshot === snapshot ? previous : { key, snapshot });
+        if (!snapshot.stale && !snapshot.blockers.length) setFailure(undefined);
+      }
+    };
+    update();
+    return subscribePointConditions(db, update);
+  }, [db, key]);
   useEffect(() => {
     let active = true;
     void loadSevenDaySnapshot(db, location, today, { seedUpdatedAt: seed?.updatedAt }).then(snapshot => {
@@ -48,9 +60,21 @@ export function useSevenDayConditions(db: SQLiteDatabase, location: { latitude: 
     }).catch(cause => { if (active && current.current === key) setFailure({ key, message: cause instanceof Error ? cause.message : 'Napovedi trenutno ni mogoče pridobiti.' }); });
     return () => { active = false; };
     // Profile and day selection are local calculations, not acquisition dependencies.
-  }, [db, key]);
-  const snapshot = loaded?.key === key ? loaded.snapshot : undefined;
-  const allProfiles = useMemo(() => snapshot ? Object.fromEntries(Object.keys(MUSHROOM_WEATHER_PROFILES).map(id => [id, pointResults(snapshot, id as MushroomWeatherProfileId)])) : undefined, [snapshot]);
-  return { today, snapshot, results: allProfiles?.[profile], loading: !snapshot && failure?.key !== key,
+  }, [db, key, refresh]);
+  const snapshot = cachedPointSnapshot(db, location, today) ?? pointSnapshotForDisplay(loaded?.key === key ? loaded.snapshot : undefined);
+  useEffect(() => {
+    // One deadline for a valid source snapshot; failed/stale refreshes never schedule a retry loop.
+    if (!snapshot || snapshot.stale || snapshot.expiresAt <= Date.now()) return;
+    const timer = setTimeout(() => setRefresh(value => value + 1), Math.max(1, snapshot.expiresAt - Date.now()));
+    return () => clearTimeout(timer);
+  }, [snapshot]);
+  const selectedResults = useMemo(() => snapshot ? pointResults(snapshot, profile) : undefined, [snapshot, profile]);
+  useEffect(() => {
+    if (!pointTimingEnabled() || !selectedResults || typeof requestAnimationFrame === 'undefined') return;
+    markPointTiming(location, today, 'T8 hook commit');
+    const frame = requestAnimationFrame(() => markPointTiming(location, today, 'T9 result frame'));
+    return () => cancelAnimationFrame(frame);
+  }, [selectedResults]);
+  return { today, snapshot, results: selectedResults, loading: !snapshot && failure?.key !== key,
     error: failure?.key === key ? failure.message : undefined, retry: () => setRetry(value => value + 1) };
 }

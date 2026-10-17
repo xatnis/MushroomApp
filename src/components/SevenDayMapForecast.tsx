@@ -11,6 +11,7 @@ import type { SevenDayLocation } from './SevenDayConditionsView';
 import { compactForecastHasDateStrip, forecastComparison, forecastDateLabel } from './mapForecastPresentation';
 import { slDateTime } from '../domain/format';
 import { colors, radii, spacing } from '../theme';
+import { markPointTiming } from '../services/pointTiming';
 
 const ignoreSnapshot = () => {}; // Map detail must never synchronize the unrelated Razmere location.
 export function MapForecastEntry({ onPress, expanded = false, compact = false }: { onPress: () => void; expanded?: boolean; compact?: boolean }) {
@@ -56,6 +57,7 @@ export function SevenDayMapForecastPreview({ location, database, profileId, init
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.heading}><View style={styles.grow}>
         <Text ref={heading} accessibilityRole="header" onLayout={() => {
+          if (!announced.current) markPointTiming(location, week.today, 'T1 header layout');
           const handle = heading.current && findNodeHandle(heading.current);
           if (!announced.current && handle != null) { announced.current = true; AccessibilityInfo.setAccessibilityFocus(handle); }
         }} accessibilityLabel={`Napoved pogojev za ${displayName}, 7 dni`} numberOfLines={1} ellipsizeMode="tail" style={styles.title}>{displayName}</Text>
@@ -63,7 +65,7 @@ export function SevenDayMapForecastPreview({ location, database, profileId, init
         <Text numberOfLines={1} style={styles.secondary}>{conditionsEnabled ? `Zemljevid: ${mapDayLabel}${mapProfileId !== profileId ? ` · ${MUSHROOM_WEATHER_PROFILES[mapProfileId].label}` : ''}` : 'Zemljevid: Rastišča'}</Text>
       </View><Close onClose={onClose} /></View>
       {week.loading ? <View style={styles.loading} accessibilityLiveRegion="polite"><ActivityIndicator color={colors.primary} />
-        <Text style={[styles.secondary, styles.grow]}>Preračunavam sedemdnevne razmere ...</Text></View> : null}
+        <Text style={[styles.secondary, styles.grow]}>Preračunavam sedemdnevne razmere ... Pridobivam vremenske podatke.</Text></View> : null}
       {week.error ? <Text style={styles.secondary} accessibilityLiveRegion="polite">{week.error}</Text> : null}
       {week.snapshot?.stale ? <Text style={styles.secondary}>Starejša predpomnjena napoved</Text> : null}
       {week.results && showDates ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.days} nestedScrollEnabled>

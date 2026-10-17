@@ -2,10 +2,11 @@ import { strictEqual, ok } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { withoutMapForecast, withoutForecastModalInputs } from './mapForecastSourceGuards';
+import { withoutPointDiagnostics } from './pointRefreshSourceGuards';
 
 /** Permit ONLY the explicitly tested V1.3 point wiring, never changes to native sources/camera/regional scorers. */
 export function withoutPointMigration(path: string, text: string): string {
-  let source = text.replace(/\r\n/g, '\n').replace('export async function cachedFetch<T>', 'async function cachedFetch<T>');
+  let source = withoutPointDiagnostics(path, text).replace('export async function cachedFetch<T>', 'async function cachedFetch<T>');
   if (path === 'src/components/SevenDayConditionsView.tsx') source = withoutForecastModalInputs(source);
   if (path === 'src/screens/MapScreen.tsx') {
     source = withoutMapForecast(source);
