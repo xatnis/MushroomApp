@@ -1,0 +1,4013 @@
+{
+  "auditOnly": true,
+  "environment": "LIVE bounded public-coordinate probe, Windows/Node, not Android or nationwide validation",
+  "date": "2026-10-18",
+  "requests": 2,
+  "uniqueLocations": 11,
+  "acquisitionMs": 600.2,
+  "allScoresMs": 155.292,
+  "warmMs": 1.333,
+  "warmAdditionalRequests": 0,
+  "warmSkippedForIncompleteSources": false,
+  "payloads": [
+    {
+      "endpoint": "archive",
+      "responseMs": 304.309,
+      "status": 200,
+      "decodeMs": 121.126,
+      "decodedJsonBytes": 314625,
+      "locations": [
+        {
+          "latitude": 46.502636,
+          "longitude": 14.879614,
+          "elevation": 577,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 46.362038,
+          "longitude": 13.823999,
+          "elevation": 1800,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 46.362038,
+          "longitude": 13.823999,
+          "elevation": 2170,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 46.502636,
+          "longitude": 15.457463,
+          "elevation": 1221,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 46.502636,
+          "longitude": 15.601926,
+          "elevation": 460,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 46.08084,
+          "longitude": 14.45151,
+          "elevation": 302,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 46.010544,
+          "longitude": 14.571429,
+          "elevation": 422,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 45.79965,
+          "longitude": 13.93365,
+          "elevation": 98,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 45.79965,
+          "longitude": 13.79147,
+          "elevation": 95,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 45.65905,
+          "longitude": 14.88189,
+          "elevation": 474,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 45.65905,
+          "longitude": 14.88189,
+          "elevation": 553,
+          "hourlyCount": 1296
+        }
+      ]
+    },
+    {
+      "endpoint": "forecast",
+      "responseMs": 284.257,
+      "status": 200,
+      "decodeMs": 6.486,
+      "decodedJsonBytes": 138461,
+      "locations": [
+        {
+          "latitude": 46.47258,
+          "longitude": 14.86571,
+          "elevation": 577,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 46.34748,
+          "longitude": 13.859678,
+          "elevation": 1800,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 46.351833,
+          "longitude": 13.819371,
+          "elevation": 2170,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 46.498688,
+          "longitude": 15.505858,
+          "elevation": 1221,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 46.52564,
+          "longitude": 15.494576,
+          "elevation": 460,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 46.047455,
+          "longitude": 14.489463,
+          "elevation": 302,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 46.021046,
+          "longitude": 14.565356,
+          "elevation": 422,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 45.85893,
+          "longitude": 13.953486,
+          "elevation": 98,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 45.89019,
+          "longitude": 13.901557,
+          "elevation": 95,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 45.647312,
+          "longitude": 14.85102,
+          "elevation": 474,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 45.647663,
+          "longitude": 14.914698,
+          "elevation": 553,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        }
+      ]
+    }
+  ],
+  "availability": [
+    {
+      "region": "Koroska",
+      "role": "exact-public-point",
+      "sourceSnapshotId": "46.47045:14.85009:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:18:12.872Z:2026-10-18T11:18:12.961Z",
+      "forecastRetrievedAt": "2026-10-18T11:18:12.872Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 63,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 61,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 52,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 45,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 89,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 89,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 86,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Koroska",
+      "role": "10km-sampling-centre",
+      "sourceSnapshotId": "46.47045:14.85009:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:18:12.872Z:2026-10-18T11:18:12.961Z",
+      "forecastRetrievedAt": "2026-10-18T11:18:12.872Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 63,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 61,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 52,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 45,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 89,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 89,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 86,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Gorenjska-alpine",
+      "role": "exact-public-point",
+      "sourceSnapshotId": "46.33:13.85:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:18:12.872Z:2026-10-18T11:18:12.961Z",
+      "forecastRetrievedAt": "2026-10-18T11:18:12.872Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 74,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 73,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 67,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 67,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 89,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 88,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 88,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 64,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 63,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 61,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 82,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 81,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 80,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 60,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 58,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 52,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 52,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 79,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 79,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 79,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 89,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 88,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 90,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Gorenjska-alpine",
+      "role": "10km-sampling-centre",
+      "sourceSnapshotId": "46.332579:13.797746:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:18:12.872Z:2026-10-18T11:18:12.961Z",
+      "forecastRetrievedAt": "2026-10-18T11:18:12.872Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 69,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 67,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 62,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 62,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 84,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 84,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 83,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 53,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 76,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 75,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 75,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 50,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 50,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 77,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 77,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 77,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 82,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 82,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 79,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 79,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 83,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 82,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 81,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Pohorje",
+      "role": "exact-public-point",
+      "sourceSnapshotId": "46.5:15.5:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:18:12.872Z:2026-10-18T11:18:12.961Z",
+      "forecastRetrievedAt": "2026-10-18T11:18:12.872Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 53,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 48,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 48,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 50,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 48,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 46,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 43,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 48,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 43,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 40,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 35,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 34,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 39,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 42,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 42,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 82,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 82,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 80,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 79,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 88,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Pohorje",
+      "role": "10km-sampling-centre",
+      "sourceSnapshotId": "46.528882:15.50826:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:18:12.872Z:2026-10-18T11:18:12.961Z",
+      "forecastRetrievedAt": "2026-10-18T11:18:12.872Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 53,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 53,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 53,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 53,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 52,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 48,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 51,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 53,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 53,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 47,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 45,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 41,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 40,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 45,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 45,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 75,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 75,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 73,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 72,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 77,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 78,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 78,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Central-Slovenia",
+      "role": "exact-public-point",
+      "sourceSnapshotId": "46.05:14.5:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:18:12.872Z:2026-10-18T11:18:12.961Z",
+      "forecastRetrievedAt": "2026-10-18T11:18:12.872Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 73,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 73,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 66,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 66,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 71,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 69,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 67,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 65,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 65,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 69,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 62,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 60,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 58,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 91,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 91,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Central-Slovenia",
+      "role": "10km-sampling-centre",
+      "sourceSnapshotId": "46.032526:14.552078:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:18:12.872Z:2026-10-18T11:18:12.961Z",
+      "forecastRetrievedAt": "2026-10-18T11:18:12.872Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 72,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 71,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 64,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 64,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 71,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 69,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 66,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 66,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 62,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 66,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 66,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 66,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 61,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 53,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 53,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 58,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 91,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 90,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 90,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Primorska",
+      "role": "exact-public-point",
+      "sourceSnapshotId": "45.85:13.95:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:18:12.872Z:2026-10-18T11:18:12.961Z",
+      "forecastRetrievedAt": "2026-10-18T11:18:12.872Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 84,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 80,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 81,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 83,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 83,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 88,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 80,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 81,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 94,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 94,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 96,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 96,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 98,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 96,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Primorska",
+      "role": "10km-sampling-centre",
+      "sourceSnapshotId": "45.878237:13.894737:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:18:12.872Z:2026-10-18T11:18:12.961Z",
+      "forecastRetrievedAt": "2026-10-18T11:18:12.872Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 84,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 81,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 82,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 94,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 86,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 86,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 83,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 94,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 88,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 86,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 82,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 82,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 96,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 97,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 97,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 96,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 96,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 99,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 97,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 96,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Kocevje-Dolenjska",
+      "role": "exact-public-point",
+      "sourceSnapshotId": "45.65:14.85:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:18:12.872Z:2026-10-18T11:18:12.961Z",
+      "forecastRetrievedAt": "2026-10-18T11:18:12.872Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 66,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 60,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 60,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 69,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 69,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 64,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 63,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 61,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 64,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 65,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 65,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 58,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 84,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 86,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Kocevje-Dolenjska",
+      "role": "10km-sampling-centre",
+      "sourceSnapshotId": "45.655841:14.905875:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:18:12.872Z:2026-10-18T11:18:12.961Z",
+      "forecastRetrievedAt": "2026-10-18T11:18:12.872Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 67,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 65,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 67,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 62,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 61,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 60,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 62,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 64,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 63,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 53,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 48,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 48,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 86,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 84,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 86,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 86,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 86,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    }
+  ],
+  "spatialComparison": [
+    {
+      "region": "Koroska",
+      "sameCanonicalContractSameBatchedSources": true,
+      "NOTGroundTruthOrLegacyRegionalComparison": true,
+      "profiles": {
+        "generic": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 63,
+            "centreScore": 63,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 12.054791666666667,
+            "centreT20": 12.054791666666667,
+            "pointTopSoil": 0.332,
+            "centreTopSoil": 0.332
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 61,
+            "centreScore": 61,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.952708333333334,
+            "centreT20": 11.952708333333334,
+            "pointTopSoil": 0.329,
+            "centreTopSoil": 0.329
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 56,
+            "centreScore": 56,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.777708333333333,
+            "centreT20": 11.777708333333333,
+            "pointTopSoil": 0.324,
+            "centreTopSoil": 0.324
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 56,
+            "centreScore": 56,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.628125,
+            "centreT20": 11.628125,
+            "pointTopSoil": 0.325,
+            "centreTopSoil": 0.325
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 57,
+            "centreScore": 57,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.553333333333335,
+            "centreT20": 11.553333333333335,
+            "pointTopSoil": 0.42,
+            "centreTopSoil": 0.42
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 56,
+            "centreScore": 56,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.4275,
+            "centreT20": 11.4275,
+            "pointTopSoil": 0.373,
+            "centreTopSoil": 0.373
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 55,
+            "centreScore": 55,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.145000000000003,
+            "centreT20": 11.145000000000003,
+            "pointTopSoil": 0.396,
+            "centreTopSoil": 0.396
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 57,
+            "centreScore": 57,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 12.054791666666667,
+            "centreT20": 12.054791666666667,
+            "pointTopSoil": 0.332,
+            "centreTopSoil": 0.332
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 57,
+            "centreScore": 57,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.952708333333334,
+            "centreT20": 11.952708333333334,
+            "pointTopSoil": 0.329,
+            "centreTopSoil": 0.329
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 55,
+            "centreScore": 55,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.777708333333333,
+            "centreT20": 11.777708333333333,
+            "pointTopSoil": 0.324,
+            "centreTopSoil": 0.324
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 54,
+            "centreScore": 54,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.628125,
+            "centreT20": 11.628125,
+            "pointTopSoil": 0.325,
+            "centreTopSoil": 0.325
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 55,
+            "centreScore": 55,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.553333333333335,
+            "centreT20": 11.553333333333335,
+            "pointTopSoil": 0.42,
+            "centreTopSoil": 0.42
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 55,
+            "centreScore": 55,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.4275,
+            "centreT20": 11.4275,
+            "pointTopSoil": 0.373,
+            "centreTopSoil": 0.373
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 54,
+            "centreScore": 54,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.145000000000003,
+            "centreT20": 11.145000000000003,
+            "pointTopSoil": 0.396,
+            "centreTopSoil": 0.396
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 52,
+            "centreScore": 52,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 12.054791666666667,
+            "centreT20": 12.054791666666667,
+            "pointTopSoil": 0.332,
+            "centreTopSoil": 0.332
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 49,
+            "centreScore": 49,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.952708333333334,
+            "centreT20": 11.952708333333334,
+            "pointTopSoil": 0.329,
+            "centreTopSoil": 0.329
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 44,
+            "centreScore": 44,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.777708333333333,
+            "centreT20": 11.777708333333333,
+            "pointTopSoil": 0.324,
+            "centreTopSoil": 0.324
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 44,
+            "centreScore": 44,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.628125,
+            "centreT20": 11.628125,
+            "pointTopSoil": 0.325,
+            "centreTopSoil": 0.325
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 45,
+            "centreScore": 45,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.553333333333335,
+            "centreT20": 11.553333333333335,
+            "pointTopSoil": 0.42,
+            "centreTopSoil": 0.42
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 44,
+            "centreScore": 44,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.4275,
+            "centreT20": 11.4275,
+            "pointTopSoil": 0.373,
+            "centreTopSoil": 0.373
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 44,
+            "centreScore": 44,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.145000000000003,
+            "centreT20": 11.145000000000003,
+            "pointTopSoil": 0.396,
+            "centreTopSoil": 0.396
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 89,
+            "centreScore": 89,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 12.054791666666667,
+            "centreT20": 12.054791666666667,
+            "pointTopSoil": 0.332,
+            "centreTopSoil": 0.332
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 89,
+            "centreScore": 89,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.952708333333334,
+            "centreT20": 11.952708333333334,
+            "pointTopSoil": 0.329,
+            "centreTopSoil": 0.329
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 87,
+            "centreScore": 87,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.777708333333333,
+            "centreT20": 11.777708333333333,
+            "pointTopSoil": 0.324,
+            "centreTopSoil": 0.324
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 86,
+            "centreScore": 86,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.628125,
+            "centreT20": 11.628125,
+            "pointTopSoil": 0.325,
+            "centreTopSoil": 0.325
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 87,
+            "centreScore": 87,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.553333333333335,
+            "centreT20": 11.553333333333335,
+            "pointTopSoil": 0.42,
+            "centreTopSoil": 0.42
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 85,
+            "centreScore": 85,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.4275,
+            "centreT20": 11.4275,
+            "pointTopSoil": 0.373,
+            "centreTopSoil": 0.373
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 85,
+            "centreScore": 85,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.145000000000003,
+            "centreT20": 11.145000000000003,
+            "pointTopSoil": 0.396,
+            "centreTopSoil": 0.396
+          }
+        ]
+      }
+    },
+    {
+      "region": "Gorenjska-alpine",
+      "sameCanonicalContractSameBatchedSources": true,
+      "NOTGroundTruthOrLegacyRegionalComparison": true,
+      "profiles": {
+        "generic": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 74,
+            "centreScore": 69,
+            "pointMinusCentre": 5,
+            "labelChanged": true,
+            "pointT20": 7.273749999999998,
+            "centreT20": 5.184166666666667,
+            "pointTopSoil": 0.348,
+            "centreTopSoil": 0.348
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 73,
+            "centreScore": 67,
+            "pointMinusCentre": 6,
+            "labelChanged": true,
+            "pointT20": 7.120624999999999,
+            "centreT20": 5.082291666666667,
+            "pointTopSoil": 0.35,
+            "centreTopSoil": 0.35
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 67,
+            "centreScore": 62,
+            "pointMinusCentre": 5,
+            "labelChanged": false,
+            "pointT20": 7.003124999999997,
+            "centreT20": 5.03125,
+            "pointTopSoil": 0.371,
+            "centreTopSoil": 0.371
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 67,
+            "centreScore": 62,
+            "pointMinusCentre": 5,
+            "labelChanged": false,
+            "pointT20": 6.905416666666666,
+            "centreT20": 4.938125,
+            "pointTopSoil": 0.438,
+            "centreTopSoil": 0.438
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 89,
+            "centreScore": 84,
+            "pointMinusCentre": 5,
+            "labelChanged": true,
+            "pointT20": 6.862499999999999,
+            "centreT20": 4.895208333333334,
+            "pointTopSoil": 0.423,
+            "centreTopSoil": 0.423
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 88,
+            "centreScore": 84,
+            "pointMinusCentre": 4,
+            "labelChanged": true,
+            "pointT20": 6.670208333333333,
+            "centreT20": 4.702916666666667,
+            "pointTopSoil": 0.403,
+            "centreTopSoil": 0.403
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 88,
+            "centreScore": 83,
+            "pointMinusCentre": 5,
+            "labelChanged": true,
+            "pointT20": 6.416458333333333,
+            "centreT20": 4.449166666666667,
+            "pointTopSoil": 0.416,
+            "centreTopSoil": 0.416
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 64,
+            "centreScore": 57,
+            "pointMinusCentre": 7,
+            "labelChanged": false,
+            "pointT20": 7.273749999999998,
+            "centreT20": 5.184166666666667,
+            "pointTopSoil": 0.348,
+            "centreTopSoil": 0.348
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 63,
+            "centreScore": 56,
+            "pointMinusCentre": 7,
+            "labelChanged": false,
+            "pointT20": 7.120624999999999,
+            "centreT20": 5.082291666666667,
+            "pointTopSoil": 0.35,
+            "centreTopSoil": 0.35
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 61,
+            "centreScore": 54,
+            "pointMinusCentre": 7,
+            "labelChanged": false,
+            "pointT20": 7.003124999999997,
+            "centreT20": 5.03125,
+            "pointTopSoil": 0.371,
+            "centreTopSoil": 0.371
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 59,
+            "centreScore": 53,
+            "pointMinusCentre": 6,
+            "labelChanged": false,
+            "pointT20": 6.905416666666666,
+            "centreT20": 4.938125,
+            "pointTopSoil": 0.438,
+            "centreTopSoil": 0.438
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 82,
+            "centreScore": 76,
+            "pointMinusCentre": 6,
+            "labelChanged": false,
+            "pointT20": 6.862499999999999,
+            "centreT20": 4.895208333333334,
+            "pointTopSoil": 0.423,
+            "centreTopSoil": 0.423
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 81,
+            "centreScore": 75,
+            "pointMinusCentre": 6,
+            "labelChanged": false,
+            "pointT20": 6.670208333333333,
+            "centreT20": 4.702916666666667,
+            "pointTopSoil": 0.403,
+            "centreTopSoil": 0.403
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 80,
+            "centreScore": 75,
+            "pointMinusCentre": 5,
+            "labelChanged": false,
+            "pointT20": 6.416458333333333,
+            "centreT20": 4.449166666666667,
+            "pointTopSoil": 0.416,
+            "centreTopSoil": 0.416
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 60,
+            "centreScore": 57,
+            "pointMinusCentre": 3,
+            "labelChanged": false,
+            "pointT20": 7.273749999999998,
+            "centreT20": 5.184166666666667,
+            "pointTopSoil": 0.348,
+            "centreTopSoil": 0.348
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 58,
+            "centreScore": 55,
+            "pointMinusCentre": 3,
+            "labelChanged": false,
+            "pointT20": 7.120624999999999,
+            "centreT20": 5.082291666666667,
+            "pointTopSoil": 0.35,
+            "centreTopSoil": 0.35
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 52,
+            "centreScore": 50,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 7.003124999999997,
+            "centreT20": 5.03125,
+            "pointTopSoil": 0.371,
+            "centreTopSoil": 0.371
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 52,
+            "centreScore": 50,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 6.905416666666666,
+            "centreT20": 4.938125,
+            "pointTopSoil": 0.438,
+            "centreTopSoil": 0.438
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 79,
+            "centreScore": 77,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 6.862499999999999,
+            "centreT20": 4.895208333333334,
+            "pointTopSoil": 0.423,
+            "centreTopSoil": 0.423
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 79,
+            "centreScore": 77,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 6.670208333333333,
+            "centreT20": 4.702916666666667,
+            "pointTopSoil": 0.403,
+            "centreTopSoil": 0.403
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 79,
+            "centreScore": 77,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 6.416458333333333,
+            "centreT20": 4.449166666666667,
+            "pointTopSoil": 0.416,
+            "centreTopSoil": 0.416
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 93,
+            "centreScore": 82,
+            "pointMinusCentre": 11,
+            "labelChanged": true,
+            "pointT20": 7.273749999999998,
+            "centreT20": 5.184166666666667,
+            "pointTopSoil": 0.348,
+            "centreTopSoil": 0.348
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 92,
+            "centreScore": 82,
+            "pointMinusCentre": 10,
+            "labelChanged": true,
+            "pointT20": 7.120624999999999,
+            "centreT20": 5.082291666666667,
+            "pointTopSoil": 0.35,
+            "centreTopSoil": 0.35
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 89,
+            "centreScore": 79,
+            "pointMinusCentre": 10,
+            "labelChanged": true,
+            "pointT20": 7.003124999999997,
+            "centreT20": 5.03125,
+            "pointTopSoil": 0.371,
+            "centreTopSoil": 0.371
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 88,
+            "centreScore": 79,
+            "pointMinusCentre": 9,
+            "labelChanged": true,
+            "pointT20": 6.905416666666666,
+            "centreT20": 4.938125,
+            "pointTopSoil": 0.438,
+            "centreTopSoil": 0.438
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 93,
+            "centreScore": 83,
+            "pointMinusCentre": 10,
+            "labelChanged": true,
+            "pointT20": 6.862499999999999,
+            "centreT20": 4.895208333333334,
+            "pointTopSoil": 0.423,
+            "centreTopSoil": 0.423
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 92,
+            "centreScore": 82,
+            "pointMinusCentre": 10,
+            "labelChanged": true,
+            "pointT20": 6.670208333333333,
+            "centreT20": 4.702916666666667,
+            "pointTopSoil": 0.403,
+            "centreTopSoil": 0.403
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 90,
+            "centreScore": 81,
+            "pointMinusCentre": 9,
+            "labelChanged": true,
+            "pointT20": 6.416458333333333,
+            "centreT20": 4.449166666666667,
+            "pointTopSoil": 0.416,
+            "centreTopSoil": 0.416
+          }
+        ]
+      }
+    },
+    {
+      "region": "Pohorje",
+      "sameCanonicalContractSameBatchedSources": true,
+      "NOTGroundTruthOrLegacyRegionalComparison": true,
+      "profiles": {
+        "generic": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 56,
+            "centreScore": 54,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 10.040416666666665,
+            "centreT20": 13.784166666666668,
+            "pointTopSoil": 0.254,
+            "centreTopSoil": 0.226
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 53,
+            "centreScore": 53,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 9.901250000000001,
+            "centreT20": 13.661874999999998,
+            "pointTopSoil": 0.249,
+            "centreTopSoil": 0.22
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 48,
+            "centreScore": 49,
+            "pointMinusCentre": -1,
+            "labelChanged": false,
+            "pointT20": 9.6825,
+            "centreT20": 13.429999999999998,
+            "pointTopSoil": 0.241,
+            "centreTopSoil": 0.212
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 48,
+            "centreScore": 49,
+            "pointMinusCentre": -1,
+            "labelChanged": false,
+            "pointT20": 9.51625,
+            "centreT20": 13.196666666666667,
+            "pointTopSoil": 0.235,
+            "centreTopSoil": 0.204
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 54,
+            "centreScore": 53,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 9.46458333333333,
+            "centreT20": 13.194791666666664,
+            "pointTopSoil": 0.415,
+            "centreTopSoil": 0.363
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 56,
+            "centreScore": 53,
+            "pointMinusCentre": 3,
+            "labelChanged": false,
+            "pointT20": 9.229999999999997,
+            "centreT20": 12.998541666666664,
+            "pointTopSoil": 0.336,
+            "centreTopSoil": 0.314
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 56,
+            "centreScore": 54,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 8.894374999999998,
+            "centreT20": 12.644583333333333,
+            "pointTopSoil": 0.358,
+            "centreTopSoil": 0.333
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 50,
+            "centreScore": 54,
+            "pointMinusCentre": -4,
+            "labelChanged": false,
+            "pointT20": 10.040416666666665,
+            "centreT20": 13.784166666666668,
+            "pointTopSoil": 0.254,
+            "centreTopSoil": 0.226
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 48,
+            "centreScore": 53,
+            "pointMinusCentre": -5,
+            "labelChanged": true,
+            "pointT20": 9.901250000000001,
+            "centreT20": 13.661874999999998,
+            "pointTopSoil": 0.249,
+            "centreTopSoil": 0.22
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 46,
+            "centreScore": 52,
+            "pointMinusCentre": -6,
+            "labelChanged": true,
+            "pointT20": 9.6825,
+            "centreT20": 13.429999999999998,
+            "pointTopSoil": 0.241,
+            "centreTopSoil": 0.212
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 43,
+            "centreScore": 48,
+            "pointMinusCentre": -5,
+            "labelChanged": false,
+            "pointT20": 9.51625,
+            "centreT20": 13.196666666666667,
+            "pointTopSoil": 0.235,
+            "centreTopSoil": 0.204
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 48,
+            "centreScore": 51,
+            "pointMinusCentre": -3,
+            "labelChanged": true,
+            "pointT20": 9.46458333333333,
+            "centreT20": 13.194791666666664,
+            "pointTopSoil": 0.415,
+            "centreTopSoil": 0.363
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 49,
+            "centreScore": 53,
+            "pointMinusCentre": -4,
+            "labelChanged": true,
+            "pointT20": 9.229999999999997,
+            "centreT20": 12.998541666666664,
+            "pointTopSoil": 0.336,
+            "centreTopSoil": 0.314
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 49,
+            "centreScore": 53,
+            "pointMinusCentre": -4,
+            "labelChanged": true,
+            "pointT20": 8.894374999999998,
+            "centreT20": 12.644583333333333,
+            "pointTopSoil": 0.358,
+            "centreTopSoil": 0.333
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 43,
+            "centreScore": 47,
+            "pointMinusCentre": -4,
+            "labelChanged": false,
+            "pointT20": 10.040416666666665,
+            "centreT20": 13.784166666666668,
+            "pointTopSoil": 0.254,
+            "centreTopSoil": 0.226
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 40,
+            "centreScore": 45,
+            "pointMinusCentre": -5,
+            "labelChanged": false,
+            "pointT20": 9.901250000000001,
+            "centreT20": 13.661874999999998,
+            "pointTopSoil": 0.249,
+            "centreTopSoil": 0.22
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 35,
+            "centreScore": 41,
+            "pointMinusCentre": -6,
+            "labelChanged": false,
+            "pointT20": 9.6825,
+            "centreT20": 13.429999999999998,
+            "pointTopSoil": 0.241,
+            "centreTopSoil": 0.212
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 34,
+            "centreScore": 40,
+            "pointMinusCentre": -6,
+            "labelChanged": false,
+            "pointT20": 9.51625,
+            "centreT20": 13.196666666666667,
+            "pointTopSoil": 0.235,
+            "centreTopSoil": 0.204
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 39,
+            "centreScore": 44,
+            "pointMinusCentre": -5,
+            "labelChanged": false,
+            "pointT20": 9.46458333333333,
+            "centreT20": 13.194791666666664,
+            "pointTopSoil": 0.415,
+            "centreTopSoil": 0.363
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 42,
+            "centreScore": 45,
+            "pointMinusCentre": -3,
+            "labelChanged": false,
+            "pointT20": 9.229999999999997,
+            "centreT20": 12.998541666666664,
+            "pointTopSoil": 0.336,
+            "centreTopSoil": 0.314
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 42,
+            "centreScore": 45,
+            "pointMinusCentre": -3,
+            "labelChanged": false,
+            "pointT20": 8.894374999999998,
+            "centreT20": 12.644583333333333,
+            "pointTopSoil": 0.358,
+            "centreTopSoil": 0.333
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 82,
+            "centreScore": 75,
+            "pointMinusCentre": 7,
+            "labelChanged": false,
+            "pointT20": 10.040416666666665,
+            "centreT20": 13.784166666666668,
+            "pointTopSoil": 0.254,
+            "centreTopSoil": 0.226
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 82,
+            "centreScore": 75,
+            "pointMinusCentre": 7,
+            "labelChanged": false,
+            "pointT20": 9.901250000000001,
+            "centreT20": 13.661874999999998,
+            "pointTopSoil": 0.249,
+            "centreTopSoil": 0.22
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 80,
+            "centreScore": 73,
+            "pointMinusCentre": 7,
+            "labelChanged": false,
+            "pointT20": 9.6825,
+            "centreT20": 13.429999999999998,
+            "pointTopSoil": 0.241,
+            "centreTopSoil": 0.212
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 79,
+            "centreScore": 72,
+            "pointMinusCentre": 7,
+            "labelChanged": false,
+            "pointT20": 9.51625,
+            "centreT20": 13.196666666666667,
+            "pointTopSoil": 0.235,
+            "centreTopSoil": 0.204
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 85,
+            "centreScore": 77,
+            "pointMinusCentre": 8,
+            "labelChanged": true,
+            "pointT20": 9.46458333333333,
+            "centreT20": 13.194791666666664,
+            "pointTopSoil": 0.415,
+            "centreTopSoil": 0.363
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 87,
+            "centreScore": 78,
+            "pointMinusCentre": 9,
+            "labelChanged": true,
+            "pointT20": 9.229999999999997,
+            "centreT20": 12.998541666666664,
+            "pointTopSoil": 0.336,
+            "centreTopSoil": 0.314
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 88,
+            "centreScore": 78,
+            "pointMinusCentre": 10,
+            "labelChanged": true,
+            "pointT20": 8.894374999999998,
+            "centreT20": 12.644583333333333,
+            "pointTopSoil": 0.358,
+            "centreTopSoil": 0.333
+          }
+        ]
+      }
+    },
+    {
+      "region": "Central-Slovenia",
+      "sameCanonicalContractSameBatchedSources": true,
+      "NOTGroundTruthOrLegacyRegionalComparison": true,
+      "profiles": {
+        "generic": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 73,
+            "centreScore": 72,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 12.569791666666665,
+            "centreT20": 11.824166666666667,
+            "pointTopSoil": 0.349,
+            "centreTopSoil": 0.354
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 73,
+            "centreScore": 71,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 12.48875,
+            "centreT20": 11.730416666666667,
+            "pointTopSoil": 0.344,
+            "centreTopSoil": 0.35
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 66,
+            "centreScore": 64,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 12.370625,
+            "centreT20": 11.604791666666666,
+            "pointTopSoil": 0.336,
+            "centreTopSoil": 0.344
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 66,
+            "centreScore": 64,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 12.255416666666665,
+            "centreT20": 11.486458333333331,
+            "pointTopSoil": 0.354,
+            "centreTopSoil": 0.365
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 71,
+            "centreScore": 71,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 12.153125000000001,
+            "centreT20": 11.391458333333333,
+            "pointTopSoil": 0.43,
+            "centreTopSoil": 0.43
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 69,
+            "centreScore": 69,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 12.10416666666667,
+            "centreT20": 11.293541666666666,
+            "pointTopSoil": 0.396,
+            "centreTopSoil": 0.394
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 67,
+            "centreScore": 66,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.876250000000002,
+            "centreT20": 11.048333333333336,
+            "pointTopSoil": 0.42,
+            "centreTopSoil": 0.413
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 68,
+            "centreScore": 68,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 12.569791666666665,
+            "centreT20": 11.824166666666667,
+            "pointTopSoil": 0.349,
+            "centreTopSoil": 0.354
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 68,
+            "centreScore": 68,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 12.48875,
+            "centreT20": 11.730416666666667,
+            "pointTopSoil": 0.344,
+            "centreTopSoil": 0.35
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 65,
+            "centreScore": 66,
+            "pointMinusCentre": -1,
+            "labelChanged": false,
+            "pointT20": 12.370625,
+            "centreT20": 11.604791666666666,
+            "pointTopSoil": 0.336,
+            "centreTopSoil": 0.344
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 65,
+            "centreScore": 62,
+            "pointMinusCentre": 3,
+            "labelChanged": false,
+            "pointT20": 12.255416666666665,
+            "centreT20": 11.486458333333331,
+            "pointTopSoil": 0.354,
+            "centreTopSoil": 0.365
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 68,
+            "centreScore": 66,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 12.153125000000001,
+            "centreT20": 11.391458333333333,
+            "pointTopSoil": 0.43,
+            "centreTopSoil": 0.43
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 69,
+            "centreScore": 66,
+            "pointMinusCentre": 3,
+            "labelChanged": false,
+            "pointT20": 12.10416666666667,
+            "centreT20": 11.293541666666666,
+            "pointTopSoil": 0.396,
+            "centreTopSoil": 0.394
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 68,
+            "centreScore": 66,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 11.876250000000002,
+            "centreT20": 11.048333333333336,
+            "pointTopSoil": 0.42,
+            "centreTopSoil": 0.413
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 62,
+            "centreScore": 61,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 12.569791666666665,
+            "centreT20": 11.824166666666667,
+            "pointTopSoil": 0.349,
+            "centreTopSoil": 0.354
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 60,
+            "centreScore": 59,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 12.48875,
+            "centreT20": 11.730416666666667,
+            "pointTopSoil": 0.344,
+            "centreTopSoil": 0.35
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 54,
+            "centreScore": 53,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 12.370625,
+            "centreT20": 11.604791666666666,
+            "pointTopSoil": 0.336,
+            "centreTopSoil": 0.344
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 55,
+            "centreScore": 53,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 12.255416666666665,
+            "centreT20": 11.486458333333331,
+            "pointTopSoil": 0.354,
+            "centreTopSoil": 0.365
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 59,
+            "centreScore": 59,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 12.153125000000001,
+            "centreT20": 11.391458333333333,
+            "pointTopSoil": 0.43,
+            "centreTopSoil": 0.43
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 59,
+            "centreScore": 59,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 12.10416666666667,
+            "centreT20": 11.293541666666666,
+            "pointTopSoil": 0.396,
+            "centreTopSoil": 0.394
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 58,
+            "centreScore": 58,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.876250000000002,
+            "centreT20": 11.048333333333336,
+            "pointTopSoil": 0.42,
+            "centreTopSoil": 0.413
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 95,
+            "centreScore": 93,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 12.569791666666665,
+            "centreT20": 11.824166666666667,
+            "pointTopSoil": 0.349,
+            "centreTopSoil": 0.354
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 95,
+            "centreScore": 93,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 12.48875,
+            "centreT20": 11.730416666666667,
+            "pointTopSoil": 0.344,
+            "centreTopSoil": 0.35
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 92,
+            "centreScore": 91,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 12.370625,
+            "centreT20": 11.604791666666666,
+            "pointTopSoil": 0.336,
+            "centreTopSoil": 0.344
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 91,
+            "centreScore": 90,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 12.255416666666665,
+            "centreT20": 11.486458333333331,
+            "pointTopSoil": 0.354,
+            "centreTopSoil": 0.365
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 93,
+            "centreScore": 92,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 12.153125000000001,
+            "centreT20": 11.391458333333333,
+            "pointTopSoil": 0.43,
+            "centreTopSoil": 0.43
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 92,
+            "centreScore": 92,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 12.10416666666667,
+            "centreT20": 11.293541666666666,
+            "pointTopSoil": 0.396,
+            "centreTopSoil": 0.394
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 91,
+            "centreScore": 90,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.876250000000002,
+            "centreT20": 11.048333333333336,
+            "pointTopSoil": 0.42,
+            "centreTopSoil": 0.413
+          }
+        ]
+      }
+    },
+    {
+      "region": "Primorska",
+      "sameCanonicalContractSameBatchedSources": true,
+      "NOTGroundTruthOrLegacyRegionalComparison": true,
+      "profiles": {
+        "generic": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 85,
+            "centreScore": 85,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 15.97979166666667,
+            "centreT20": 16.38145833333333,
+            "pointTopSoil": 0.357,
+            "centreTopSoil": 0.345
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 84,
+            "centreScore": 84,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 15.935833333333335,
+            "centreT20": 16.279583333333328,
+            "pointTopSoil": 0.354,
+            "centreTopSoil": 0.342
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 80,
+            "centreScore": 81,
+            "pointMinusCentre": -1,
+            "labelChanged": false,
+            "pointT20": 15.811875000000006,
+            "centreT20": 16.147291666666664,
+            "pointTopSoil": 0.348,
+            "centreTopSoil": 0.336
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 81,
+            "centreScore": 82,
+            "pointMinusCentre": -1,
+            "labelChanged": false,
+            "pointT20": 15.68979166666667,
+            "centreT20": 15.992499999999996,
+            "pointTopSoil": 0.418,
+            "centreTopSoil": 0.426
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 92,
+            "centreScore": 94,
+            "pointMinusCentre": -2,
+            "labelChanged": false,
+            "pointT20": 15.727500000000006,
+            "centreT20": 15.948333333333329,
+            "pointTopSoil": 0.424,
+            "centreTopSoil": 0.43
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 85,
+            "centreScore": 87,
+            "pointMinusCentre": -2,
+            "labelChanged": false,
+            "pointT20": 15.696458333333336,
+            "centreT20": 15.858749999999997,
+            "pointTopSoil": 0.398,
+            "centreTopSoil": 0.398
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 83,
+            "centreScore": 86,
+            "pointMinusCentre": -3,
+            "labelChanged": true,
+            "pointT20": 15.57791666666667,
+            "centreT20": 15.688333333333333,
+            "pointTopSoil": 0.417,
+            "centreTopSoil": 0.419
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 85,
+            "centreScore": 85,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 15.97979166666667,
+            "centreT20": 16.38145833333333,
+            "pointTopSoil": 0.357,
+            "centreTopSoil": 0.345
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 85,
+            "centreScore": 86,
+            "pointMinusCentre": -1,
+            "labelChanged": false,
+            "pointT20": 15.935833333333335,
+            "centreT20": 16.279583333333328,
+            "pointTopSoil": 0.354,
+            "centreTopSoil": 0.342
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 85,
+            "centreScore": 85,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 15.811875000000006,
+            "centreT20": 16.147291666666664,
+            "pointTopSoil": 0.348,
+            "centreTopSoil": 0.336
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 83,
+            "centreScore": 83,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 15.68979166666667,
+            "centreT20": 15.992499999999996,
+            "pointTopSoil": 0.418,
+            "centreTopSoil": 0.426
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 92,
+            "centreScore": 94,
+            "pointMinusCentre": -2,
+            "labelChanged": false,
+            "pointT20": 15.727500000000006,
+            "centreT20": 15.948333333333329,
+            "pointTopSoil": 0.424,
+            "centreTopSoil": 0.43
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 93,
+            "centreScore": 95,
+            "pointMinusCentre": -2,
+            "labelChanged": false,
+            "pointT20": 15.696458333333336,
+            "centreT20": 15.858749999999997,
+            "pointTopSoil": 0.398,
+            "centreTopSoil": 0.398
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 93,
+            "centreScore": 95,
+            "pointMinusCentre": -2,
+            "labelChanged": false,
+            "pointT20": 15.57791666666667,
+            "centreT20": 15.688333333333333,
+            "pointTopSoil": 0.417,
+            "centreTopSoil": 0.419
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 88,
+            "centreScore": 88,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 15.97979166666667,
+            "centreT20": 16.38145833333333,
+            "pointTopSoil": 0.357,
+            "centreTopSoil": 0.345
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 85,
+            "centreScore": 86,
+            "pointMinusCentre": -1,
+            "labelChanged": false,
+            "pointT20": 15.935833333333335,
+            "centreT20": 16.279583333333328,
+            "pointTopSoil": 0.354,
+            "centreTopSoil": 0.342
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 80,
+            "centreScore": 82,
+            "pointMinusCentre": -2,
+            "labelChanged": false,
+            "pointT20": 15.811875000000006,
+            "centreT20": 16.147291666666664,
+            "pointTopSoil": 0.348,
+            "centreTopSoil": 0.336
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 81,
+            "centreScore": 82,
+            "pointMinusCentre": -1,
+            "labelChanged": false,
+            "pointT20": 15.68979166666667,
+            "centreT20": 15.992499999999996,
+            "pointTopSoil": 0.418,
+            "centreTopSoil": 0.426
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 93,
+            "centreScore": 96,
+            "pointMinusCentre": -3,
+            "labelChanged": false,
+            "pointT20": 15.727500000000006,
+            "centreT20": 15.948333333333329,
+            "pointTopSoil": 0.424,
+            "centreTopSoil": 0.43
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 94,
+            "centreScore": 97,
+            "pointMinusCentre": -3,
+            "labelChanged": false,
+            "pointT20": 15.696458333333336,
+            "centreT20": 15.858749999999997,
+            "pointTopSoil": 0.398,
+            "centreTopSoil": 0.398
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 94,
+            "centreScore": 97,
+            "pointMinusCentre": -3,
+            "labelChanged": false,
+            "pointT20": 15.57791666666667,
+            "centreT20": 15.688333333333333,
+            "pointTopSoil": 0.417,
+            "centreTopSoil": 0.419
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 96,
+            "centreScore": 95,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 15.97979166666667,
+            "centreT20": 16.38145833333333,
+            "pointTopSoil": 0.357,
+            "centreTopSoil": 0.345
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 96,
+            "centreScore": 96,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 15.935833333333335,
+            "centreT20": 16.279583333333328,
+            "pointTopSoil": 0.354,
+            "centreTopSoil": 0.342
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 95,
+            "centreScore": 95,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 15.811875000000006,
+            "centreT20": 16.147291666666664,
+            "pointTopSoil": 0.348,
+            "centreTopSoil": 0.336
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 95,
+            "centreScore": 96,
+            "pointMinusCentre": -1,
+            "labelChanged": false,
+            "pointT20": 15.68979166666667,
+            "centreT20": 15.992499999999996,
+            "pointTopSoil": 0.418,
+            "centreTopSoil": 0.426
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 98,
+            "centreScore": 99,
+            "pointMinusCentre": -1,
+            "labelChanged": false,
+            "pointT20": 15.727500000000006,
+            "centreT20": 15.948333333333329,
+            "pointTopSoil": 0.424,
+            "centreTopSoil": 0.43
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 96,
+            "centreScore": 97,
+            "pointMinusCentre": -1,
+            "labelChanged": false,
+            "pointT20": 15.696458333333336,
+            "centreT20": 15.858749999999997,
+            "pointTopSoil": 0.398,
+            "centreTopSoil": 0.398
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 95,
+            "centreScore": 96,
+            "pointMinusCentre": -1,
+            "labelChanged": false,
+            "pointT20": 15.57791666666667,
+            "centreT20": 15.688333333333333,
+            "pointTopSoil": 0.417,
+            "centreTopSoil": 0.419
+          }
+        ]
+      }
+    },
+    {
+      "region": "Kocevje-Dolenjska",
+      "sameCanonicalContractSameBatchedSources": true,
+      "NOTGroundTruthOrLegacyRegionalComparison": true,
+      "profiles": {
+        "generic": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 68,
+            "centreScore": 67,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 12.0625,
+            "centreT20": 11.33875,
+            "pointTopSoil": 0.353,
+            "centreTopSoil": 0.353
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 66,
+            "centreScore": 65,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.941875,
+            "centreT20": 11.301874999999999,
+            "pointTopSoil": 0.349,
+            "centreTopSoil": 0.349
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 60,
+            "centreScore": 59,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.804791666666667,
+            "centreT20": 11.242291666666667,
+            "pointTopSoil": 0.344,
+            "centreTopSoil": 0.344
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 60,
+            "centreScore": 59,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.663333333333332,
+            "centreT20": 11.175416666666667,
+            "pointTopSoil": 0.34,
+            "centreTopSoil": 0.34
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 69,
+            "centreScore": 68,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.638958333333333,
+            "centreT20": 11.229375000000001,
+            "pointTopSoil": 0.392,
+            "centreTopSoil": 0.392
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 69,
+            "centreScore": 68,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.511875,
+            "centreT20": 11.155,
+            "pointTopSoil": 0.384,
+            "centreTopSoil": 0.384
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 68,
+            "centreScore": 67,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.2925,
+            "centreT20": 10.9325,
+            "pointTopSoil": 0.403,
+            "centreTopSoil": 0.403
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 64,
+            "centreScore": 62,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 12.0625,
+            "centreT20": 11.33875,
+            "pointTopSoil": 0.353,
+            "centreTopSoil": 0.353
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 63,
+            "centreScore": 61,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 11.941875,
+            "centreT20": 11.301874999999999,
+            "pointTopSoil": 0.349,
+            "centreTopSoil": 0.349
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 61,
+            "centreScore": 60,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.804791666666667,
+            "centreT20": 11.242291666666667,
+            "pointTopSoil": 0.344,
+            "centreTopSoil": 0.344
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 59,
+            "centreScore": 57,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 11.663333333333332,
+            "centreT20": 11.175416666666667,
+            "pointTopSoil": 0.34,
+            "centreTopSoil": 0.34
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 64,
+            "centreScore": 62,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 11.638958333333333,
+            "centreT20": 11.229375000000001,
+            "pointTopSoil": 0.392,
+            "centreTopSoil": 0.392
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 65,
+            "centreScore": 64,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.511875,
+            "centreT20": 11.155,
+            "pointTopSoil": 0.384,
+            "centreTopSoil": 0.384
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 65,
+            "centreScore": 63,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 11.2925,
+            "centreT20": 10.9325,
+            "pointTopSoil": 0.403,
+            "centreTopSoil": 0.403
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 58,
+            "centreScore": 55,
+            "pointMinusCentre": 3,
+            "labelChanged": false,
+            "pointT20": 12.0625,
+            "centreT20": 11.33875,
+            "pointTopSoil": 0.353,
+            "centreTopSoil": 0.353
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 55,
+            "centreScore": 53,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 11.941875,
+            "centreT20": 11.301874999999999,
+            "pointTopSoil": 0.349,
+            "centreTopSoil": 0.349
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 49,
+            "centreScore": 48,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.804791666666667,
+            "centreT20": 11.242291666666667,
+            "pointTopSoil": 0.344,
+            "centreTopSoil": 0.344
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 49,
+            "centreScore": 48,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.663333333333332,
+            "centreT20": 11.175416666666667,
+            "pointTopSoil": 0.34,
+            "centreTopSoil": 0.34
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 56,
+            "centreScore": 55,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.638958333333333,
+            "centreT20": 11.229375000000001,
+            "pointTopSoil": 0.392,
+            "centreTopSoil": 0.392
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 57,
+            "centreScore": 56,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.511875,
+            "centreT20": 11.155,
+            "pointTopSoil": 0.384,
+            "centreTopSoil": 0.384
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 57,
+            "centreScore": 55,
+            "pointMinusCentre": 2,
+            "labelChanged": false,
+            "pointT20": 11.2925,
+            "centreT20": 10.9325,
+            "pointTopSoil": 0.403,
+            "centreTopSoil": 0.403
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "date": "2026-10-18",
+            "pointScore": 87,
+            "centreScore": 87,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 12.0625,
+            "centreT20": 11.33875,
+            "pointTopSoil": 0.353,
+            "centreTopSoil": 0.353
+          },
+          {
+            "date": "2026-10-19",
+            "pointScore": 87,
+            "centreScore": 86,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.941875,
+            "centreT20": 11.301874999999999,
+            "pointTopSoil": 0.349,
+            "centreTopSoil": 0.349
+          },
+          {
+            "date": "2026-10-20",
+            "pointScore": 85,
+            "centreScore": 85,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.804791666666667,
+            "centreT20": 11.242291666666667,
+            "pointTopSoil": 0.344,
+            "centreTopSoil": 0.344
+          },
+          {
+            "date": "2026-10-21",
+            "pointScore": 84,
+            "centreScore": 84,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.663333333333332,
+            "centreT20": 11.175416666666667,
+            "pointTopSoil": 0.34,
+            "centreTopSoil": 0.34
+          },
+          {
+            "date": "2026-10-22",
+            "pointScore": 87,
+            "centreScore": 86,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.638958333333333,
+            "centreT20": 11.229375000000001,
+            "pointTopSoil": 0.392,
+            "centreTopSoil": 0.392
+          },
+          {
+            "date": "2026-10-23",
+            "pointScore": 87,
+            "centreScore": 86,
+            "pointMinusCentre": 1,
+            "labelChanged": false,
+            "pointT20": 11.511875,
+            "centreT20": 11.155,
+            "pointTopSoil": 0.384,
+            "centreTopSoil": 0.384
+          },
+          {
+            "date": "2026-10-24",
+            "pointScore": 86,
+            "centreScore": 86,
+            "pointMinusCentre": 0,
+            "labelChanged": false,
+            "pointT20": 11.2925,
+            "centreT20": 10.9325,
+            "pointTopSoil": 0.403,
+            "centreTopSoil": 0.403
+          }
+        ]
+      }
+    }
+  ],
+  "attribution": "Weather data by Open-Meteo.com, https://open-meteo.com/, CC BY 4.0; modified into experimental MushroomApp suitability assessments; not probability of finds."
+}

@@ -1,0 +1,1054 @@
+{
+  "auditOnly": true,
+  "attribution": "Weather data by Open-Meteo.com, https://open-meteo.com/, CC BY 4.0; modified into experimental MushroomApp suitability assessments; not probability of finds.",
+  "environment": "LIVE bounded public-coordinate probe, Windows/Node, not Android or nationwide validation",
+  "date": "2026-10-18",
+  "requests": 2,
+  "acquisitionMs": 382.993,
+  "allScoresMs": 102.498,
+  "warmMs": 0.253,
+  "warmAdditionalRequests": 0,
+  "warmSkippedForIncompleteSources": false,
+  "payloads": [
+    {
+      "endpoint": "archive",
+      "responseMs": 231.646,
+      "status": 200,
+      "decodeMs": 31.63,
+      "decodedJsonBytes": 171428,
+      "locations": [
+        {
+          "latitude": 46.502636,
+          "longitude": 14.879614,
+          "elevation": 577,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 46.362038,
+          "longitude": 13.823999,
+          "elevation": 1800,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 46.502636,
+          "longitude": 15.457463,
+          "elevation": 1221,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 46.08084,
+          "longitude": 14.45151,
+          "elevation": 302,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 45.79965,
+          "longitude": 13.93365,
+          "elevation": 98,
+          "hourlyCount": 1296
+        },
+        {
+          "latitude": 45.65905,
+          "longitude": 14.88189,
+          "elevation": 474,
+          "hourlyCount": 1296
+        }
+      ]
+    },
+    {
+      "endpoint": "forecast",
+      "responseMs": 238.514,
+      "status": 200,
+      "decodeMs": 2.912,
+      "decodedJsonBytes": 75423,
+      "locations": [
+        {
+          "latitude": 46.47258,
+          "longitude": 14.86571,
+          "elevation": 577,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 46.34748,
+          "longitude": 13.859678,
+          "elevation": 1800,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 46.498688,
+          "longitude": 15.505858,
+          "elevation": 1221,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 46.047455,
+          "longitude": 14.489463,
+          "elevation": 302,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 45.85893,
+          "longitude": 13.953486,
+          "elevation": 98,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        },
+        {
+          "latitude": 45.647312,
+          "longitude": 14.85102,
+          "elevation": 474,
+          "hourlyCount": 360,
+          "topSoilUnits": "m³/m³",
+          "deeperSoilUnits": "m³/m³"
+        }
+      ]
+    }
+  ],
+  "availability": [
+    {
+      "region": "Koroska",
+      "sourceSnapshotId": "46.47045:14.85009:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:12:46.518Z:2026-10-18T11:12:46.500Z",
+      "forecastRetrievedAt": "2026-10-18T11:12:46.518Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 63,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 61,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 52,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 45,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 44,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 89,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 89,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 86,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Gorenjska-alpine",
+      "sourceSnapshotId": "46.33:13.85:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:12:46.518Z:2026-10-18T11:12:46.500Z",
+      "forecastRetrievedAt": "2026-10-18T11:12:46.518Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 74,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 73,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 67,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 67,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 89,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 88,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 88,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 64,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 63,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 61,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 82,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 81,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 80,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 60,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 58,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 52,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 52,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 79,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 79,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 79,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 89,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 88,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 90,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Pohorje",
+      "sourceSnapshotId": "46.5:15.5:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:12:46.518Z:2026-10-18T11:12:46.500Z",
+      "forecastRetrievedAt": "2026-10-18T11:12:46.518Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 53,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 48,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 48,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 50,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 48,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 46,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 43,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 48,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 43,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 40,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 35,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 34,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 39,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 42,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 42,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 82,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 82,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 80,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 79,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 88,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Central-Slovenia",
+      "sourceSnapshotId": "46.05:14.5:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:12:46.518Z:2026-10-18T11:12:46.500Z",
+      "forecastRetrievedAt": "2026-10-18T11:12:46.518Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 73,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 73,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 66,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 66,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 71,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 69,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 67,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 65,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 65,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 69,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 62,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 60,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 54,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 58,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 91,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 91,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Primorska",
+      "sourceSnapshotId": "45.85:13.95:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:12:46.518Z:2026-10-18T11:12:46.500Z",
+      "forecastRetrievedAt": "2026-10-18T11:12:46.518Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 84,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 80,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 81,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 83,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 83,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 92,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 88,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 80,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 81,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 93,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 94,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 94,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 96,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 96,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 98,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 96,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 95,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    },
+    {
+      "region": "Kocevje-Dolenjska",
+      "sourceSnapshotId": "45.65:14.85:2026-10-18:point-civil-hourly-asof-local09-v1:open-meteo-utc-hourly-civil-v1:2026-10-18T11:12:46.518Z:2026-10-18T11:12:46.500Z",
+      "forecastRetrievedAt": "2026-10-18T11:12:46.518Z",
+      "blockers": [],
+      "profiles": {
+        "generic": [
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 66,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 60,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 60,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 69,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 69,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 68,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "boletusEdulis": [
+          {
+            "score": 64,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 63,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 61,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 59,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 64,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 65,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 65,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "cantharellusCibarius": [
+          {
+            "score": 58,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 55,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 49,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 56,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 57,
+            "status": "ready",
+            "missing": []
+          }
+        ],
+        "lactariusDeliciosus": [
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 85,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 84,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 87,
+            "status": "ready",
+            "missing": []
+          },
+          {
+            "score": 86,
+            "status": "ready",
+            "missing": []
+          }
+        ]
+      }
+    }
+  ]
+}

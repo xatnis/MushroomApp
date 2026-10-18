@@ -1,0 +1,464 @@
+{
+  "auditOnly": true,
+  "environment": "Windows Python 3.14.7, not Android",
+  "boundarySha256": "9df0ad9979ff342ea79d11b046e0ed0d0b08763b6e618d54f7b37152768c92fe",
+  "boundaryVintage": 2009,
+  "nationalAreaKm2": 20399.754482122273,
+  "nationalBbox": [
+    13.377363726000054,
+    45.41942712947509,
+    16.597878433000062,
+    46.883449075986015
+  ],
+  "phase3035": [
+    4693599.353476189,
+    2607409.625498958
+  ],
+  "detailCells": 21052,
+  "detailPartialBorderCells": 1294,
+  "detailWeatherLocations": 252,
+  "detailWeatherCentresOutsideBoundary": 46,
+  "overviewCells": 1422,
+  "overviewWeatherLocations": 78,
+  "overviewWeatherCentresOutsideBoundary": 28,
+  "combinedWeatherLocationsByExactGrid": 269,
+  "actualRegional": {
+    "areaKm2": 10224.214443625793,
+    "detailCells": 10531,
+    "weatherLocations": 126,
+    "overviewCells": 704,
+    "overviewWeatherLocations": 40,
+    "treeCandidateCells": 9362,
+    "genericCandidateCells": 10422
+  },
+  "nationalHabitatFilteredCount": null,
+  "nationalHabitatCountReason": "No national WorldCover/ZGS aggregates are committed; not extrapolated as measured counts.",
+  "geometryOnly": {
+    "rawBytes": 8667738,
+    "gzipBytes": 1305797,
+    "vertices": 106422
+  },
+  "combinations": {
+    "detail": 589456,
+    "overview": 39816,
+    "weatherOnlyDetail": 7056,
+    "weatherOnlyOverview": 2184
+  },
+  "regions": [
+    {
+      "name": "Koroska",
+      "publicCoordinate": [
+        46.47045,
+        14.85009
+      ],
+      "metricViewportKm": [
+        15,
+        22
+      ],
+      "overscan": 0.2,
+      "visibleCells": 357,
+      "bufferedCells": 617,
+      "weather10km": 13,
+      "zoomScenarios": [
+        {
+          "zoom": 6,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 842.3098704084285,
+          "visibleDetailCells": 21052,
+          "bufferedDetailCells": 21052,
+          "visibleOverviewCells": 1422,
+          "bufferedWeather10km": 252
+        },
+        {
+          "zoom": 9.2,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 91.65916651924289,
+          "visibleDetailCells": 1136,
+          "bufferedDetailCells": 1989,
+          "visibleOverviewCells": 90,
+          "bufferedWeather10km": 26
+        },
+        {
+          "zoom": 10.5,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 37.22518882663511,
+          "visibleDetailCells": 266,
+          "bufferedDetailCells": 457,
+          "visibleOverviewCells": 23,
+          "bufferedWeather10km": 8
+        },
+        {
+          "zoom": 12,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 13.161091725131696,
+          "visibleDetailCells": 35,
+          "bufferedDetailCells": 63,
+          "visibleOverviewCells": 4,
+          "bufferedWeather10km": 1
+        }
+      ],
+      "weatherCentre10km": [
+        46.47045,
+        14.85009
+      ]
+    },
+    {
+      "name": "Gorenjska-alpine",
+      "publicCoordinate": [
+        46.33,
+        13.85
+      ],
+      "metricViewportKm": [
+        15,
+        22
+      ],
+      "overscan": 0.2,
+      "visibleCells": 368,
+      "bufferedCells": 682,
+      "weather10km": 20,
+      "zoomScenarios": [
+        {
+          "zoom": 6,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 844.4809015311433,
+          "visibleDetailCells": 18858,
+          "bufferedDetailCells": 21052,
+          "visibleOverviewCells": 1271,
+          "bufferedWeather10km": 252
+        },
+        {
+          "zoom": 9.2,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 91.8954155650945,
+          "visibleDetailCells": 1456,
+          "bufferedDetailCells": 2252,
+          "visibleOverviewCells": 114,
+          "bufferedWeather10km": 34
+        },
+        {
+          "zoom": 10.5,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 37.32113575345003,
+          "visibleDetailCells": 285,
+          "bufferedDetailCells": 494,
+          "visibleOverviewCells": 24,
+          "bufferedWeather10km": 6
+        },
+        {
+          "zoom": 12,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 13.195014086424115,
+          "visibleDetailCells": 35,
+          "bufferedDetailCells": 70,
+          "visibleOverviewCells": 4,
+          "bufferedWeather10km": 2
+        }
+      ],
+      "weatherCentre10km": [
+        46.332579,
+        13.797746
+      ]
+    },
+    {
+      "name": "Pohorje",
+      "publicCoordinate": [
+        46.5,
+        15.5
+      ],
+      "metricViewportKm": [
+        15,
+        22
+      ],
+      "overscan": 0.2,
+      "visibleCells": 368,
+      "bufferedCells": 696,
+      "weather10km": 12,
+      "zoomScenarios": [
+        {
+          "zoom": 6,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 841.852451063495,
+          "visibleDetailCells": 20902,
+          "bufferedDetailCells": 21052,
+          "visibleOverviewCells": 1413,
+          "bufferedWeather10km": 252
+        },
+        {
+          "zoom": 9.2,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 91.60939068569358,
+          "visibleDetailCells": 1392,
+          "bufferedDetailCells": 2387,
+          "visibleOverviewCells": 98,
+          "bufferedWeather10km": 28
+        },
+        {
+          "zoom": 10.5,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 37.20497355659459,
+          "visibleDetailCells": 266,
+          "bufferedDetailCells": 520,
+          "visibleOverviewCells": 30,
+          "bufferedWeather10km": 12
+        },
+        {
+          "zoom": 12,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 13.153944547867109,
+          "visibleDetailCells": 42,
+          "bufferedDetailCells": 80,
+          "visibleOverviewCells": 6,
+          "bufferedWeather10km": 2
+        }
+      ],
+      "weatherCentre10km": [
+        46.528882,
+        15.50826
+      ]
+    },
+    {
+      "name": "Central-Slovenia",
+      "publicCoordinate": [
+        46.05,
+        14.5
+      ],
+      "metricViewportKm": [
+        15,
+        22
+      ],
+      "overscan": 0.2,
+      "visibleCells": 368,
+      "bufferedCells": 704,
+      "weather10km": 16,
+      "zoomScenarios": [
+        {
+          "zoom": 6,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 848.793896879948,
+          "visibleDetailCells": 21039,
+          "bufferedDetailCells": 21052,
+          "visibleOverviewCells": 1420,
+          "bufferedWeather10km": 252
+        },
+        {
+          "zoom": 9.2,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 92.36475063139392,
+          "visibleDetailCells": 1530,
+          "bufferedDetailCells": 2961,
+          "visibleOverviewCells": 120,
+          "bufferedWeather10km": 42
+        },
+        {
+          "zoom": 10.5,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 37.511745019597896,
+          "visibleDetailCells": 285,
+          "bufferedDetailCells": 520,
+          "visibleOverviewCells": 24,
+          "bufferedWeather10km": 6
+        },
+        {
+          "zoom": 12,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 13.262404638749187,
+          "visibleDetailCells": 42,
+          "bufferedDetailCells": 70,
+          "visibleOverviewCells": 4,
+          "bufferedWeather10km": 4
+        }
+      ],
+      "weatherCentre10km": [
+        46.032526,
+        14.552078
+      ]
+    },
+    {
+      "name": "Primorska",
+      "publicCoordinate": [
+        45.85,
+        13.95
+      ],
+      "metricViewportKm": [
+        15,
+        22
+      ],
+      "overscan": 0.2,
+      "visibleCells": 368,
+      "bufferedCells": 681,
+      "weather10km": 12,
+      "zoomScenarios": [
+        {
+          "zoom": 6,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 851.8622030994158,
+          "visibleDetailCells": 19496,
+          "bufferedDetailCells": 21052,
+          "visibleOverviewCells": 1318,
+          "bufferedWeather10km": 252
+        },
+        {
+          "zoom": 9.2,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 92.69864009485926,
+          "visibleDetailCells": 1444,
+          "bufferedDetailCells": 2700,
+          "visibleOverviewCells": 102,
+          "bufferedWeather10km": 40
+        },
+        {
+          "zoom": 10.5,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 37.6473462780068,
+          "visibleDetailCells": 266,
+          "bufferedDetailCells": 540,
+          "visibleOverviewCells": 24,
+          "bufferedWeather10km": 12
+        },
+        {
+          "zoom": 12,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 13.310346923428371,
+          "visibleDetailCells": 42,
+          "bufferedDetailCells": 80,
+          "visibleOverviewCells": 4,
+          "bufferedWeather10km": 4
+        }
+      ],
+      "weatherCentre10km": [
+        45.878237,
+        13.894737
+      ]
+    },
+    {
+      "name": "Kocevje-Dolenjska",
+      "publicCoordinate": [
+        45.65,
+        14.85
+      ],
+      "metricViewportKm": [
+        15,
+        22
+      ],
+      "overscan": 0.2,
+      "visibleCells": 368,
+      "bufferedCells": 675,
+      "weather10km": 13,
+      "zoomScenarios": [
+        {
+          "zoom": 6,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 854.9201296467705,
+          "visibleDetailCells": 21052,
+          "bufferedDetailCells": 21052,
+          "visibleOverviewCells": 1422,
+          "bufferedWeather10km": 252
+        },
+        {
+          "zoom": 9.2,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 93.031400054649,
+          "visibleDetailCells": 1308,
+          "bufferedDetailCells": 2212,
+          "visibleOverviewCells": 92,
+          "bufferedWeather10km": 34
+        },
+        {
+          "zoom": 10.5,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 37.78248881538211,
+          "visibleDetailCells": 266,
+          "bufferedDetailCells": 540,
+          "visibleOverviewCells": 25,
+          "bufferedWeather10km": 9
+        },
+        {
+          "zoom": 12,
+          "assumedMapDp": [
+            360,
+            480
+          ],
+          "metresPerDp": 13.35812702573079,
+          "visibleDetailCells": 42,
+          "bufferedDetailCells": 80,
+          "visibleOverviewCells": 9,
+          "bufferedWeather10km": 4
+        }
+      ],
+      "weatherCentre10km": [
+        45.655841,
+        14.905875
+      ]
+    }
+  ],
+  "elapsedSeconds": 14.694093299971428
+}

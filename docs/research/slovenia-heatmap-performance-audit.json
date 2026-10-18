@@ -1,0 +1,136 @@
+{
+  "auditOnly": true,
+  "environment": "win32 Node v24.21.0, not Android",
+  "baseCommit": "b63e18a",
+  "geometrySource": "pinned national polygon and existing grid, NO national habitat values",
+  "nodeBaselineHeapBytes": 222469984,
+  "geometry": {
+    "rawBytes": 8667738,
+    "gzipBytes": 1267712,
+    "parseMedianMs": 44.633,
+    "stringifyMedianMs": 39.586,
+    "approximateParseHeapDeltaBytes": 16082312
+  },
+  "selectedAttributes": {
+    "rawBytes": 7188614,
+    "gzipBytes": 1029804,
+    "parseMedianMs": 37.266,
+    "stringifyMedianMs": 41.663,
+    "approximateParseHeapDeltaBytes": 15071768
+  },
+  "all28SyntheticAttributes": {
+    "rawBytes": 18346835,
+    "gzipBytes": 1545385,
+    "parseMedianMs": 87.917,
+    "stringifyMedianMs": 85.841,
+    "approximateParseHeapDeltaBytes": 25535696
+  },
+  "syntheticColumns": {
+    "rawBytes": 1178912,
+    "gzipBytes": 11440,
+    "format": "two uint8 values per cell/profile/day; 255 score unavailable, category flags synthetic"
+  },
+  "dateJoinMs": 6.455,
+  "regionalCells": 10531,
+  "regionalWeather": 126,
+  "regionalHabitat": {
+    "generic": {
+      "candidate": {
+        "cells": 10422,
+        "weatherLocations": 122
+      },
+      "unknown": {
+        "cells": 0,
+        "weatherLocations": 0
+      },
+      "outside-model": {
+        "cells": 109,
+        "weatherLocations": 20
+      }
+    },
+    "boletusEdulis": {
+      "candidate": {
+        "cells": 8129,
+        "weatherLocations": 121
+      },
+      "unknown": {
+        "cells": 1233,
+        "weatherLocations": 112
+      },
+      "outside-model": {
+        "cells": 1169,
+        "weatherLocations": 102
+      }
+    },
+    "cantharellusCibarius": {
+      "candidate": {
+        "cells": 8129,
+        "weatherLocations": 121
+      },
+      "unknown": {
+        "cells": 1233,
+        "weatherLocations": 112
+      },
+      "outside-model": {
+        "cells": 1169,
+        "weatherLocations": 102
+      }
+    },
+    "lactariusDeliciosus": {
+      "candidate": {
+        "cells": 3869,
+        "weatherLocations": 111
+      },
+      "unknown": {
+        "cells": 5493,
+        "weatherLocations": 122
+      },
+      "outside-model": {
+        "cells": 1169,
+        "weatherLocations": 102
+      }
+    }
+  },
+  "regionalOverview": {
+    "generic": {
+      "candidate": 701,
+      "unknown": 3,
+      "outside-model": 0
+    },
+    "boletusEdulis": {
+      "candidate": 551,
+      "unknown": 137,
+      "outside-model": 16
+    },
+    "cantharellusCibarius": {
+      "candidate": 551,
+      "unknown": 137,
+      "outside-model": 16
+    },
+    "lactariusDeliciosus": {
+      "candidate": 184,
+      "unknown": 504,
+      "outside-model": 16
+    }
+  },
+  "scoring": {
+    "fixtureOnly": true,
+    "fixtureNumericOutcomes": 28,
+    "hourlyAdapterMedianMs": 15.451,
+    "oneWeatherLocationFourProfilesSevenDatesMedianMs": 13.513,
+    "serializedSnapshotBytes": 63476,
+    "serializedAllProfilesResultsBytes": 484349,
+    "reusedHistory32PointsMs": 7.645,
+    "repeatedHistory32PointsMs": 33.218,
+    "sharedAssemblies": 224,
+    "repeatedAssemblies": 896,
+    "memo4000ProfileLookupsMs": 0.263,
+    "scaled269LocationsAdapterPlusScoringSeconds": 7.791
+  },
+  "limits": [
+    "Geometry and attribute codecs are JSON/gzip, NOT measured MVT or PMTiles.",
+    "Heap deltas exclude native copies/GPU and are GC/runtime-sensitive.",
+    "Generated numeric attributes are synthetic compression stress data, NOT forecasts.",
+    "No native date/profile switch or FPS measurement."
+  ]
+}
