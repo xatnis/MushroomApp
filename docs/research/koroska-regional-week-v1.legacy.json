@@ -1,0 +1,5948 @@
+{
+  "methodology": "Production getHeatmapWeatherBatch + assessHeatmapWeather; identical public coordinates and frozen source field. Legacy daily bins reconstructed with explicit base-date fixed offset. No live provider daily-product equality claimed.",
+  "weatherSummary": {
+    "cases": 88,
+    "comparable": 88,
+    "exact": 88,
+    "different": 0,
+    "categoryChanges": 0,
+    "availabilityChanges": 0,
+    "absoluteDelta": {
+      "count": 88,
+      "mean": 0,
+      "median": 0,
+      "min": 0,
+      "max": 0
+    },
+    "deltaHistogram": {
+      "0": 88
+    }
+  },
+  "cellWeightedSummary": {
+    "cases": 5568,
+    "comparable": 5568,
+    "exact": 5568,
+    "different": 0,
+    "categoryChanges": 0,
+    "availabilityChanges": 0,
+    "absoluteDelta": {
+      "count": 5568,
+      "mean": 0,
+      "median": 0,
+      "min": 0,
+      "max": 0
+    },
+    "deltaHistogram": {
+      "0": 5568
+    }
+  },
+  "candidateWeightedSummary": {
+    "cases": 4776,
+    "comparable": 4776,
+    "exact": 4776,
+    "different": 0,
+    "categoryChanges": 0,
+    "availabilityChanges": 0,
+    "absoluteDelta": {
+      "count": 4776,
+      "mean": 0,
+      "median": 0,
+      "min": 0,
+      "max": 0
+    },
+    "deltaHistogram": {
+      "0": 4776
+    }
+  },
+  "byProfileDate": [
+    {
+      "profile": "generic",
+      "date": "2026-10-18",
+      "cases": 11,
+      "comparable": 11,
+      "exact": 11,
+      "different": 0,
+      "categoryChanges": 0,
+      "availabilityChanges": 0,
+      "absoluteDelta": {
+        "count": 11,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "deltaHistogram": {
+        "0": 11
+      }
+    },
+    {
+      "profile": "generic",
+      "date": "2026-10-19",
+      "cases": 11,
+      "comparable": 11,
+      "exact": 11,
+      "different": 0,
+      "categoryChanges": 0,
+      "availabilityChanges": 0,
+      "absoluteDelta": {
+        "count": 11,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "deltaHistogram": {
+        "0": 11
+      }
+    },
+    {
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "cases": 11,
+      "comparable": 11,
+      "exact": 11,
+      "different": 0,
+      "categoryChanges": 0,
+      "availabilityChanges": 0,
+      "absoluteDelta": {
+        "count": 11,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "deltaHistogram": {
+        "0": 11
+      }
+    },
+    {
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "cases": 11,
+      "comparable": 11,
+      "exact": 11,
+      "different": 0,
+      "categoryChanges": 0,
+      "availabilityChanges": 0,
+      "absoluteDelta": {
+        "count": 11,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "deltaHistogram": {
+        "0": 11
+      }
+    },
+    {
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "cases": 11,
+      "comparable": 11,
+      "exact": 11,
+      "different": 0,
+      "categoryChanges": 0,
+      "availabilityChanges": 0,
+      "absoluteDelta": {
+        "count": 11,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "deltaHistogram": {
+        "0": 11
+      }
+    },
+    {
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "cases": 11,
+      "comparable": 11,
+      "exact": 11,
+      "different": 0,
+      "categoryChanges": 0,
+      "availabilityChanges": 0,
+      "absoluteDelta": {
+        "count": 11,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "deltaHistogram": {
+        "0": 11
+      }
+    },
+    {
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "cases": 11,
+      "comparable": 11,
+      "exact": 11,
+      "different": 0,
+      "categoryChanges": 0,
+      "availabilityChanges": 0,
+      "absoluteDelta": {
+        "count": 11,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "deltaHistogram": {
+        "0": 11
+      }
+    },
+    {
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "cases": 11,
+      "comparable": 11,
+      "exact": 11,
+      "different": 0,
+      "categoryChanges": 0,
+      "availabilityChanges": 0,
+      "absoluteDelta": {
+        "count": 11,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "deltaHistogram": {
+        "0": 11
+      }
+    }
+  ],
+  "signedDelta": {
+    "count": 88,
+    "mean": 0,
+    "median": 0,
+    "min": 0,
+    "max": 0
+  },
+  "comparisons": [
+    {
+      "weatherId": "weather-1-1",
+      "profile": "generic",
+      "date": "2026-10-18",
+      "experimental": 70,
+      "legacy": 70,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.353,
+          "soilMoisture7To28Cm": 0.365
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.352,
+          "soilMoisture7To28Cm": 0.365
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 18.57342857142857,
+          "legacy": 18.57342857142857,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 24.068088570448147,
+          "legacy": 24.068088570448147,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 6.995,
+          "legacy": 6.995,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-1",
+      "profile": "generic",
+      "date": "2026-10-19",
+      "experimental": 69,
+      "legacy": 69,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.352,
+          "soilMoisture7To28Cm": 0.362
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.352,
+          "soilMoisture7To28Cm": 0.362
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 18.14817857142857,
+          "legacy": 18.14817857142857,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 23.924625766722357,
+          "legacy": 23.924625766722357,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 6.719999999999999,
+          "legacy": 6.719999999999999,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-1",
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "experimental": 64,
+      "legacy": 64,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.353,
+          "soilMoisture7To28Cm": 0.365
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.352,
+          "soilMoisture7To28Cm": 0.365
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 16.05,
+          "legacy": 16.05,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.53932468942131,
+          "legacy": 29.53932468942131,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.4975,
+          "legacy": 3.4975,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-1",
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "experimental": 64,
+      "legacy": 64,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.352,
+          "soilMoisture7To28Cm": 0.362
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.352,
+          "soilMoisture7To28Cm": 0.362
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 16.05,
+          "legacy": 16.05,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.369493118995358,
+          "legacy": 29.369493118995358,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.3599999999999994,
+          "legacy": 3.3599999999999994,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-1",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "experimental": 60,
+      "legacy": 60,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.353,
+          "soilMoisture7To28Cm": 0.365
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.352,
+          "soilMoisture7To28Cm": 0.365
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 19.32,
+          "legacy": 19.32,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.04,
+          "legacy": 2.04,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 15.088052493387739,
+          "legacy": 15.088052493387739,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.4975,
+          "legacy": 3.4975,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-1",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "experimental": 59,
+      "legacy": 59,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.352,
+          "soilMoisture7To28Cm": 0.362
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.352,
+          "soilMoisture7To28Cm": 0.362
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 18.479999999999997,
+          "legacy": 18.479999999999997,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.04,
+          "legacy": 2.04,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 14.648994224082157,
+          "legacy": 14.648994224082157,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.3599999999999994,
+          "legacy": 3.3599999999999994,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-1",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "experimental": 93,
+      "legacy": 93,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.353,
+          "soilMoisture7To28Cm": 0.365
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.352,
+          "soilMoisture7To28Cm": 0.365
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 32.25618836467334,
+          "legacy": 32.25618836467334,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 7.594915367916579,
+          "legacy": 7.594915367916579,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.4975,
+          "legacy": 3.4975,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-1",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "experimental": 93,
+      "legacy": 93,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.352,
+          "soilMoisture7To28Cm": 0.362
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.352,
+          "soilMoisture7To28Cm": 0.362
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 32.242434951617,
+          "legacy": 32.242434951617,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 7.594915367916579,
+          "legacy": 7.594915367916579,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.3599999999999994,
+          "legacy": 3.3599999999999994,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-2",
+      "profile": "generic",
+      "date": "2026-10-18",
+      "experimental": 67,
+      "legacy": 67,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.344,
+          "soilMoisture7To28Cm": 0.354
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.344,
+          "soilMoisture7To28Cm": 0.353
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 15.928285714285716,
+          "legacy": 15.928285714285716,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 23.832828775491805,
+          "legacy": 23.832828775491805,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 7.010000000000001,
+          "legacy": 7.010000000000001,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-2",
+      "profile": "generic",
+      "date": "2026-10-19",
+      "experimental": 65,
+      "legacy": 65,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.343,
+          "soilMoisture7To28Cm": 0.35
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.343,
+          "soilMoisture7To28Cm": 0.35
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 14.531035714285716,
+          "legacy": 14.531035714285716,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 23.705287210783126,
+          "legacy": 23.705287210783126,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 6.69,
+          "legacy": 6.69,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-2",
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "experimental": 62,
+      "legacy": 62,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.344,
+          "soilMoisture7To28Cm": 0.354
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.344,
+          "soilMoisture7To28Cm": 0.353
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 14.149999999999999,
+          "legacy": 14.149999999999999,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.253807242409486,
+          "legacy": 29.253807242409486,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.5050000000000003,
+          "legacy": 3.5050000000000003,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-2",
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "experimental": 61,
+      "legacy": 61,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.343,
+          "soilMoisture7To28Cm": 0.35
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.343,
+          "soilMoisture7To28Cm": 0.35
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 13.750000000000002,
+          "legacy": 13.750000000000002,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.08539225328977,
+          "legacy": 29.08539225328977,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.345,
+          "legacy": 3.345,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-2",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "experimental": 56,
+      "legacy": 56,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.344,
+          "soilMoisture7To28Cm": 0.354
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.344,
+          "soilMoisture7To28Cm": 0.353
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 17.04,
+          "legacy": 17.04,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 1.6400000000000003,
+          "legacy": 1.6400000000000003,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 14.288726730095034,
+          "legacy": 14.288726730095034,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.5050000000000003,
+          "legacy": 3.5050000000000003,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-2",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "experimental": 53,
+      "legacy": 53,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.343,
+          "soilMoisture7To28Cm": 0.35
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.343,
+          "soilMoisture7To28Cm": 0.35
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 14.28,
+          "legacy": 14.28,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 1.6400000000000003,
+          "legacy": 1.6400000000000003,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 14.014648511374183,
+          "legacy": 14.014648511374183,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.345,
+          "legacy": 3.345,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-2",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "experimental": 93,
+      "legacy": 93,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.344,
+          "soilMoisture7To28Cm": 0.354
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.344,
+          "soilMoisture7To28Cm": 0.353
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 32.04248892526854,
+          "legacy": 32.04248892526854,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 6.957787359332959,
+          "legacy": 6.957787359332959,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.5050000000000003,
+          "legacy": 3.5050000000000003,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-2",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "experimental": 92,
+      "legacy": 92,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.343,
+          "soilMoisture7To28Cm": 0.35
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.343,
+          "soilMoisture7To28Cm": 0.35
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 32.039529934945236,
+          "legacy": 32.039529934945236,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 6.957787359332959,
+          "legacy": 6.957787359332959,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.345,
+          "legacy": 3.345,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-3",
+      "profile": "generic",
+      "date": "2026-10-18",
+      "experimental": 66,
+      "legacy": 66,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.346,
+          "soilMoisture7To28Cm": 0.352
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.345,
+          "soilMoisture7To28Cm": 0.351
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 13.644535714285713,
+          "legacy": 13.644535714285713,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 24.486902440565146,
+          "legacy": 24.486902440565146,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 8.36,
+          "legacy": 8.36,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-3",
+      "profile": "generic",
+      "date": "2026-10-19",
+      "experimental": 66,
+      "legacy": 66,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.342,
+          "soilMoisture7To28Cm": 0.348
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.342,
+          "soilMoisture7To28Cm": 0.348
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 13.25978571428571,
+          "legacy": 13.25978571428571,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 24.4372007475096,
+          "legacy": 24.4372007475096,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 7.9849999999999985,
+          "legacy": 7.9849999999999985,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-3",
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "experimental": 60,
+      "legacy": 60,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.346,
+          "soilMoisture7To28Cm": 0.352
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.345,
+          "soilMoisture7To28Cm": 0.351
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 11.25,
+          "legacy": 11.25,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.9224603333706,
+          "legacy": 29.9224603333706,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 4.18,
+          "legacy": 4.18,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-3",
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "experimental": 60,
+      "legacy": 60,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.342,
+          "soilMoisture7To28Cm": 0.348
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.342,
+          "soilMoisture7To28Cm": 0.348
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 10.85,
+          "legacy": 10.85,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.889217268930096,
+          "legacy": 29.889217268930096,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.9924999999999993,
+          "legacy": 3.9924999999999993,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-3",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "experimental": 57,
+      "legacy": 57,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.346,
+          "soilMoisture7To28Cm": 0.352
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.345,
+          "soilMoisture7To28Cm": 0.351
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 13.440000000000001,
+          "legacy": 13.440000000000001,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.76,
+          "legacy": 2.76,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 16.45674157779083,
+          "legacy": 16.45674157779083,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 4.18,
+          "legacy": 4.18,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-3",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "experimental": 56,
+      "legacy": 56,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.342,
+          "soilMoisture7To28Cm": 0.348
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.342,
+          "soilMoisture7To28Cm": 0.348
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 12.679999999999998,
+          "legacy": 12.679999999999998,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.76,
+          "legacy": 2.76,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 16.56193024404489,
+          "legacy": 16.56193024404489,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.9924999999999993,
+          "legacy": 3.9924999999999993,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-3",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "experimental": 91,
+      "legacy": 91,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.346,
+          "soilMoisture7To28Cm": 0.352
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.345,
+          "soilMoisture7To28Cm": 0.351
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 30.489770399189325,
+          "legacy": 30.489770399189325,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 6.190168002606626,
+          "legacy": 6.190168002606626,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 4.18,
+          "legacy": 4.18,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-3",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "experimental": 91,
+      "legacy": 91,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.342,
+          "soilMoisture7To28Cm": 0.348
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.342,
+          "soilMoisture7To28Cm": 0.348
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 30.489770399189325,
+          "legacy": 30.489770399189325,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 6.190168002606626,
+          "legacy": 6.190168002606626,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.9924999999999993,
+          "legacy": 3.9924999999999993,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-4",
+      "profile": "generic",
+      "date": "2026-10-18",
+      "experimental": 63,
+      "legacy": 63,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.319,
+          "soilMoisture7To28Cm": 0.328
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.318,
+          "soilMoisture7To28Cm": 0.328
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 10.950857142857142,
+          "legacy": 10.950857142857142,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 24.4276347347395,
+          "legacy": 24.4276347347395,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 7.789999999999999,
+          "legacy": 7.789999999999999,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-4",
+      "profile": "generic",
+      "date": "2026-10-19",
+      "experimental": 63,
+      "legacy": 63,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.316,
+          "soilMoisture7To28Cm": 0.325
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.316,
+          "soilMoisture7To28Cm": 0.325
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 10.91035714285714,
+          "legacy": 10.91035714285714,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 24.34364404621554,
+          "legacy": 24.34364404621554,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 7.494999999999998,
+          "legacy": 7.494999999999998,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-4",
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "experimental": 58,
+      "legacy": 58,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.319,
+          "soilMoisture7To28Cm": 0.328
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.318,
+          "soilMoisture7To28Cm": 0.328
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 9.3,
+          "legacy": 9.3,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.882329339977577,
+          "legacy": 29.882329339977577,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.8949999999999996,
+          "legacy": 3.8949999999999996,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-4",
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "experimental": 57,
+      "legacy": 57,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.316,
+          "soilMoisture7To28Cm": 0.325
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.316,
+          "soilMoisture7To28Cm": 0.325
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 8.7,
+          "legacy": 8.7,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.81584502973698,
+          "legacy": 29.81584502973698,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.747499999999999,
+          "legacy": 3.747499999999999,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-4",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "experimental": 53,
+      "legacy": 53,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.319,
+          "soilMoisture7To28Cm": 0.328
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.318,
+          "soilMoisture7To28Cm": 0.328
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 10.08,
+          "legacy": 10.08,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.3999999999999995,
+          "legacy": 2.3999999999999995,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 16.582802115330512,
+          "legacy": 16.582802115330512,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.8949999999999996,
+          "legacy": 3.8949999999999996,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-4",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "experimental": 53,
+      "legacy": 53,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.316,
+          "soilMoisture7To28Cm": 0.325
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.316,
+          "soilMoisture7To28Cm": 0.325
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 10,
+          "legacy": 10,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.3999999999999995,
+          "legacy": 2.3999999999999995,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 16.569385135519074,
+          "legacy": 16.569385135519074,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.747499999999999,
+          "legacy": 3.747499999999999,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-4",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "experimental": 87,
+      "legacy": 87,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.319,
+          "soilMoisture7To28Cm": 0.328
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.318,
+          "soilMoisture7To28Cm": 0.328
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 27.451506088136348,
+          "legacy": 27.451506088136348,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 5.595683454940007,
+          "legacy": 5.595683454940007,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.8949999999999996,
+          "legacy": 3.8949999999999996,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-1-4",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "experimental": 87,
+      "legacy": 87,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.316,
+          "soilMoisture7To28Cm": 0.325
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.316,
+          "soilMoisture7To28Cm": 0.325
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 27.451506088136348,
+          "legacy": 27.451506088136348,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 5.595683454940007,
+          "legacy": 5.595683454940007,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.747499999999999,
+          "legacy": 3.747499999999999,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-1",
+      "profile": "generic",
+      "date": "2026-10-18",
+      "experimental": 62,
+      "legacy": 62,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.362,
+          "soilMoisture7To28Cm": 0.368
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.361,
+          "soilMoisture7To28Cm": 0.368
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 16.297392857142857,
+          "legacy": 16.297392857142857,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 18.941200045951064,
+          "legacy": 18.941200045951064,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 7.029999999999999,
+          "legacy": 7.029999999999999,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-1",
+      "profile": "generic",
+      "date": "2026-10-19",
+      "experimental": 60,
+      "legacy": 60,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.358,
+          "soilMoisture7To28Cm": 0.365
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.358,
+          "soilMoisture7To28Cm": 0.365
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 14.727214285714284,
+          "legacy": 14.727214285714284,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 18.791931111818723,
+          "legacy": 18.791931111818723,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 6.755000000000001,
+          "legacy": 6.755000000000001,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-1",
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "experimental": 54,
+      "legacy": 54,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.362,
+          "soilMoisture7To28Cm": 0.368
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.361,
+          "soilMoisture7To28Cm": 0.368
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 14.799999999999999,
+          "legacy": 14.799999999999999,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 20.834176336623607,
+          "legacy": 20.834176336623607,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.5149999999999997,
+          "legacy": 3.5149999999999997,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-1",
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "experimental": 54,
+      "legacy": 54,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.358,
+          "soilMoisture7To28Cm": 0.365
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.358,
+          "soilMoisture7To28Cm": 0.365
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 14.75,
+          "legacy": 14.75,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 20.56256180920657,
+          "legacy": 20.56256180920657,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.3775000000000004,
+          "legacy": 3.3775000000000004,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-1",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "experimental": 51,
+      "legacy": 51,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.362,
+          "soilMoisture7To28Cm": 0.368
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.361,
+          "soilMoisture7To28Cm": 0.368
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 16.64,
+          "legacy": 16.64,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.08,
+          "legacy": 2.08,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 8.385653973686923,
+          "legacy": 8.385653973686923,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.5149999999999997,
+          "legacy": 3.5149999999999997,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-1",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "experimental": 47,
+      "legacy": 47,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.358,
+          "soilMoisture7To28Cm": 0.365
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.358,
+          "soilMoisture7To28Cm": 0.365
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 13.639999999999999,
+          "legacy": 13.639999999999999,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2,
+          "legacy": 2,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 8.27416408225824,
+          "legacy": 8.27416408225824,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.3775000000000004,
+          "legacy": 3.3775000000000004,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-1",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "experimental": 92,
+      "legacy": 92,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.362,
+          "soilMoisture7To28Cm": 0.368
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.361,
+          "soilMoisture7To28Cm": 0.368
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 31.635268858167244,
+          "legacy": 31.635268858167244,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 7.120590918692297,
+          "legacy": 7.120590918692297,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.5149999999999997,
+          "legacy": 3.5149999999999997,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-1",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "experimental": 92,
+      "legacy": 92,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.358,
+          "soilMoisture7To28Cm": 0.365
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.358,
+          "soilMoisture7To28Cm": 0.365
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 31.621782979824392,
+          "legacy": 31.621782979824392,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 7.120590918692297,
+          "legacy": 7.120590918692297,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.3775000000000004,
+          "legacy": 3.3775000000000004,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-2",
+      "profile": "generic",
+      "date": "2026-10-18",
+      "experimental": 63,
+      "legacy": 63,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.332,
+          "soilMoisture7To28Cm": 0.336
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.331,
+          "soilMoisture7To28Cm": 0.335
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 11.477892857142859,
+          "legacy": 11.477892857142859,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 23.905216697882576,
+          "legacy": 23.905216697882576,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 7.359999999999999,
+          "legacy": 7.359999999999999,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-2",
+      "profile": "generic",
+      "date": "2026-10-19",
+      "experimental": 61,
+      "legacy": 61,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.329,
+          "soilMoisture7To28Cm": 0.333
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.329,
+          "soilMoisture7To28Cm": 0.333
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 10.277678571428572,
+          "legacy": 10.277678571428572,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 23.790192609223975,
+          "legacy": 23.790192609223975,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 7.110000000000001,
+          "legacy": 7.110000000000001,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-2",
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "experimental": 57,
+      "legacy": 57,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.332,
+          "soilMoisture7To28Cm": 0.336
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.331,
+          "soilMoisture7To28Cm": 0.335
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 9.399999999999999,
+          "legacy": 9.399999999999999,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.345454392002363,
+          "legacy": 29.345454392002363,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.6799999999999997,
+          "legacy": 3.6799999999999997,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-2",
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "experimental": 57,
+      "legacy": 57,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.329,
+          "soilMoisture7To28Cm": 0.333
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.329,
+          "soilMoisture7To28Cm": 0.333
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 9.3,
+          "legacy": 9.3,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.198443715102258,
+          "legacy": 29.198443715102258,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.5550000000000006,
+          "legacy": 3.5550000000000006,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-2",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "experimental": 52,
+      "legacy": 52,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.332,
+          "soilMoisture7To28Cm": 0.336
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.331,
+          "soilMoisture7To28Cm": 0.335
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 11.12,
+          "legacy": 11.12,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.3600000000000003,
+          "legacy": 2.3600000000000003,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 14.91959203478358,
+          "legacy": 14.91959203478358,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.6799999999999997,
+          "legacy": 3.6799999999999997,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-2",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "experimental": 49,
+      "legacy": 49,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.329,
+          "soilMoisture7To28Cm": 0.333
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.329,
+          "soilMoisture7To28Cm": 0.333
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 8.8,
+          "legacy": 8.8,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.3200000000000003,
+          "legacy": 2.3200000000000003,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 14.776746597063415,
+          "legacy": 14.776746597063415,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.5550000000000006,
+          "legacy": 3.5550000000000006,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-2",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "experimental": 89,
+      "legacy": 89,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.332,
+          "soilMoisture7To28Cm": 0.336
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.331,
+          "soilMoisture7To28Cm": 0.335
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 29.791207508225085,
+          "legacy": 29.791207508225085,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 5.617650075350507,
+          "legacy": 5.617650075350507,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.6799999999999997,
+          "legacy": 3.6799999999999997,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-2",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "experimental": 89,
+      "legacy": 89,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.329,
+          "soilMoisture7To28Cm": 0.333
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.329,
+          "soilMoisture7To28Cm": 0.333
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 29.74937004155713,
+          "legacy": 29.74937004155713,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 5.617650075350507,
+          "legacy": 5.617650075350507,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.5550000000000006,
+          "legacy": 3.5550000000000006,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-3",
+      "profile": "generic",
+      "date": "2026-10-18",
+      "experimental": 64,
+      "legacy": 64,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.341,
+          "soilMoisture7To28Cm": 0.344
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.34,
+          "soilMoisture7To28Cm": 0.343
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 13.42157142857143,
+          "legacy": 13.42157142857143,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 20.642885010313492,
+          "legacy": 20.642885010313492,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 9.75,
+          "legacy": 9.75,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-3",
+      "profile": "generic",
+      "date": "2026-10-19",
+      "experimental": 63,
+      "legacy": 63,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.337,
+          "soilMoisture7To28Cm": 0.34
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.337,
+          "soilMoisture7To28Cm": 0.34
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 13.152857142857142,
+          "legacy": 13.152857142857142,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 20.540111765697986,
+          "legacy": 20.540111765697986,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 9.3,
+          "legacy": 9.3,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-3",
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "experimental": 55,
+      "legacy": 55,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.341,
+          "soilMoisture7To28Cm": 0.344
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.34,
+          "soilMoisture7To28Cm": 0.343
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 11.25,
+          "legacy": 11.25,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 23.941137876713515,
+          "legacy": 23.941137876713515,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 4.875,
+          "legacy": 4.875,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-3",
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "experimental": 54,
+      "legacy": 54,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.337,
+          "soilMoisture7To28Cm": 0.34
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.337,
+          "soilMoisture7To28Cm": 0.34
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 10.6,
+          "legacy": 10.6,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 23.75413912327834,
+          "legacy": 23.75413912327834,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 4.65,
+          "legacy": 4.65,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-3",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "experimental": 50,
+      "legacy": 50,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.341,
+          "soilMoisture7To28Cm": 0.344
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.34,
+          "soilMoisture7To28Cm": 0.343
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 11.880000000000003,
+          "legacy": 11.880000000000003,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 3.5600000000000005,
+          "legacy": 3.5600000000000005,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 10.034387794825031,
+          "legacy": 10.034387794825031,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 4.875,
+          "legacy": 4.875,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-3",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "experimental": 50,
+      "legacy": 50,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.337,
+          "soilMoisture7To28Cm": 0.34
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.337,
+          "soilMoisture7To28Cm": 0.34
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 11.399999999999999,
+          "legacy": 11.399999999999999,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 3.5200000000000005,
+          "legacy": 3.5200000000000005,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 10.17809772340699,
+          "legacy": 10.17809772340699,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 4.65,
+          "legacy": 4.65,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-3",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "experimental": 91,
+      "legacy": 91,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.341,
+          "soilMoisture7To28Cm": 0.344
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.34,
+          "soilMoisture7To28Cm": 0.343
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 29.853339480709597,
+          "legacy": 29.853339480709597,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 6.2280764643684305,
+          "legacy": 6.2280764643684305,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 4.875,
+          "legacy": 4.875,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-3",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "experimental": 91,
+      "legacy": 91,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.337,
+          "soilMoisture7To28Cm": 0.34
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.337,
+          "soilMoisture7To28Cm": 0.34
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 29.832711610395627,
+          "legacy": 29.832711610395627,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 6.2280764643684305,
+          "legacy": 6.2280764643684305,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 4.65,
+          "legacy": 4.65,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-4",
+      "profile": "generic",
+      "date": "2026-10-18",
+      "experimental": 62,
+      "legacy": 62,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.295,
+          "soilMoisture7To28Cm": 0.289
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.294,
+          "soilMoisture7To28Cm": 0.289
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 9.595714285714287,
+          "legacy": 9.595714285714287,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 24.370727400354546,
+          "legacy": 24.370727400354546,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 7.65,
+          "legacy": 7.65,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-4",
+      "profile": "generic",
+      "date": "2026-10-19",
+      "experimental": 61,
+      "legacy": 61,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.291,
+          "soilMoisture7To28Cm": 0.287
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.291,
+          "soilMoisture7To28Cm": 0.287
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 9.524035714285715,
+          "legacy": 9.524035714285715,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 24.22558011072074,
+          "legacy": 24.22558011072074,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 7.34,
+          "legacy": 7.34,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-4",
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "experimental": 57,
+      "legacy": 57,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.295,
+          "soilMoisture7To28Cm": 0.289
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.294,
+          "soilMoisture7To28Cm": 0.289
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 8.250000000000002,
+          "legacy": 8.250000000000002,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.838398976762843,
+          "legacy": 29.838398976762843,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.825,
+          "legacy": 3.825,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-4",
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "experimental": 56,
+      "legacy": 56,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.291,
+          "soilMoisture7To28Cm": 0.287
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.291,
+          "soilMoisture7To28Cm": 0.287
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 7.6499999999999995,
+          "legacy": 7.6499999999999995,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.706857980051456,
+          "legacy": 29.706857980051456,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.67,
+          "legacy": 3.67,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-4",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "experimental": 51,
+      "legacy": 51,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.295,
+          "soilMoisture7To28Cm": 0.289
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.294,
+          "soilMoisture7To28Cm": 0.289
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 8.8,
+          "legacy": 8.8,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.2800000000000002,
+          "legacy": 2.2800000000000002,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 15.848000120887864,
+          "legacy": 15.848000120887864,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.825,
+          "legacy": 3.825,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-4",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "experimental": 50,
+      "legacy": 50,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.291,
+          "soilMoisture7To28Cm": 0.287
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.291,
+          "soilMoisture7To28Cm": 0.287
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 8.760000000000002,
+          "legacy": 8.760000000000002,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.2,
+          "legacy": 2.2,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 15.53775862650297,
+          "legacy": 15.53775862650297,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.67,
+          "legacy": 3.67,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-4",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "experimental": 87,
+      "legacy": 87,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.295,
+          "soilMoisture7To28Cm": 0.289
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.294,
+          "soilMoisture7To28Cm": 0.289
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 27.66726873208972,
+          "legacy": 27.66726873208972,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 5.034146962085905,
+          "legacy": 5.034146962085905,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.825,
+          "legacy": 3.825,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-2-4",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "experimental": 86,
+      "legacy": 86,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.291,
+          "soilMoisture7To28Cm": 0.287
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.291,
+          "soilMoisture7To28Cm": 0.287
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 27.65993233323375,
+          "legacy": 27.65993233323375,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 5.034146962085905,
+          "legacy": 5.034146962085905,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.67,
+          "legacy": 3.67,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-2",
+      "profile": "generic",
+      "date": "2026-10-18",
+      "experimental": 66,
+      "legacy": 66,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.305,
+          "soilMoisture7To28Cm": 0.304
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.304,
+          "soilMoisture7To28Cm": 0.303
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 12.823285714285714,
+          "legacy": 12.823285714285714,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 23.824784741843505,
+          "legacy": 23.824784741843505,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 9.235,
+          "legacy": 9.235,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-2",
+      "profile": "generic",
+      "date": "2026-10-19",
+      "experimental": 64,
+      "legacy": 64,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.302,
+          "soilMoisture7To28Cm": 0.302
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.302,
+          "soilMoisture7To28Cm": 0.302
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 11.85257142857143,
+          "legacy": 11.85257142857143,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 23.777915579539712,
+          "legacy": 23.777915579539712,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 7.890000000000001,
+          "legacy": 7.890000000000001,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-2",
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "experimental": 60,
+      "legacy": 60,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.305,
+          "soilMoisture7To28Cm": 0.304
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.304,
+          "soilMoisture7To28Cm": 0.303
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 10.9,
+          "legacy": 10.9,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.243437698101946,
+          "legacy": 29.243437698101946,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 4.6175,
+          "legacy": 4.6175,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-2",
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "experimental": 59,
+      "legacy": 59,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.302,
+          "soilMoisture7To28Cm": 0.302
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.302,
+          "soilMoisture7To28Cm": 0.302
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 10.8,
+          "legacy": 10.8,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.18232209151821,
+          "legacy": 29.18232209151821,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.9450000000000003,
+          "legacy": 3.9450000000000003,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-2",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "experimental": 54,
+      "legacy": 54,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.305,
+          "soilMoisture7To28Cm": 0.304
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.304,
+          "soilMoisture7To28Cm": 0.303
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 10.439999999999998,
+          "legacy": 10.439999999999998,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 3.5999999999999996,
+          "legacy": 3.5999999999999996,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 15.173796537298392,
+          "legacy": 15.173796537298392,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 4.6175,
+          "legacy": 4.6175,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-2",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "experimental": 52,
+      "legacy": 52,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.302,
+          "soilMoisture7To28Cm": 0.302
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.302,
+          "soilMoisture7To28Cm": 0.302
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 9.64,
+          "legacy": 9.64,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.72,
+          "legacy": 2.72,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 15.30240961680735,
+          "legacy": 15.30240961680735,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.9450000000000003,
+          "legacy": 3.9450000000000003,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-2",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "experimental": 89,
+      "legacy": 89,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.305,
+          "soilMoisture7To28Cm": 0.304
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.304,
+          "soilMoisture7To28Cm": 0.303
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 28.489943979458193,
+          "legacy": 28.489943979458193,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 6.302765554559411,
+          "legacy": 6.302765554559411,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 4.6175,
+          "legacy": 4.6175,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-2",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "experimental": 89,
+      "legacy": 89,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.302,
+          "soilMoisture7To28Cm": 0.302
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.302,
+          "soilMoisture7To28Cm": 0.302
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 28.470384486827236,
+          "legacy": 28.470384486827236,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 6.302765554559411,
+          "legacy": 6.302765554559411,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.9450000000000003,
+          "legacy": 3.9450000000000003,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-3",
+      "profile": "generic",
+      "date": "2026-10-18",
+      "experimental": 64,
+      "legacy": 64,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.313,
+          "soilMoisture7To28Cm": 0.312
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.312,
+          "soilMoisture7To28Cm": 0.312
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 11.424107142857142,
+          "legacy": 11.424107142857142,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 24.473553129552315,
+          "legacy": 24.473553129552315,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 8.195,
+          "legacy": 8.195,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-3",
+      "profile": "generic",
+      "date": "2026-10-19",
+      "experimental": 62,
+      "legacy": 62,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.309,
+          "soilMoisture7To28Cm": 0.309
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.309,
+          "soilMoisture7To28Cm": 0.309
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 10.61925,
+          "legacy": 10.61925,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 24.357610535427828,
+          "legacy": 24.357610535427828,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 6.765000000000001,
+          "legacy": 6.765000000000001,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-3",
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "experimental": 59,
+      "legacy": 59,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.313,
+          "soilMoisture7To28Cm": 0.312
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.312,
+          "soilMoisture7To28Cm": 0.312
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 10.3,
+          "legacy": 10.3,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.91396846867415,
+          "legacy": 29.91396846867415,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 4.0975,
+          "legacy": 4.0975,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-3",
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "experimental": 57,
+      "legacy": 57,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.309,
+          "soilMoisture7To28Cm": 0.309
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.309,
+          "soilMoisture7To28Cm": 0.309
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 9.100000000000001,
+          "legacy": 9.100000000000001,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 29.827601139402564,
+          "legacy": 29.827601139402564,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 3.3825000000000003,
+          "legacy": 3.3825000000000003,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-3",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "experimental": 54,
+      "legacy": 54,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.313,
+          "soilMoisture7To28Cm": 0.312
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.312,
+          "soilMoisture7To28Cm": 0.312
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 10.2,
+          "legacy": 10.2,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.9600000000000004,
+          "legacy": 2.9600000000000004,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 16.605903576566373,
+          "legacy": 16.605903576566373,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 4.0975,
+          "legacy": 4.0975,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-3",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "experimental": 52,
+      "legacy": 52,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.309,
+          "soilMoisture7To28Cm": 0.309
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.309,
+          "soilMoisture7To28Cm": 0.309
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 9.88,
+          "legacy": 9.88,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 1.96,
+          "legacy": 1.96,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 16.44703652620069,
+          "legacy": 16.44703652620069,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 3.3825000000000003,
+          "legacy": 3.3825000000000003,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-3",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "experimental": 88,
+      "legacy": 88,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.313,
+          "soilMoisture7To28Cm": 0.312
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.312,
+          "soilMoisture7To28Cm": 0.312
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 28.3981622219653,
+          "legacy": 28.3981622219653,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 5.639507136784645,
+          "legacy": 5.639507136784645,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 4.0975,
+          "legacy": 4.0975,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-3",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "experimental": 87,
+      "legacy": 87,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.309,
+          "soilMoisture7To28Cm": 0.309
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.309,
+          "soilMoisture7To28Cm": 0.309
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 28.36507037239252,
+          "legacy": 28.36507037239252,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 5.639507136784645,
+          "legacy": 5.639507136784645,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 3.3825000000000003,
+          "legacy": 3.3825000000000003,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-4",
+      "profile": "generic",
+      "date": "2026-10-18",
+      "experimental": 64,
+      "legacy": 64,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.309,
+          "soilMoisture7To28Cm": 0.305
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.308,
+          "soilMoisture7To28Cm": 0.304
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 12.086678571428573,
+          "legacy": 12.086678571428573,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 22.442845513738988,
+          "legacy": 22.442845513738988,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 9.13,
+          "legacy": 9.13,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-4",
+      "profile": "generic",
+      "date": "2026-10-19",
+      "experimental": 62,
+      "legacy": 62,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.304,
+          "soilMoisture7To28Cm": 0.302
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.304,
+          "soilMoisture7To28Cm": 0.302
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain",
+          "experimental": 11.533500000000002,
+          "legacy": 11.533500000000002,
+          "delta": 0,
+          "weight": 45,
+          "legacyWeight": 45
+        },
+        {
+          "key": "temperature",
+          "experimental": 22.36483537593945,
+          "legacy": 22.36483537593945,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 8.115,
+          "legacy": 8.115,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-4",
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "experimental": 57,
+      "legacy": 57,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.309,
+          "soilMoisture7To28Cm": 0.305
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.308,
+          "soilMoisture7To28Cm": 0.304
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 10.200000000000001,
+          "legacy": 10.200000000000001,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 27.125881902794426,
+          "legacy": 27.125881902794426,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 4.565,
+          "legacy": 4.565,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-4",
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "experimental": 56,
+      "legacy": 56,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.304,
+          "soilMoisture7To28Cm": 0.302
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.304,
+          "soilMoisture7To28Cm": 0.302
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain26",
+          "experimental": 9.450000000000001,
+          "legacy": 9.450000000000001,
+          "delta": 0,
+          "weight": 50,
+          "legacyWeight": 50
+        },
+        {
+          "key": "temperature",
+          "experimental": 26.993881722557145,
+          "legacy": 26.993881722557145,
+          "delta": 0,
+          "weight": 30,
+          "legacyWeight": 30
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 15,
+          "legacy": 15,
+          "delta": 0,
+          "weight": 15,
+          "legacyWeight": 15
+        },
+        {
+          "key": "drying",
+          "experimental": 4.0575,
+          "legacy": 4.0575,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-4",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "experimental": 51,
+      "legacy": 51,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.309,
+          "soilMoisture7To28Cm": 0.305
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.308,
+          "soilMoisture7To28Cm": 0.304
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 10.64,
+          "legacy": 10.64,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 3.4399999999999995,
+          "legacy": 3.4399999999999995,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 12.402709236906432,
+          "legacy": 12.402709236906432,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 4.565,
+          "legacy": 4.565,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-4",
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "experimental": 50,
+      "legacy": 50,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.304,
+          "soilMoisture7To28Cm": 0.302
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.304,
+          "soilMoisture7To28Cm": 0.302
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain30",
+          "experimental": 10.360000000000003,
+          "legacy": 10.360000000000003,
+          "delta": 0,
+          "weight": 40,
+          "legacyWeight": 40
+        },
+        {
+          "key": "rain7",
+          "experimental": 2.8000000000000003,
+          "legacy": 2.8000000000000003,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 12.497507748855465,
+          "legacy": 12.497507748855465,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 20,
+          "legacy": 20,
+          "delta": 0,
+          "weight": 20,
+          "legacyWeight": 20
+        },
+        {
+          "key": "drying",
+          "experimental": 4.0575,
+          "legacy": 4.0575,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-4",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "experimental": 88,
+      "legacy": 88,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": true,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-18T13:00",
+          "soilMoisture0To7Cm": 0.309,
+          "soilMoisture7To28Cm": 0.305
+        },
+        "legacy": {
+          "time": "2026-10-18T14:00",
+          "soilMoisture0To7Cm": 0.308,
+          "soilMoisture7To28Cm": 0.304
+        }
+      },
+      "cause": "deliberate_input_policy_difference",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 27.912390905273472,
+          "legacy": 27.912390905273472,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 5.74716808917726,
+          "legacy": 5.74716808917726,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 4.565,
+          "legacy": 4.565,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    },
+    {
+      "weatherId": "weather-3-4",
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "experimental": 88,
+      "legacy": 88,
+      "delta": 0,
+      "categoryChanged": false,
+      "availabilityChanged": false,
+      "inputs": [],
+      "soilChanged": false,
+      "soil": {
+        "experimental": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.304,
+          "soilMoisture7To28Cm": 0.302
+        },
+        "legacy": {
+          "time": "2026-10-19T09:00",
+          "soilMoisture0To7Cm": 0.304,
+          "soilMoisture7To28Cm": 0.302
+        }
+      },
+      "cause": "identical_input_values",
+      "factorDeltas": [
+        {
+          "key": "rain60",
+          "experimental": 27.883983692344984,
+          "legacy": 27.883983692344984,
+          "delta": 0,
+          "weight": 35,
+          "legacyWeight": 35
+        },
+        {
+          "key": "rain14",
+          "experimental": 5.74716808917726,
+          "legacy": 5.74716808917726,
+          "delta": 0,
+          "weight": 10,
+          "legacyWeight": 10
+        },
+        {
+          "key": "temperature",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "soilMoisture",
+          "experimental": 25,
+          "legacy": 25,
+          "delta": 0,
+          "weight": 25,
+          "legacyWeight": 25
+        },
+        {
+          "key": "drying",
+          "experimental": 4.0575,
+          "legacy": 4.0575,
+          "delta": 0,
+          "weight": 5,
+          "legacyWeight": 5
+        }
+      ],
+      "sameCoordinates": true,
+      "evidence": "same frozen hourly field; legacy fixed-offset daily bins reconstructed, not live provider daily-product parity"
+    }
+  ]
+}

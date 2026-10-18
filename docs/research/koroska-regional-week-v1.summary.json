@@ -1,0 +1,1344 @@
+{
+  "researchOnly": true,
+  "evidence": "frozen-public-weather",
+  "notAPublishedForecast": true,
+  "environment": "win32 Node v24.21.0; no native Android measurements",
+  "contract": "regional-civil-week-v1",
+  "batchId": "1368379633d04dc676aa17f4dd2817d9b89da82c587f9a11d4cb6733e6a36aee",
+  "geometryFingerprint": "bd6b2f8771a5f5765ca40df99d10bd1633ce7aeb51a9cc6138b19a79bd36d212",
+  "bboxSelectionRule": "Inclusive EXISTING representative centre in [14.65,46.35,15.05,46.59]; preserve whole existing clipped polygons",
+  "cells": 696,
+  "weatherLocations": [
+    {
+      "id": "weather-1-1",
+      "latitude": 46.386397,
+      "longitude": 14.712294,
+      "projectedX": 4683599.35,
+      "projectedY": 2597409.63
+    },
+    {
+      "id": "weather-1-2",
+      "latitude": 46.380611,
+      "longitude": 14.841936,
+      "projectedX": 4693599.35,
+      "projectedY": 2597409.63
+    },
+    {
+      "id": "weather-1-3",
+      "latitude": 46.374668,
+      "longitude": 14.971553,
+      "projectedX": 4703599.35,
+      "projectedY": 2597409.63
+    },
+    {
+      "id": "weather-1-4",
+      "latitude": 46.368569,
+      "longitude": 15.101143,
+      "projectedX": 4713599.35,
+      "projectedY": 2597409.63
+    },
+    {
+      "id": "weather-2-1",
+      "latitude": 46.476247,
+      "longitude": 14.720231,
+      "projectedX": 4683599.35,
+      "projectedY": 2607409.63
+    },
+    {
+      "id": "weather-2-2",
+      "latitude": 46.47045,
+      "longitude": 14.85009,
+      "projectedX": 4693599.35,
+      "projectedY": 2607409.63
+    },
+    {
+      "id": "weather-2-3",
+      "latitude": 46.464496,
+      "longitude": 14.979923,
+      "projectedX": 4703599.35,
+      "projectedY": 2607409.63
+    },
+    {
+      "id": "weather-2-4",
+      "latitude": 46.458385,
+      "longitude": 15.10973,
+      "projectedX": 4713599.35,
+      "projectedY": 2607409.63
+    },
+    {
+      "id": "weather-3-2",
+      "latitude": 46.560283,
+      "longitude": 14.858279,
+      "projectedX": 4693599.35,
+      "projectedY": 2617409.63
+    },
+    {
+      "id": "weather-3-3",
+      "latitude": 46.554318,
+      "longitude": 14.98833,
+      "projectedX": 4703599.35,
+      "projectedY": 2617409.63
+    },
+    {
+      "id": "weather-3-4",
+      "latitude": 46.548194,
+      "longitude": 15.118354,
+      "projectedX": 4713599.35,
+      "projectedY": 2617409.63
+    }
+  ],
+  "dates": [
+    "2026-10-18",
+    "2026-10-19",
+    "2026-10-20",
+    "2026-10-21",
+    "2026-10-22",
+    "2026-10-23",
+    "2026-10-24"
+  ],
+  "profiles": [
+    "generic",
+    "boletusEdulis",
+    "cantharellusCibarius",
+    "lactariusDeliciosus"
+  ],
+  "availability": {
+    "ready": 16716,
+    "outside_model": 126,
+    "habitat_unknown": 2646
+  },
+  "byDateProfile": [
+    {
+      "profile": "generic",
+      "date": "2026-10-18",
+      "publishedScore": {
+        "count": 696,
+        "mean": 65.17959770114942,
+        "median": 64,
+        "min": 62,
+        "max": 70
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 65.17959770114942,
+        "median": 64,
+        "min": 62,
+        "max": 70
+      },
+      "availability": {
+        "ready": 696
+      },
+      "habitat": {
+        "candidate": 696
+      }
+    },
+    {
+      "profile": "generic",
+      "date": "2026-10-19",
+      "publishedScore": {
+        "count": 696,
+        "mean": 63.73132183908046,
+        "median": 63,
+        "min": 60,
+        "max": 69
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 63.73132183908046,
+        "median": 63,
+        "min": 60,
+        "max": 69
+      },
+      "availability": {
+        "ready": 696
+      },
+      "habitat": {
+        "candidate": 696
+      }
+    },
+    {
+      "profile": "generic",
+      "date": "2026-10-20",
+      "publishedScore": {
+        "count": 696,
+        "mean": 58.185344827586206,
+        "median": 57,
+        "min": 55,
+        "max": 64
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 58.185344827586206,
+        "median": 57,
+        "min": 55,
+        "max": 64
+      },
+      "availability": {
+        "ready": 696
+      },
+      "habitat": {
+        "candidate": 696
+      }
+    },
+    {
+      "profile": "generic",
+      "date": "2026-10-21",
+      "publishedScore": {
+        "count": 696,
+        "mean": 58.185344827586206,
+        "median": 57,
+        "min": 55,
+        "max": 64
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 58.185344827586206,
+        "median": 57,
+        "min": 55,
+        "max": 64
+      },
+      "availability": {
+        "ready": 696
+      },
+      "habitat": {
+        "candidate": 696
+      }
+    },
+    {
+      "profile": "generic",
+      "date": "2026-10-22",
+      "publishedScore": {
+        "count": 696,
+        "mean": 61.66235632183908,
+        "median": 59,
+        "min": 57,
+        "max": 75
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 61.66235632183908,
+        "median": 59,
+        "min": 57,
+        "max": 75
+      },
+      "availability": {
+        "ready": 696
+      },
+      "habitat": {
+        "candidate": 696
+      }
+    },
+    {
+      "profile": "generic",
+      "date": "2026-10-23",
+      "publishedScore": {
+        "count": 696,
+        "mean": 59.85344827586207,
+        "median": 57,
+        "min": 56,
+        "max": 71
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 59.85344827586207,
+        "median": 57,
+        "min": 56,
+        "max": 71
+      },
+      "availability": {
+        "ready": 696
+      },
+      "habitat": {
+        "candidate": 696
+      }
+    },
+    {
+      "profile": "generic",
+      "date": "2026-10-24",
+      "publishedScore": {
+        "count": 696,
+        "mean": 58.59770114942529,
+        "median": 56,
+        "min": 55,
+        "max": 69
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 58.59770114942529,
+        "median": 56,
+        "min": 55,
+        "max": 69
+      },
+      "availability": {
+        "ready": 696
+      },
+      "habitat": {
+        "candidate": 696
+      }
+    },
+    {
+      "profile": "boletusEdulis",
+      "date": "2026-10-18",
+      "publishedScore": {
+        "count": 635,
+        "mean": 58.883464566929135,
+        "median": 59,
+        "min": 54,
+        "max": 64
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 58.82902298850575,
+        "median": 59,
+        "min": 54,
+        "max": 64
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "boletusEdulis",
+      "date": "2026-10-19",
+      "publishedScore": {
+        "count": 635,
+        "mean": 58.25196850393701,
+        "median": 57,
+        "min": 54,
+        "max": 64
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 58.19252873563219,
+        "median": 57,
+        "min": 54,
+        "max": 64
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "boletusEdulis",
+      "date": "2026-10-20",
+      "publishedScore": {
+        "count": 635,
+        "mean": 56.36220472440945,
+        "median": 56,
+        "min": 51,
+        "max": 62
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 56.314655172413794,
+        "median": 56,
+        "min": 51,
+        "max": 62
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "boletusEdulis",
+      "date": "2026-10-21",
+      "publishedScore": {
+        "count": 635,
+        "mean": 54.948031496062995,
+        "median": 55,
+        "min": 49,
+        "max": 60
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 54.87356321839081,
+        "median": 55,
+        "min": 49,
+        "max": 60
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "boletusEdulis",
+      "date": "2026-10-22",
+      "publishedScore": {
+        "count": 635,
+        "mean": 57.653543307086615,
+        "median": 56,
+        "min": 51,
+        "max": 69
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 57.57471264367816,
+        "median": 56,
+        "min": 51,
+        "max": 69
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "boletusEdulis",
+      "date": "2026-10-23",
+      "publishedScore": {
+        "count": 635,
+        "mean": 57.32283464566929,
+        "median": 56,
+        "min": 51,
+        "max": 68
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 57.235632183908045,
+        "median": 56,
+        "min": 51,
+        "max": 68
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "boletusEdulis",
+      "date": "2026-10-24",
+      "publishedScore": {
+        "count": 635,
+        "mean": 57.15748031496063,
+        "median": 56,
+        "min": 51,
+        "max": 68
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 57.07902298850575,
+        "median": 56,
+        "min": 51,
+        "max": 68
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-18",
+      "publishedScore": {
+        "count": 635,
+        "mean": 54.190551181102364,
+        "median": 54,
+        "min": 50,
+        "max": 60
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 54.15373563218391,
+        "median": 54,
+        "min": 50,
+        "max": 60
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-19",
+      "publishedScore": {
+        "count": 635,
+        "mean": 52.351181102362204,
+        "median": 52,
+        "min": 47,
+        "max": 59
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 52.264367816091955,
+        "median": 52,
+        "min": 47,
+        "max": 59
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-20",
+      "publishedScore": {
+        "count": 635,
+        "mean": 46.62834645669292,
+        "median": 47,
+        "min": 42,
+        "max": 53
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 46.59051724137931,
+        "median": 47,
+        "min": 42,
+        "max": 53
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-21",
+      "publishedScore": {
+        "count": 635,
+        "mean": 46.499212598425196,
+        "median": 47,
+        "min": 42,
+        "max": 52
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 46.456896551724135,
+        "median": 47,
+        "min": 42,
+        "max": 52
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-22",
+      "publishedScore": {
+        "count": 635,
+        "mean": 48.97322834645669,
+        "median": 48,
+        "min": 43,
+        "max": 61
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 48.92097701149425,
+        "median": 47,
+        "min": 43,
+        "max": 61
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-23",
+      "publishedScore": {
+        "count": 635,
+        "mean": 48.47244094488189,
+        "median": 46,
+        "min": 43,
+        "max": 60
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 48.41235632183908,
+        "median": 46,
+        "min": 43,
+        "max": 60
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "cantharellusCibarius",
+      "date": "2026-10-24",
+      "publishedScore": {
+        "count": 635,
+        "mean": 47.89291338582677,
+        "median": 46,
+        "min": 43,
+        "max": 59
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 47.81896551724138,
+        "median": 46,
+        "min": 43,
+        "max": 59
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 55,
+        "ready": 635
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 55,
+        "candidate": 635
+      }
+    },
+    {
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-18",
+      "publishedScore": {
+        "count": 422,
+        "mean": 89.93364928909952,
+        "median": 89,
+        "min": 87,
+        "max": 93
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 90.66091954022988,
+        "median": 91,
+        "min": 87,
+        "max": 93
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 268,
+        "ready": 422
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 268,
+        "candidate": 422
+      }
+    },
+    {
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-19",
+      "publishedScore": {
+        "count": 422,
+        "mean": 89.72274881516587,
+        "median": 89,
+        "min": 86,
+        "max": 93
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 90.39655172413794,
+        "median": 91,
+        "min": 86,
+        "max": 93
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 268,
+        "ready": 422
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 268,
+        "candidate": 422
+      }
+    },
+    {
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-20",
+      "publishedScore": {
+        "count": 422,
+        "mean": 87.85308056872037,
+        "median": 87,
+        "min": 85,
+        "max": 92
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 88.74281609195403,
+        "median": 88,
+        "min": 85,
+        "max": 92
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 268,
+        "ready": 422
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 268,
+        "candidate": 422
+      }
+    },
+    {
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-21",
+      "publishedScore": {
+        "count": 422,
+        "mean": 86.96682464454976,
+        "median": 86,
+        "min": 84,
+        "max": 91
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 87.92528735632185,
+        "median": 88,
+        "min": 84,
+        "max": 91
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 268,
+        "ready": 422
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 268,
+        "candidate": 422
+      }
+    },
+    {
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-22",
+      "publishedScore": {
+        "count": 422,
+        "mean": 87.91943127962085,
+        "median": 87,
+        "min": 84,
+        "max": 95
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 89.27155172413794,
+        "median": 88,
+        "min": 84,
+        "max": 95
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 268,
+        "ready": 422
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 268,
+        "candidate": 422
+      }
+    },
+    {
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-23",
+      "publishedScore": {
+        "count": 422,
+        "mean": 86.77251184834124,
+        "median": 85,
+        "min": 83,
+        "max": 93
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 87.92097701149426,
+        "median": 88,
+        "min": 83,
+        "max": 93
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 268,
+        "ready": 422
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 268,
+        "candidate": 422
+      }
+    },
+    {
+      "profile": "lactariusDeliciosus",
+      "date": "2026-10-24",
+      "publishedScore": {
+        "count": 422,
+        "mean": 86.27725118483413,
+        "median": 85,
+        "min": 83,
+        "max": 92
+      },
+      "weatherScore": {
+        "count": 696,
+        "mean": 87.28735632183908,
+        "median": 87,
+        "min": 83,
+        "max": 92
+      },
+      "availability": {
+        "outside_model": 6,
+        "habitat_unknown": 268,
+        "ready": 422
+      },
+      "habitat": {
+        "outside-model": 6,
+        "unknown": 268,
+        "candidate": 422
+      }
+    }
+  ],
+  "weatherVectorAvailability": {
+    "ready": 308,
+    "stale": 0,
+    "insufficient_data": 0,
+    "error": 0
+  },
+  "acquisition": {
+    "realHttpRequests": 0,
+    "liveMeasurement": null,
+    "originalCaptureMeasurement": {
+      "realHttpRequests": 2,
+      "warmAdditionalRequests": 0,
+      "warmMs": 1.7350999999998749,
+      "coldAcquisitionIncludingDecodeMs": 514.1919,
+      "timings": [
+        {
+          "endpoint": "archive",
+          "stage": "start",
+          "elapsedMs": 2.5417999999999665
+        },
+        {
+          "endpoint": "forecast",
+          "stage": "start",
+          "elapsedMs": 138.70129999999995
+        },
+        {
+          "endpoint": "archive",
+          "stage": "response",
+          "elapsedMs": 416.4822999999999
+        },
+        {
+          "endpoint": "forecast",
+          "stage": "response",
+          "elapsedMs": 454.5564999999999
+        },
+        {
+          "endpoint": "forecast",
+          "stage": "decoded",
+          "elapsedMs": 461.1848
+        },
+        {
+          "endpoint": "archive",
+          "stage": "decoded",
+          "elapsedMs": 512.2938999999999
+        }
+      ],
+      "decodedBytesByEndpoint": [
+        313617,
+        137380
+      ],
+      "returnedLocations": [
+        [
+          {
+            "latitude": 46.291737,
+            "longitude": 14.664536,
+            "elevation": 734
+          },
+          {
+            "latitude": 46.362038,
+            "longitude": 14.832,
+            "elevation": 718
+          },
+          {
+            "latitude": 46.362038,
+            "longitude": 14.976,
+            "elevation": 451
+          },
+          {
+            "latitude": 46.362038,
+            "longitude": 15.119999,
+            "elevation": 386
+          },
+          {
+            "latitude": 46.432335,
+            "longitude": 14.711538,
+            "elevation": 1325
+          },
+          {
+            "latitude": 46.502636,
+            "longitude": 14.879614,
+            "elevation": 577
+          },
+          {
+            "latitude": 46.432335,
+            "longitude": 15,
+            "elevation": 914
+          },
+          {
+            "latitude": 46.432335,
+            "longitude": 15.144231,
+            "elevation": 496
+          },
+          {
+            "latitude": 46.572933,
+            "longitude": 14.903538,
+            "elevation": 520
+          },
+          {
+            "latitude": 46.572933,
+            "longitude": 15.048232,
+            "elevation": 377
+          },
+          {
+            "latitude": 46.502636,
+            "longitude": 15.168539,
+            "elevation": 818
+          }
+        ],
+        [
+          {
+            "latitude": 46.388206,
+            "longitude": 14.710788,
+            "elevation": 734
+          },
+          {
+            "latitude": 46.374233,
+            "longitude": 14.83164,
+            "elevation": 718
+          },
+          {
+            "latitude": 46.38236,
+            "longitude": 14.981137,
+            "elevation": 451
+          },
+          {
+            "latitude": 46.36812,
+            "longitude": 15.101924,
+            "elevation": 386
+          },
+          {
+            "latitude": 46.48156,
+            "longitude": 14.720133,
+            "elevation": 1325
+          },
+          {
+            "latitude": 46.47258,
+            "longitude": 14.86571,
+            "elevation": 577
+          },
+          {
+            "latitude": 46.45843,
+            "longitude": 14.98676,
+            "elevation": 914
+          },
+          {
+            "latitude": 46.461357,
+            "longitude": 15.112038,
+            "elevation": 496
+          },
+          {
+            "latitude": 46.565853,
+            "longitude": 14.875383,
+            "elevation": 520
+          },
+          {
+            "latitude": 46.573853,
+            "longitude": 15.025519,
+            "elevation": 377
+          },
+          {
+            "latitude": 46.53738,
+            "longitude": 15.117894,
+            "elevation": 818
+          }
+        ]
+      ]
+    },
+    "canonicalSuppliedSourceObjects": 22,
+    "legacyMockTransportInvocations": 2,
+    "sourceDecodedBytesByEndpoint": [
+      313617,
+      137380
+    ],
+    "note": "Offline fixture/replay; no HTTP. Production batching/warm dedupe also exercised under mocked HTTP in smoke test."
+  },
+  "timings": {
+    "fixtureLookupAndGenerationMs": 8.54340000000002,
+    "adapterMs": 154.33910000000003,
+    "evaluateIncludingInputWindowsMs": 165.8628,
+    "joinMs": 13.571500000000015,
+    "totalBuildMs": 376.922,
+    "hourlyLocationAdapters": 11,
+    "civilDailyAggregates": 737,
+    "targetInputBuilds": 308,
+    "scoreEvaluations": 308,
+    "distinctStoredDateInputs": 77,
+    "cellDateProfileEntries": 19488,
+    "naiveCellScoreEvaluations": 19488,
+    "note": "Hourly daily aggregates and weather scores shared across cells; production target-window validation still runs independently per profile (not claimed deduplicated CPU).",
+    "stages": {
+      "timestampIndex": {
+        "calls": 22,
+        "ms": 5.3375999999998385
+      },
+      "civilDailyAggregation": {
+        "calls": 737,
+        "ms": 41.66970000000026
+      },
+      "soilSampling": {
+        "calls": 77,
+        "ms": 94.50730000000033
+      },
+      "rollingWindowAssembly": {
+        "calls": 319,
+        "ms": 16.696199999999862
+      },
+      "productionScorer": {
+        "calls": 308,
+        "ms": 5.99819999999977
+      }
+    },
+    "instrumentationNote": "Synchronous wrappers around actual production functions, research process only; small timing overhead included. Nested timings must not be added twice.",
+    "materializeAllCellSummariesMs": 15.698100000000068,
+    "legacyComparisonMs": 63.54269999999997,
+    "serializationMs": 5.358099999999922,
+    "compressionMs": 7.042999999999893,
+    "wallMs": 510.88570000000004,
+    "processCpuUserMs": 531,
+    "processCpuSystemMs": 31
+  },
+  "memory": {
+    "processStart": {
+      "rss": 178352128,
+      "heapTotal": 194277376,
+      "heapUsed": 68219296,
+      "external": 2334963,
+      "arrayBuffers": 145627
+    },
+    "processEnd": {
+      "rss": 265871360,
+      "heapTotal": 211226624,
+      "heapUsed": 110770136,
+      "external": 3355936,
+      "arrayBuffers": 1135040
+    },
+    "processPeakRssBytes": 266964992,
+    "note": "Whole Node process incl TS compiler/static production imports/fixtures; NOT Android PSS and NOT isolated adapter allocation. Peak RSS measured by OS."
+  },
+  "size": {
+    "datasetJsonBytes": 949239,
+    "datasetGzipBytes": 40150,
+    "geometryJsonBytes": 184896,
+    "geometryGzipBytes": 21410
+  },
+  "legacy": {
+    "methodology": "Production getHeatmapWeatherBatch + assessHeatmapWeather; identical public coordinates and frozen source field. Legacy daily bins reconstructed with explicit base-date fixed offset. No live provider daily-product equality claimed.",
+    "weatherSummary": {
+      "cases": 88,
+      "comparable": 88,
+      "exact": 88,
+      "different": 0,
+      "categoryChanges": 0,
+      "availabilityChanges": 0,
+      "absoluteDelta": {
+        "count": 88,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "deltaHistogram": {
+        "0": 88
+      }
+    },
+    "cellWeightedSummary": {
+      "cases": 5568,
+      "comparable": 5568,
+      "exact": 5568,
+      "different": 0,
+      "categoryChanges": 0,
+      "availabilityChanges": 0,
+      "absoluteDelta": {
+        "count": 5568,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "deltaHistogram": {
+        "0": 5568
+      }
+    },
+    "candidateWeightedSummary": {
+      "cases": 4776,
+      "comparable": 4776,
+      "exact": 4776,
+      "different": 0,
+      "categoryChanges": 0,
+      "availabilityChanges": 0,
+      "absoluteDelta": {
+        "count": 4776,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0
+      },
+      "deltaHistogram": {
+        "0": 4776
+      }
+    },
+    "byProfileDate": [
+      {
+        "profile": "generic",
+        "date": "2026-10-18",
+        "cases": 11,
+        "comparable": 11,
+        "exact": 11,
+        "different": 0,
+        "categoryChanges": 0,
+        "availabilityChanges": 0,
+        "absoluteDelta": {
+          "count": 11,
+          "mean": 0,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deltaHistogram": {
+          "0": 11
+        }
+      },
+      {
+        "profile": "generic",
+        "date": "2026-10-19",
+        "cases": 11,
+        "comparable": 11,
+        "exact": 11,
+        "different": 0,
+        "categoryChanges": 0,
+        "availabilityChanges": 0,
+        "absoluteDelta": {
+          "count": 11,
+          "mean": 0,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deltaHistogram": {
+          "0": 11
+        }
+      },
+      {
+        "profile": "boletusEdulis",
+        "date": "2026-10-18",
+        "cases": 11,
+        "comparable": 11,
+        "exact": 11,
+        "different": 0,
+        "categoryChanges": 0,
+        "availabilityChanges": 0,
+        "absoluteDelta": {
+          "count": 11,
+          "mean": 0,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deltaHistogram": {
+          "0": 11
+        }
+      },
+      {
+        "profile": "boletusEdulis",
+        "date": "2026-10-19",
+        "cases": 11,
+        "comparable": 11,
+        "exact": 11,
+        "different": 0,
+        "categoryChanges": 0,
+        "availabilityChanges": 0,
+        "absoluteDelta": {
+          "count": 11,
+          "mean": 0,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deltaHistogram": {
+          "0": 11
+        }
+      },
+      {
+        "profile": "cantharellusCibarius",
+        "date": "2026-10-18",
+        "cases": 11,
+        "comparable": 11,
+        "exact": 11,
+        "different": 0,
+        "categoryChanges": 0,
+        "availabilityChanges": 0,
+        "absoluteDelta": {
+          "count": 11,
+          "mean": 0,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deltaHistogram": {
+          "0": 11
+        }
+      },
+      {
+        "profile": "cantharellusCibarius",
+        "date": "2026-10-19",
+        "cases": 11,
+        "comparable": 11,
+        "exact": 11,
+        "different": 0,
+        "categoryChanges": 0,
+        "availabilityChanges": 0,
+        "absoluteDelta": {
+          "count": 11,
+          "mean": 0,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deltaHistogram": {
+          "0": 11
+        }
+      },
+      {
+        "profile": "lactariusDeliciosus",
+        "date": "2026-10-18",
+        "cases": 11,
+        "comparable": 11,
+        "exact": 11,
+        "different": 0,
+        "categoryChanges": 0,
+        "availabilityChanges": 0,
+        "absoluteDelta": {
+          "count": 11,
+          "mean": 0,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deltaHistogram": {
+          "0": 11
+        }
+      },
+      {
+        "profile": "lactariusDeliciosus",
+        "date": "2026-10-19",
+        "cases": 11,
+        "comparable": 11,
+        "exact": 11,
+        "different": 0,
+        "categoryChanges": 0,
+        "availabilityChanges": 0,
+        "absoluteDelta": {
+          "count": 11,
+          "mean": 0,
+          "median": 0,
+          "min": 0,
+          "max": 0
+        },
+        "deltaHistogram": {
+          "0": 11
+        }
+      }
+    ],
+    "signedDelta": {
+      "count": 88,
+      "mean": 0,
+      "median": 0,
+      "min": 0,
+      "max": 0
+    }
+  },
+  "limitations": [
+    "Captured operational best-match weather; NOT a provider-run-pinned national publication or ecological validation.",
+    "Legacy fixed-offset DAILY bins reconstructed from the same hourly field; not proof of exact live provider daily-product equality.",
+    "Hourly adaptation shares civil days; existing target-window validation still repeats per profile.",
+    "No tile encoding, Android rendering, server deployment or national extrapolated completion-time guarantee."
+  ]
+}

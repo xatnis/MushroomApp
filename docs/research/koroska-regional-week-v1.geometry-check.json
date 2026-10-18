@@ -1,0 +1,17 @@
+{
+  "researchOnly": true,
+  "verificationDate": "2026-10-18",
+  "geometryFile": "koroska-regional-week-v1.geometry.geojson",
+  "geometryFingerprint": "bd6b2f8771a5f5765ca40df99d10bd1633ce7aeb51a9cc6138b19a79bd36d212",
+  "method": "Existing Python GIS venv: Shapely shape.is_valid and not is_empty; pyproj EPSG:4326 to EPSG:3035, sum projected polygon areas. Original regional habitat JSON for tree/source-pixel statistics.",
+  "cells": 696,
+  "validNonEmptyGeometries": 696,
+  "areaKm2": 680.334747051182,
+  "treeCoverFraction": {
+    "min": 0.1396,
+    "max": 1,
+    "mean": 0.8126285919540227
+  },
+  "cellsWithoutSourcePixels": 0,
+  "limitations": "Whole existing clipped polygons; centre-selected bbox is not an official administrative Koroška boundary. No new national habitat prepared. Not biological validation."
+}
