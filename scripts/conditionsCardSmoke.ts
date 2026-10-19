@@ -3,6 +3,7 @@ import { strictEqual, deepStrictEqual, ok } from 'node:assert';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { withoutMapForecast } from './mapForecastSourceGuards';
+import { withoutKoroskaShadow } from './koroskaShadowSourceGuards';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import ts from 'typescript';
@@ -105,7 +106,7 @@ const baseline = execFileSync('git', ['show', '8c70834:src/screens/MapScreen.tsx
 const heatmapLogic = (s: string) => s.slice(s.indexOf('  const selectHeatmapSpecies'), s.indexOf('  const heatmapAreaCardOpen')).replace("    if (mode !== 'map') return;\n", '');
 const heatmapSources = (s: string) => s.slice(s.indexOf('<GeoJSONSource id="regional-overview-source"'), s.indexOf('{locationGranted ?'))
   .replace(/              const \[longitude, latitude\] = event.nativeEvent.lngLat;\r?\n              graphMapPoint.current = \{ areaId, latitude, longitude \};\r?\n/, '');
-strictEqual(heatmapLogic(screen), heatmapLogic(baseline), 'heatmap/LOD/weather calculation untouched');
+strictEqual(heatmapLogic(withoutKoroskaShadow(screen)), heatmapLogic(baseline), 'production heatmap/LOD/weather calculation pinned; opt-in event isolation executed by koroskaShadowMapSmoke');
 strictEqual(heatmapSources(withoutMapForecast(screen)), heatmapSources(baseline), 'native heatmap sources/layers untouched; explicit forecast tap interception tested separately');
 const previousCard = functionText(execFileSync('git', ['show', '1d737ed:src/screens/MapScreen.tsx']).toString(), 'HeatmapAreaCard');
 const currentCard = functionText(screen, 'HeatmapAreaCard');

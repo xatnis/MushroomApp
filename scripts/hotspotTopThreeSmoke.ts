@@ -70,7 +70,7 @@ function inspect(n: ts.Node) {
   ts.forEachChild(n, inspect);
 }
 inspect(ast);
-const state: any = { controls: INITIAL_HEATMAP_CONTROLS, selectedId: 'old', showMyHotspots: false, mode: 'map', isFocused: true,
+const state: any = { controls: INITIAL_HEATMAP_CONTROLS, selectedId: 'old', showMyHotspots: false, mode: 'map', isFocused: true, shadow: { active: false },
   closeMapForecast() {}, currentMapForecast: undefined,
   topThreeVisible: true, heatmapEnabled: true, heatmapAreaCardOpen: false, listSort: 'conditions', query: 'hidden search',
   locationRequestGate: { cancel() {} }, cancelPendingHotspotFocus() {}, setLocating() {},

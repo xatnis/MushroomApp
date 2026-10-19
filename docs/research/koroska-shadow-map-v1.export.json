@@ -1,0 +1,51 @@
+{
+  "schema": "koroska-shadow-map-export-v1",
+  "captureId": "operational-20261019082412278-93e09f0a4610a740bf43",
+  "artifactDigest": "0190e9d55fb2a31a63a909359ecf8c5bbbc3d0136a38b25eb5aee7fd28682126",
+  "dates": [
+    "2026-10-19",
+    "2026-10-20",
+    "2026-10-21",
+    "2026-10-22",
+    "2026-10-23",
+    "2026-10-24",
+    "2026-10-25"
+  ],
+  "cells": 696,
+  "weather": 11,
+  "states": {
+    "ready": 16716,
+    "outside_model": 126,
+    "habitat_unknown": 2646
+  },
+  "artifactBytes": 212746,
+  "artifactGzipBytes": 19452,
+  "nativeSourceJsonBytes": 450073,
+  "nativeSourceGzipBytes": 20807,
+  "medianParseMs": 1.398899999999685,
+  "medianGeometryMs": 7.298699999999826,
+  "thousandPaintSwitchesMs": 1.3101999999998952,
+  "build": {
+    "adapterMs": 201.45769999999948,
+    "evaluateIncludingInputWindowsMs": 215.49370000000044,
+    "joinMs": 9.584299999999985,
+    "totalBuildMs": 471.60079999999994,
+    "hourlyLocationAdapters": 11,
+    "civilDailyAggregates": 737,
+    "targetInputBuilds": 308,
+    "scoreEvaluations": 308,
+    "distinctStoredDateInputs": 77,
+    "cellDateProfileEntries": 19488,
+    "naiveCellScoreEvaluations": 19488,
+    "note": "Hourly daily aggregates and weather scores shared across cells; production target-window validation still runs independently per profile (not claimed deduplicated CPU)."
+  },
+  "totalMs": 1563.2141,
+  "processCpu": {
+    "user": 1687000,
+    "system": 219000
+  },
+  "peakRssBytes": 278036480,
+  "httpRequests": 0,
+  "nativeFrameTiming": "not measured",
+  "note": "Windows/Node offline export, not Android. Immutable source and per-switch paint only."
+}

@@ -42,6 +42,9 @@ import { SevenDayConditionsModal, type SevenDayLocation } from '../components/Se
 import { forecastPointFromTap, mapForecastLocation, type MapForecastRequest } from '../domain/mapForecast';
 import { compactMapForecastHeight } from '../components/mapForecastPresentation';
 import { beginPointTiming } from '../services/pointTiming';
+/* KOROSKA_SHADOW_BEGIN */
+import { useKoroskaShadow } from '../experimental/useKoroskaShadow';
+/* KOROSKA_SHADOW_END */
 
 const MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const SLOVENIA_CENTER: [number, number] = [14.82, 46.12];
@@ -155,6 +158,12 @@ export function MapScreen() {
   // A coordinate from a previous layer mode/session is not an explicit current selection.
   useEffect(() => { graphMapPoint.current = undefined; }, [heatmapEnabled, isFocused]);
   const heatmapProfileId = mapRenderContext.current.targetProfile, heatmapTargetDay = mapRenderContext.current.dayMode;
+  /* KOROSKA_SHADOW_BEGIN */
+  const shadow = useKoroskaShadow({ available: isFocused && mode === 'map' && mapReady && !currentMapForecast && !cameraTarget,
+    initialProfile: heatmapProfileId, database: db, fillPaint: HEATMAP_FILL_PAINT, borderPaint: HEATMAP_BORDER_PAINT, selectedPaint: HEATMAP_SELECTED_PAINT,
+    onConsumeTap: () => { suppressMapPressUntil.current = Date.now() + 300; },
+    onShowRegion: () => camera.current?.easeTo({ center: [14.85, 46.47], zoom: 10.3, duration: 500, padding: { top: 0, bottom: 0, left: 0, right: 0 } }) });
+  /* KOROSKA_SHADOW_END */
   const [heatmapBundle, setHeatmapBundle] = useState<HeatmapPilotBundle>();
   const [heatmapLoading, setHeatmapLoading] = useState(false);
   const [heatmapError, setHeatmapError] = useState<string>();
@@ -190,6 +199,9 @@ export function MapScreen() {
   const overviewPrefetchGate = useRef(createHeatmapRequestGate()).current;
   const [overviewCoverageDiagnostics] = useState(() => createOverviewCoverageDiagnostics());
   const observeCameraZoom = (zoom: number, gestureBounds?: Bounds) => {
+    /* KOROSKA_SHADOW_BEGIN */
+    if (shadow.active) return;
+    /* KOROSKA_SHADOW_END */
     if (mode !== 'map') return;
     if (!Number.isFinite(zoom)) return;
     cameraZoom.current = zoom;
@@ -213,6 +225,17 @@ export function MapScreen() {
     }
   };
   const [overviewTapped, setOverviewTapped] = useState(false);
+  /* KOROSKA_SHADOW_BEGIN */
+  useEffect(() => {
+    if (shadow.active) return;
+    const previous = shadow.consumeViewport();
+    if (previous) {
+      setCameraMoving(false); observeCameraZoom(previous.zoom);
+      if (previous.bounds?.length === 4 && previous.bounds.every(Number.isFinite)) setVisibleBounds(previous.bounds);
+      if (heatmapEnabled) updateHeatmapNavigation({ viewport: { center: previous.center, zoom: previous.zoom } });
+    }
+  }, [shadow.active]);
+  /* KOROSKA_SHADOW_END */
   const heatmapRequestGate = useRef(createHeatmapRequestGate()).current;
   useEffect(() => {
     if (!session) { setFriendHotspots([]); return; }
@@ -290,6 +313,9 @@ export function MapScreen() {
   const openMapForecast = () => currentMapForecast ? closeMapForecast() : showPointForecast(selectedForecastLocation(), selectedId);
   const mapSearchVisible = mode === 'list' || mapSearchExpanded || Boolean(query.trim());
   const toggleMapSearch = () => {
+    /* KOROSKA_SHADOW_BEGIN */
+    if (shadow.active) shadow.exit();
+    /* KOROSKA_SHADOW_END */
     const visible = mapSearchVisible && !currentMapForecast;
     closeMapForecast();
     if (visible) { setMapSearchExpanded(false); setQuery(''); Keyboard.dismiss(); }
@@ -307,6 +333,9 @@ export function MapScreen() {
 
   useEffect(() => {
     if (mode !== 'map' || !heatmapEnabled || cameraMoving || cameraTarget || !requiredPointsKey || !viewportCovered) return;
+    /* KOROSKA_SHADOW_BEGIN */
+    if (shadow.active) return;
+    /* KOROSKA_SHADOW_END */
     const requestId = heatmapRequestGate.next();
     const controller = new AbortController();
     setHeatmapLoading(true);
@@ -337,13 +366,16 @@ export function MapScreen() {
       }); }, 250);
     if (typeof __DEV__ !== 'undefined' && __DEV__) console.info('[Heatmap viewport]', { visibleCellCount: visibleViewportFeatures.length, bufferedCellCount: viewportFeatures.length, requiredPointCount: requiredPointsKey.split('|').length });
     return () => { cancelSettledLoad(); heatmapRequestGate.invalidate(); controller.abort(); };
-  }, [mode, db, requiredPointsKey, viewportCovered, cameraMoving, cameraTarget, heatmapEnabled, heatmapRequestGate, heatmapRetry, activeWeatherPoints]);
+  }, [mode, db, requiredPointsKey, viewportCovered, cameraMoving, cameraTarget, heatmapEnabled, heatmapRequestGate, heatmapRetry, activeWeatherPoints, shadow.active]);
 
   // Only settled, descending DETAIL zoom near 8.5 may speculate on at most six
   // coarse points. It never changes LOD/UI loading, shares cache/dedupe/budget,
   // and skips rather than waiting on quota. New gestures invalidate queued work.
   useEffect(() => {
     if (mode !== 'map' || !heatmapEnabled || heatmapLod !== 'detail' || cameraMoving || cameraTarget || !overviewPrefetchBounds) return;
+    /* KOROSKA_SHADOW_BEGIN */
+    if (shadow.active) return;
+    /* KOROSKA_SHADOW_END */
     const requestId = overviewPrefetchGate.next(), controller = new AbortController();
     const visible = OVERVIEW_INDEX.visible(overviewPrefetchBounds, undefined, 0);
     const buffered = OVERVIEW_INDEX.visible(overviewPrefetchBounds);
@@ -358,7 +390,7 @@ export function MapScreen() {
       }).catch(() => { /* Optional prefetch failure never affects the foreground UI. */ });
     }, 250);
     return () => { cancel(); overviewPrefetchGate.invalidate(); controller.abort(); };
-  }, [mode, db, heatmapEnabled, heatmapLod, cameraMoving, cameraTarget, overviewPrefetchBounds, overviewPrefetchGate]);
+  }, [mode, db, heatmapEnabled, heatmapLod, cameraMoving, cameraTarget, overviewPrefetchBounds, overviewPrefetchGate, shadow.active]);
 
   useEffect(() => {
     if (!searchOpen) {
@@ -525,8 +557,11 @@ export function MapScreen() {
   // A single listener owns this overlay hierarchy. Returning only swaps overlays;
   // it never invokes focusHotspot or navigation, nor starts a camera animation.
   useEffect(() => {
-    if (!isFocused || mode !== 'map' || (!heatmapEnabled && !currentMapForecast)) return;
+    if (!isFocused || mode !== 'map' || (!heatmapEnabled && !currentMapForecast && !shadow.active)) return;
     const listener = BackHandler.addEventListener('hardwareBackPress', () => {
+      /* KOROSKA_SHADOW_BEGIN */
+      if (shadow.active) return shadow.back();
+      /* KOROSKA_SHADOW_END */
       if (currentMapForecast) {
         if (currentMapForecast.phase === 'full' || currentMapForecast.phase === 'graphs') setMapForecast(previous => previous && ({ ...previous, phase: 'preview' }));
         else closeMapForecast();
@@ -540,7 +575,7 @@ export function MapScreen() {
       return false;
     });
     return () => listener.remove();
-  }, [isFocused, mode, heatmapEnabled, heatmapControls, heatmapAreaCardOpen, topThreeOriginPopup, topThreeVisible, currentMapForecast]);
+  }, [isFocused, mode, heatmapEnabled, heatmapControls, heatmapAreaCardOpen, topThreeOriginPopup, topThreeVisible, currentMapForecast, shadow.active]);
 
   const selectPlace = (place: PlaceSearchResult) => {
     setMapSearchExpanded(false);
@@ -601,7 +636,7 @@ export function MapScreen() {
           <Ionicons name={mapSearchVisible && !currentMapForecast ? 'close' : 'search'} size={22} color={colors.primary} />
         </Pressable> : null}</View>
     </View>
-    <View style={styles.controls}>
+    <View style={[styles.controls, shadow.active && { display: 'none' }]}>
       {mapSearchVisible && !currentMapForecast ? <Field label="Poišči" placeholder="Poišči kraj, rastišče ali vrsto" value={query} onChangeText={setQuery} autoCorrect={false} returnKeyType="search" autoFocus={mode === 'map'} /> : null}
       {mode === 'map' ? <View style={styles.mapModeRow}><View style={styles.mapModeSwitch} accessibilityRole="tablist">
         <Pressable
@@ -636,6 +671,9 @@ export function MapScreen() {
           <Text style={[styles.mapModeText, heatmapEnabled && styles.mapModeTextActive]}>Pogoji</Text>
         </Pressable>
       </View><MapForecastEntry onPress={openMapForecast} expanded={Boolean(currentMapForecast)} /></View> : null}
+      {/* KOROSKA_SHADOW_BEGIN */}
+      {shadow.entry}
+      {/* KOROSKA_SHADOW_END */}
       {searchOpen && !currentMapForecast ? <View style={styles.searchPanel}>
         <ScrollView style={styles.searchScroll} contentContainerStyle={styles.searchContent} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
           {placeSearchLoading ? <ActivityIndicator color={colors.primary} /> : null}
@@ -679,6 +717,9 @@ export function MapScreen() {
           }).catch(() => { /* The region event supplies bounds if the native map is not ready yet. */ });
         }}
         onRegionWillChange={(event) => {
+          /* KOROSKA_SHADOW_BEGIN */
+          if (shadow.active) return;
+          /* KOROSKA_SHADOW_END */
           if (mode !== 'map') return;
           if (event.nativeEvent.userInteraction) cancelPendingHotspotFocus();
           setOverviewPrefetchBounds(undefined);
@@ -687,12 +728,18 @@ export function MapScreen() {
           setCameraMoving(true);
         }}
         onRegionIsChanging={(event) => {
+          /* KOROSKA_SHADOW_BEGIN */
+          if (shadow.active) return;
+          /* KOROSKA_SHADOW_END */
           if (mode === 'map' && event.nativeEvent.userInteraction) cancelPendingHotspotFocus();
           observeCameraZoom(event.nativeEvent.zoom, event.nativeEvent.bounds);
         }}
         onDidFinishRenderingFrame={visual.onFullyRendered}
         onDidFinishRenderingFrameFully={visual.onFullyRendered}
         onRegionDidChange={(event) => {
+          /* KOROSKA_SHADOW_BEGIN */
+          if (shadow.active) { mapWasMoved.current = true; shadow.rememberViewport(event.nativeEvent); return; }
+          /* KOROSKA_SHADOW_END */
           if (mode !== 'map') return;
           setCameraMoving(false);
           if (event.nativeEvent.userInteraction) mapWasMoved.current = true;
@@ -712,6 +759,9 @@ export function MapScreen() {
         }}
         onPress={(event) => {
           if (Date.now() <= suppressMapPressUntil.current) return;
+          /* KOROSKA_SHADOW_BEGIN */
+          if (shadow.active) { shadow.clearSelection(); return; }
+          /* KOROSKA_SHADOW_END */
           if (currentMapForecast?.phase === 'picking') {
             const point = forecastPointFromTap(event.nativeEvent.lngLat);
             if (point) showPointForecast(point);
@@ -722,6 +772,9 @@ export function MapScreen() {
           updateHeatmapNavigation({ selectedAreaId: undefined });
         }}
         onLongPress={(event) => {
+          /* KOROSKA_SHADOW_BEGIN */
+          if (shadow.active) return;
+          /* KOROSKA_SHADOW_END */
           const [longitude, latitude] = event.nativeEvent.lngLat;
           navigation.navigate('Record', { latitude, longitude });
         }}
@@ -729,6 +782,9 @@ export function MapScreen() {
         <Camera ref={camera} initialViewState={heatmapNavigation.viewport ?? { center: SLOVENIA_CENTER, zoom: 7 }} />
         <GeoJSONSource id="regional-overview-source" data={visual.overviewData}
           onPress={visual.interactionLod === 'overview' ? (event) => {
+            /* KOROSKA_SHADOW_BEGIN */
+            if (shadow.active) return;
+            /* KOROSKA_SHADOW_END */
             event.stopPropagation();
             suppressMapPressUntil.current = Date.now() + 300;
             if (currentMapForecast?.phase === 'picking') {
@@ -739,15 +795,18 @@ export function MapScreen() {
             setOverviewTapped(true);
           } : undefined}>
           <Layer id="regional-overview-fill" type="fill" minzoom={HEATMAP_NATIVE_RANGES.overview.min} maxzoom={HEATMAP_NATIVE_RANGES.overview.max}
-            layout={{ visibility: visual.overviewVisible ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
+            layout={{ visibility: !shadow.active && visual.overviewVisible ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
           <Layer id="regional-overview-border" type="line" afterId="regional-overview-fill" minzoom={HEATMAP_NATIVE_RANGES.overview.min} maxzoom={HEATMAP_NATIVE_RANGES.overview.max}
-            layout={{ visibility: visual.overviewVisible ? 'visible' : 'none' }}
+            layout={{ visibility: !shadow.active && visual.overviewVisible ? 'visible' : 'none' }}
             paint={{ ...HEATMAP_BORDER_PAINT, 'line-opacity': 0.2, 'line-width': 0.4 }} />
         </GeoJSONSource>
         <GeoJSONSource
           id="mushroom-heatmap-pilot"
           data={visual.detailData}
           onPress={visual.interactionLod === 'detail' ? (event) => {
+            /* KOROSKA_SHADOW_BEGIN */
+            if (shadow.active) return;
+            /* KOROSKA_SHADOW_END */
             event.stopPropagation();
             const areaId = event.nativeEvent.features[0]?.properties?.id;
             if (currentMapForecast?.phase === 'picking') {
@@ -764,25 +823,28 @@ export function MapScreen() {
             }
           } : undefined}
         >
-          <Layer id="mushroom-heatmap-fill" type="fill" afterId="regional-overview-border" minzoom={HEATMAP_NATIVE_RANGES.detail.min} maxzoom={HEATMAP_NATIVE_RANGES.detail.max} layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
-          <Layer id="mushroom-heatmap-borders" type="line" afterId="mushroom-heatmap-fill" minzoom={HEATMAP_NATIVE_RANGES.detail.min} maxzoom={HEATMAP_NATIVE_RANGES.detail.max} layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_BORDER_PAINT} />
+          <Layer id="mushroom-heatmap-fill" type="fill" afterId="regional-overview-border" minzoom={HEATMAP_NATIVE_RANGES.detail.min} maxzoom={HEATMAP_NATIVE_RANGES.detail.max} layout={{ visibility: !shadow.active && visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_FILL_PAINT} />
+          <Layer id="mushroom-heatmap-borders" type="line" afterId="mushroom-heatmap-fill" minzoom={HEATMAP_NATIVE_RANGES.detail.min} maxzoom={HEATMAP_NATIVE_RANGES.detail.max} layout={{ visibility: !shadow.active && visual.detailVisible ? 'visible' : 'none' }} paint={HEATMAP_BORDER_PAINT} />
           <Layer
             id="mushroom-heatmap-selected"
             type="line"
             afterId="mushroom-heatmap-borders"
             minzoom={HEATMAP_NATIVE_RANGES.detail.min}
             maxzoom={HEATMAP_NATIVE_RANGES.detail.max}
-            layout={{ visibility: visual.detailVisible ? 'visible' : 'none' }}
+            layout={{ visibility: !shadow.active && visual.detailVisible ? 'visible' : 'none' }}
             filter={['==', ['get', 'id'], selectedHeatmapAreaId ?? '']}
             paint={HEATMAP_SELECTED_PAINT}
           />
         </GeoJSONSource>
+        {/* KOROSKA_SHADOW_BEGIN */}
+        {shadow.layer}
+        {/* KOROSKA_SHADOW_END */}
         {locationGranted ? <UserLocation animated accuracy minDisplacement={3} /> : null}
         {currentMapForecast?.location?.source === 'map-point' ? <Marker id="seven-day-explicit-point" lngLat={[currentMapForecast.location.longitude, currentMapForecast.location.latitude]} anchor="bottom">
           <View accessible accessibilityLabel="Izbrana točka sedemdnevne napovedi" style={styles.forecastMarker}><Ionicons name="location" size={28} color={colors.primary} /></View>
         </Marker> : null}
         {ownerFilter === 'mine' ? <HotspotConditionsMarkers hotspots={filtered} selectedId={selectedId}
-          visible={!heatmapEnabled || showMyHotspots} enabled={heatmapEnabled && mode === 'map'} profile={heatmapProfileId} day={heatmapTargetDay} bounds={visibleBounds} onSelect={hotspot => {
+          visible={(!heatmapEnabled || showMyHotspots) && !shadow.active} enabled={heatmapEnabled && mode === 'map'} profile={heatmapProfileId} day={heatmapTargetDay} bounds={visibleBounds} onSelect={hotspot => {
           const pickingForecast = currentMapForecast?.phase === 'picking';
           suppressMapPressUntil.current = Date.now() + 300;
           updateHeatmapNavigation({ selectedAreaId: undefined });
@@ -794,8 +856,8 @@ export function MapScreen() {
         </Marker>)}
       </Map>
       <Pressable accessibilityRole="button" accessibilityLabel="Prikaži mojo lokacijo" onPress={() => void recenter()} style={styles.recenter}><Ionicons name="locate" size={25} color={colors.primary} /></Pressable>
-      <View pointerEvents={currentMapForecast ? 'none' : 'box-none'} accessibilityElementsHidden={Boolean(currentMapForecast)}
-        importantForAccessibility={currentMapForecast ? 'no-hide-descendants' : 'auto'} style={[StyleSheet.absoluteFill, currentMapForecast && styles.forecastOccluded]}>
+      <View pointerEvents={currentMapForecast || shadow.active ? 'none' : 'box-none'} accessibilityElementsHidden={Boolean(currentMapForecast || shadow.active)}
+        importantForAccessibility={currentMapForecast || shadow.active ? 'no-hide-descendants' : 'auto'} style={[StyleSheet.absoluteFill, (currentMapForecast || shadow.active) && styles.forecastOccluded]}>
       {heatmapEnabled && !heatmapAreaCardOpen && !heatmapControlsVisible ? <View ref={contextView} collapsable={false} onLayout={event => {
         setMapControlsBottom(event.nativeEvent.layout.y + event.nativeEvent.layout.height); refreshPendingFocusLayout();
       }} style={styles.contextControls}><Pressable
@@ -902,9 +964,15 @@ export function MapScreen() {
           maxHeight={compactMapForecastHeight(mapViewportHeight, spacing.lg)} onClose={closeMapForecast}
           onFull={(day, date) => setMapForecast(previous => previous && previous.location === currentMapForecast.location ? { ...previous, phase: 'full', initialDay: day, selectedDate: date } : previous)} />
       </View> : null}
+      {/* KOROSKA_SHADOW_BEGIN */}
+      {shadow.overlay}
+      {/* KOROSKA_SHADOW_END */}
     </View>{mode === 'list' ? <View style={styles.listOverlay}><View style={styles.list}>{ownerFilter === 'friends' ? friendHotspots.map((hotspot) => <Pressable key={hotspot.id} onPress={() => void Linking.openURL(`geo:${hotspot.latitude},${hotspot.longitude}?q=${hotspot.latitude},${hotspot.longitude}`)}><Card><Text style={commonStyles.heading}>{hotspot.title || 'Deljeno rastišče'}</Text><Text style={commonStyles.muted}>@{hotspot.owner_username} · točna lokacija, izrecno deljena s prijatelji</Text></Card></Pressable>) : filtered.length
       ? <HotspotRankingList hotspots={filtered} finds={finds} context={conditionsContext} onContext={setConditionsContext} sort={listSort} onSort={setListSort} onShowMap={showRankingHotspot} />
       : <EmptyState title={query.trim() ? 'Ni zadetkov med rastišči' : 'Še ni rastišč'} message={query.trim() ? 'Poskusite z drugim nazivom ali vrsto.' : 'Dodajte prvo rastišče z gumbom + ali z dolgim pritiskom na zemljevid.'} />}</View></View> : null}</View>
+    {/* KOROSKA_SHADOW_BEGIN */}
+    {shadow.modal}
+    {/* KOROSKA_SHADOW_END */}
     {currentMapForecast?.phase === 'full' && currentMapForecast.location ? <SevenDayConditionsModal visible
       location={currentMapForecast.location} profileId={currentMapForecast.profileId} initialDay={currentMapForecast.initialDay} database={db}
       selectedDate={currentMapForecast.selectedDate}

@@ -1,6 +1,7 @@
 import { strictEqual, ok, deepStrictEqual } from 'node:assert';
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { readFileSync } from 'node:fs';
+import { withoutKoroskaShadow } from './koroskaShadowSourceGuards';
 import { OVERVIEW_INDEX, OVERVIEW_WEATHER_POINTS, buildOverviewCollection, selectHeatmapLod, overviewHabitatState } from '../src/domain/heatmap/lod';
 import { REGIONAL_INDEX, HEATMAP_PILOT_METADATA, buildHeatmapRenderCollection } from '../src/domain/heatmap/regional';
 import { prioritizedWeatherPointIds, type Bounds } from '../src/domain/heatmap/spatial';
@@ -23,7 +24,7 @@ for (const initial of ['overview', 'detail'] as const) {
 strictEqual(overviewHabitatState({ candidate: .1, unknown: .9, 'outside-model': 0 }), 'unknown');
 strictEqual(overviewHabitatState({ candidate: .6, unknown: .4, 'outside-model': 0 }), 'candidate');
 strictEqual(overviewHabitatState({ candidate: .1, unknown: .1, 'outside-model': .8 }), 'outside-model');
-const mapSource = readFileSync('src/screens/MapScreen.tsx', 'utf8');
+const mapSource = withoutKoroskaShadow(readFileSync('src/screens/MapScreen.tsx', 'utf8'));
 ok(mapSource.includes('onDidFinishRenderingFrameFully={visual.onFullyRendered}'));
 ok(mapSource.includes('layout={{ visibility: visual.detailVisible'));
 ok(mapSource.includes('layout={{ visibility: visual.overviewVisible'));

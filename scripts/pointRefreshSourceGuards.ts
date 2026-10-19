@@ -1,7 +1,8 @@
+import { withoutKoroskaShadow } from './koroskaShadowSourceGuards';
 /** Narrow allowlist for diagnostics and equivalent sampler short-circuiting, NOT weather/model changes.
  * pointRefreshSmoke executes old/new hooks and actual production acquisition; numerical goldens stay pinned. */
 export function withoutPointDiagnostics(path: string, text: string): string {
-  let s = text.replace(/\r\n/g, '\n');
+  let s = (path === 'src/screens/MapScreen.tsx' ? withoutKoroskaShadow(text) : text).replace(/\r\n/g, '\n');
   if (path === 'src/screens/MapScreen.tsx') s = s.replace("import { beginPointTiming } from '../services/pointTiming';\n", '')
     .replace('    if (location) beginPointTiming(location);\n', '');
   if (path === 'src/domain/sevenDayConditions.ts') s = s.replace(', onInputsBuilt?: () => void', '')

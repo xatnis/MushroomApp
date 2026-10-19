@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { assertPointMigrationAwareSource } from './pointMigrationSourceGuards';
 import { execFileSync } from 'node:child_process';
 import { runInNewContext } from 'node:vm';
+import { withoutKoroskaShadow } from './koroskaShadowSourceGuards';
 import ts from 'typescript';
 import { conditionsContextFromNavigation, conditionsNavigationPatch } from '../src/domain/hotspotHeatmap';
 import { DEFAULT_HEATMAP_NAVIGATION_STATE, patchHeatmapNavigationState } from '../src/domain/heatmap/navigationState';
@@ -11,7 +12,7 @@ import { INITIAL_HEATMAP_CONTROLS, heatmapControlsReducer, heatmapControlsPanelV
 import { rankingDetailParams } from '../src/domain/hotspotRanking';
 
 // Run actual Map handlers + render-input derivation, not a replacement state machine.
-const source = readFileSync('src/screens/MapScreen.tsx', 'utf8');
+const source = withoutKoroskaShadow(readFileSync('src/screens/MapScreen.tsx', 'utf8'));
 const ast = ts.createSourceFile('MapScreen.tsx', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const vars = new Map<string, string>(), effects: string[] = [];
 function visit(n: ts.Node) {

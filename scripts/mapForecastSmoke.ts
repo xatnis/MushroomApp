@@ -43,7 +43,7 @@ const attrs = (n: typeof elements[number], key: string) => {
   return (attr.initializer as ts.JsxExpression).expression!.getText(ast);
 };
 const element = (name: string, condition: (n: typeof elements[number]) => boolean = () => true) => elements.find(n => tag(n).tagName.getText(ast) === name && condition(n))!;
-const state: any = { isFocused: true, mode: 'map', ownerFilter: 'mine', heatmapEnabled: true, forecastEnvironment: 'true/mine', mapForecast: undefined,
+const state: any = { isFocused: true, mode: 'map', ownerFilter: 'mine', heatmapEnabled: true, forecastEnvironment: 'true/mine', mapForecast: undefined, shadow: { active: false },
   beginPointTiming() {},
   selectedId: undefined, graphMapPoint: { current: undefined }, selectedHeatmapAreaId: undefined, heatmapAreaLocality: undefined,
   conditionsContext: { targetProfile: 'cantharellusCibarius', dayMode: 'tomorrow' }, mapForecastLocation, forecastPointFromTap,

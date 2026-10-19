@@ -44,7 +44,7 @@ strictEqual(recenter.length, 1); strictEqual(recenter[0].parent, nativeMap.paren
 ok(tag(recenter[0]).attributes.getText(ast).includes('accessibilityRole="button"'));
 const state: any = { colors, radii, spacing, RECENTER_SIZE: 48, StyleSheet: { create: (v: any) => v },
   View: 'View', Text: 'Text', Chip: 'Chip', Pressable: 'Pressable', Field: 'Field', Ionicons: 'Icon', commonStyles: {},
-  mode: 'map', query: '', mapSearchExpanded: false, currentMapForecast: undefined, hotspots: Array(9).fill({}),
+  mode: 'map', query: '', mapSearchExpanded: false, currentMapForecast: undefined, shadow: { active: false }, hotspots: Array(9).fill({}),
   dismissals: 0, Keyboard: { dismiss: () => state.dismissals++ }, camera: {}, context: {}, source: {}, writes: 0,
   setQuery: (q: string) => state.query = q, setMapSearchExpanded: (v: boolean) => state.mapSearchExpanded = v,
   closeMapForecast: () => state.currentMapForecast = undefined, switchHotspotView: (mode: string) => state.mode = mode,
