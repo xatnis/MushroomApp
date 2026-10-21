@@ -12,6 +12,7 @@ import { compactForecastHasDateStrip, forecastComparison, forecastDateLabel } fr
 import { slDateTime } from '../domain/format';
 import { colors, radii, spacing } from '../theme';
 import { markPointTiming } from '../services/pointTiming';
+import { PointHabitatContext } from './PointHabitatContext';
 
 const ignoreSnapshot = () => {}; // Map detail must never synchronize the unrelated Razmere location.
 export function MapForecastEntry({ onPress, expanded = false, compact = false }: { onPress: () => void; expanded?: boolean; compact?: boolean }) {
@@ -62,6 +63,7 @@ export function SevenDayMapForecastPreview({ location, database, profileId, init
           if (!announced.current && handle != null) { announced.current = true; AccessibilityInfo.setAccessibilityFocus(handle); }
         }} accessibilityLabel={`Napoved pogojev za ${displayName}, 7 dni`} numberOfLines={1} ellipsizeMode="tail" style={styles.title}>{displayName}</Text>
         <Text numberOfLines={1} style={styles.secondary}>{MUSHROOM_WEATHER_PROFILES[profileId].label}</Text>
+        {showDates ? <PointHabitatContext compact latitude={location.latitude} longitude={location.longitude} profileId={profileId} /> : null}
         <Text numberOfLines={1} style={styles.secondary}>{conditionsEnabled ? `Zemljevid: ${mapDayLabel}${mapProfileId !== profileId ? ` · ${MUSHROOM_WEATHER_PROFILES[mapProfileId].label}` : ''}` : 'Zemljevid: Rastišča'}</Text>
       </View><Close onClose={onClose} /></View>
       {week.loading ? <View style={styles.loading} accessibilityLiveRegion="polite"><ActivityIndicator color={colors.primary} />
@@ -81,7 +83,7 @@ export function SevenDayMapForecastPreview({ location, database, profileId, init
       </ScrollView> : null}
       {selected ? <View style={styles.detail} accessibilityLiveRegion="polite">
         <Text accessibilityRole="header" accessibilityLabel={`Napoved točke: ${forecastDateLabel(selected.targetLocalDate)}`} style={styles.name}>Napoved: {forecastDateLabel(selected.targetLocalDate)}</Text>
-        <Text style={styles.score}>{selected.score == null ? 'Ocena ni na voljo' : `${selected.score}/100 · ${selected.label}`}</Text>
+        <Text style={styles.score}>{selected.score == null ? 'Ocena ni na voljo' : `Vremenski pogoji: ${selected.score}/100 · ${selected.label}`}</Text>
         <Text style={styles.context}>{forecastComparison(selected, week.results?.[0], week.snapshot)}</Text>
         {selected.score == null ? <Text style={styles.secondary}>{selected.missing[0] ?? (selected.status === 'error' ? 'Vremenski podatki niso dosegljivi.' : 'Manjkajo potrebni modelni vhodi.')}</Text> : null}
       </View> : null}

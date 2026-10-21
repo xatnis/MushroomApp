@@ -88,7 +88,7 @@ ok(state.styles.compactHeader.paddingBottom < state.styles.header.paddingBottom)
 const file = resolve('src/components/SevenDayMapForecast.tsx'), requireHere = createRequire(file), Module = requireHere('node:module'), mod = new Module(file);
 mod.filename = file; mod.paths = Module._nodeModulePaths(resolve('src/components'));
 let open = false, hookCalls = 0, graphs = 0, saves = 0, details = 0, restores = 0;
-mod.require = (id: string) => id === 'react/jsx-runtime' ? { jsx, jsxs: jsx } : id === 'react' ? {
+mod.require = (id: string) => id === './PointHabitatContext' ? { PointHabitatContext: 'PointHabitatContext' } : id === 'react/jsx-runtime' ? { jsx, jsxs: jsx } : id === 'react' ? {
   useState: () => [open, (v: boolean) => open = v], useRef: (initial: any) => ({ current: initial }) }
   : id === 'react-native' ? { ...Object.fromEntries(['View','Text','Pressable','Modal','ScrollView'].map(t => [t,t])), StyleSheet: { create: (v: any) => v, absoluteFill: {} } }
   : id === '@expo/vector-icons' ? { Ionicons: 'Icon' }

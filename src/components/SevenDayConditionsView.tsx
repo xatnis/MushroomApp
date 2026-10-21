@@ -11,6 +11,7 @@ import { advancedFactors, advancedExplanation } from './conditionsAdvancedPresen
 import { useSevenDayConditions } from '../services/useSevenDayConditions';
 import { AppButton, Card, commonStyles } from './ui';
 import { colors, radii, spacing } from '../theme';
+import { PointHabitatContext } from './PointHabitatContext';
 
 export interface SevenDayLocation { latitude: number; longitude: number; name: string; source?: 'conditions' | 'map-point' | 'hotspot' }
 const dateLabel = (date: string) => validWeatherDate(date) ? new Intl.DateTimeFormat('sl-SI', { timeZone: WEATHER_TIMEZONE, weekday: 'short', day: 'numeric', month: 'numeric' }).format(new Date(date + 'T12:00:00Z')) : date;
@@ -52,6 +53,7 @@ export function SevenDayContent({ location, database, profileId, onProfileChange
       {Object.values(MUSHROOM_WEATHER_PROFILES).map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.label} accessibilityState={{ selected: profileId === item.id }}
         onPress={() => onProfileChange(item.id)} style={[styles.chip, profileId === item.id && styles.active]}><Text style={[styles.action, profileId === item.id && styles.activeText]}>{item.label}</Text></Pressable>)}
     </ScrollView>
+    {!week.results ? <PointHabitatContext latitude={location.latitude} longitude={location.longitude} profileId={profileId} /> : null}
     {week.loading ? <View accessibilityLiveRegion="polite" style={styles.pending}><ActivityIndicator color={colors.primary} /><Text style={commonStyles.body}>Preračunavam sedemdnevne razmere ...</Text></View>
       : week.error ? <><Text accessibilityLiveRegion="polite" style={commonStyles.body}>{week.error}</Text><AppButton title="Poskusi znova" onPress={week.retry} /></> : null}
     {week.results ? <>
@@ -69,7 +71,8 @@ export function SevenDayContent({ location, database, profileId, onProfileChange
       </ScrollView>
       {selected ? <Card>
         <Text accessibilityRole="header" style={commonStyles.heading}>{dateLabel(selected.targetLocalDate)} · {profile.label}</Text>
-        <Text style={styles.score}>{selected.score == null ? 'Ocena ni na voljo' : `${selected.score}/100 · ${selected.label}`}</Text>
+        <Text style={styles.score}>{selected.score == null ? 'Ocena ni na voljo' : `Vremenski pogoji: ${selected.score}/100 · ${selected.label}`}</Text>
+        <PointHabitatContext latitude={location.latitude} longitude={location.longitude} profileId={profileId} />
         {selected.score != null ? <Text style={commonStyles.body}>{advancedExplanation(selected.canonical)}</Text> : selected.missing.map(reason => <Text key={reason} style={commonStyles.body}>{reason}</Text>)}
         <Text style={commonStyles.muted}>{selected.componentsVerified ? 'Razpoložljivi prispevki modela; ne nadomeščajo manjkajoče ocene.' : 'Prispevkov iz neusklajenega snapshota ne prikazujemo kot potrjenih.'}</Text>
         {factors.map(factor => <View key={factor.key} accessible accessibilityLabel={`${factor.label}. Prispevek ${factor.contribution}. ${factor.status}`} style={styles.factor}>

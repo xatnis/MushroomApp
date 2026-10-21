@@ -30,6 +30,7 @@ const ui = compile('src/components/SevenDayConditionsView.tsx', id => {
   if (id === 'react-native') return { ...Object.fromEntries(['Modal','View','Text','Pressable','ScrollView','ActivityIndicator'].map(s => [s,s])), StyleSheet: { create: (s: any) => s }, AccessibilityInfo: { setAccessibilityFocus: (n: any) => focus = n }, findNodeHandle: () => 1 };
   if (id === 'react-native-safe-area-context') return { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' };
   if (id === './ui') return { Card: 'Card', AppButton: 'AppButton', commonStyles: {} };
+  if (id === './PointHabitatContext') return { PointHabitatContext: 'PointHabitatContext' }; // Executed separately by pointHabitatSmoke.
   if (id === '../services/useSevenDayConditions') return { useSevenDayConditions: () => ({ loading, error, snapshot: data, results: loading || error ? undefined : evaluateSevenDayConditions(data, context), retry: () => requests++ }) };
 });
 const entry = ui.SevenDayConditionsEntry({ disabled: false, onPress: () => requests++ });
