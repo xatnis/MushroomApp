@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
+import { selectedStripStub } from './shadowUxSourceGuards';
 import { mapForecastLocation, forecastPointFromTap } from '../src/domain/mapForecast';
 import { heatmapControlsReducer, heatmapControlsPanelVisible, INITIAL_HEATMAP_CONTROLS } from '../src/domain/heatmap/controlsState';
 import { withoutMapForecast, withoutMapForecastUx } from './mapForecastSourceGuards';
@@ -152,7 +153,7 @@ const file = resolve('src/components/SevenDayMapForecast.tsx'), requireHere = cr
 mod.filename = file; mod.paths = Module._nodeModulePaths(resolve('src/components'));
 let cursor = 0, hookCalls = 0, fontScale = 1, width = 360, selectedDay: number | undefined, selectedDate: string | undefined, closed = 0, fullDay: number | undefined, fullDate: string | undefined, focused = 0, menuOpen = false, panelHeight = 280;
 let loading = false, error: string | undefined, data = sevenDayFixture(), profile: any = 'generic';
-mod.require = (id: string) => id === './PointHabitatContext' ? { PointHabitatContext: 'PointHabitatContext' } : id === 'react/jsx-runtime' ? { jsx, jsxs: jsx } : id === 'react' ? { useRef: (initial: any) => ({ current: initial }), useState: () => [menuOpen, (v: boolean) => menuOpen = v] }
+mod.require = (id: string) => id === './useSelectedStrip' ? selectedStripStub : id === './PointHabitatContext' ? { PointHabitatContext: 'PointHabitatContext' } : id === 'react/jsx-runtime' ? { jsx, jsxs: jsx } : id === 'react' ? { useRef: (initial: any) => ({ current: initial }), useState: () => [menuOpen, (v: boolean) => menuOpen = v] }
   : id === 'react-native' ? { ...Object.fromEntries(['Modal','View','Text','ScrollView','Pressable','ActivityIndicator'].map(t => [t,t])), StyleSheet: { create: (s: any) => s }, useWindowDimensions: () => ({ width, fontScale }), AccessibilityInfo: { setAccessibilityFocus: () => focused++ }, findNodeHandle: () => 1 }
   : id === 'react-native-safe-area-context' ? { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' }
   : id === '@expo/vector-icons' ? { Ionicons: 'Icon' } : id === '../services/useSevenDayConditions' ? { useSevenDayConditions: (_db: any, location: any, p: any) => {

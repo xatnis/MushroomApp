@@ -3,10 +3,11 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { withoutMapForecast, withoutForecastModalInputs } from './mapForecastSourceGuards';
 import { withoutPointDiagnostics } from './pointRefreshSourceGuards';
+import { withoutShadowForecastUx } from './shadowUxSourceGuards';
 
 /** Exact informational UI additions only; pointHabitatSmoke executes them and pins the remaining view to 6c54e0a. */
 export function withoutPointHabitatUi(text: string) {
-  return text.replace(/\r\n/g, '\n')
+  return withoutShadowForecastUx(text).replace(/\r\n/g, '\n')
     .replace("import { PointHabitatContext } from './PointHabitatContext';\n", '')
     .replace('    {!week.results ? <PointHabitatContext latitude={location.latitude} longitude={location.longitude} profileId={profileId} /> : null}\n', '')
     .replace('        <PointHabitatContext latitude={location.latitude} longitude={location.longitude} profileId={profileId} />\n', '')

@@ -4,6 +4,8 @@ import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import ts from 'typescript';
+import { selectedStripStub } from './shadowUxSourceGuards';
+import { withoutKoroskaShadow } from './koroskaShadowSourceGuards';
 import { resolvePointHabitat, pointHabitatLabel, type PointHabitatSource } from '../src/domain/pointHabitat';
 import type { MushroomWeatherProfileId } from '../src/domain/types';
 
@@ -74,8 +76,9 @@ for (const profile of HEATMAP_PROFILE_IDS) {
 strictEqual(JSON.stringify(snapshot), beforeSnapshot);
 for (const file of ['src/domain/sevenDayConditions.ts','src/domain/mushroomWeather.ts','src/domain/soilSampling.ts','src/domain/weatherIntervals.ts',
   'src/domain/heatmap/regional.ts','src/domain/heatmap/spatial.ts','src/domain/heatmap/pilot.ts','src/domain/heatmap/zgs.ts','src/services/useSevenDayConditions.ts',
-  'src/services/pointConditions.ts','src/services/weather.ts','src/screens/MapScreen.tsx','src/experimental/useKoroskaShadow.tsx','src/data/koroskaShadow/snapshot.json']) {
-  strictEqual(readFileSync(file, 'utf8').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `6c54e0a:${file}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), file + ' untouched');
+  'src/services/pointConditions.ts','src/services/weather.ts','src/screens/MapScreen.tsx','src/experimental/koroskaShadowData.ts','src/data/koroskaShadow/snapshot.json']) {
+  const unchanged = (s: string) => file === 'src/screens/MapScreen.tsx' ? withoutKoroskaShadow(s) : s.replace(/\r\n/g, '\n');
+  strictEqual(unchanged(readFileSync(file, 'utf8')), unchanged(execFileSync('git', ['show', `6c54e0a:${file}`], { encoding: 'utf8' })), file + ' numerical/data contract unchanged; shadow presentation executed by shadowUxSmoke');
 }
 
 // Actual component execution with component-local memo/state, not a replacement presentation model.
@@ -111,7 +114,7 @@ for (const point of [...points, { latitude: 0, longitude: 0, profile: 'generic' 
 }
 let selectedIndex = 0, weatherLoading = false, calls = 0;
 const weather = (profile: MushroomWeatherProfileId) => ({ loading: weatherLoading, snapshot, results: weatherLoading ? undefined : evaluateSevenDayConditions(snapshot, profile), retry() {} });
-const imports = (id: string) => id === 'react' ? { useRef: (initial: any) => ({ current: initial }), useState: (initial: any) => typeof initial === 'boolean' ? [false, () => {}] : [selectedIndex ?? initial, (v: number) => selectedIndex = v] }
+const imports = (id: string) => id === './useSelectedStrip' ? selectedStripStub : id === 'react' ? { useRef: (initial: any) => ({ current: initial }), useState: (initial: any) => typeof initial === 'boolean' ? [false, () => {}] : [selectedIndex ?? initial, (v: number) => selectedIndex = v] }
   : id === './PointHabitatContext' ? { PointHabitatContext: habitat } : id === 'react-native-safe-area-context' ? { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' }
   : id === './ui' ? { Card: 'Card', AppButton: 'AppButton', commonStyles: {} }
   : id === '@expo/vector-icons' ? { Ionicons: 'Icon' }

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import ts from 'typescript';
+import { selectedStripStub } from './shadowUxSourceGuards';
 import { sevenDayFixture } from './sevenDayFixture';
 import { evaluateSevenDayConditions } from '../src/domain/sevenDayConditions';
 import { MUSHROOM_WEATHER_PROFILES } from '../src/domain/mushroomWeather';
@@ -25,6 +26,7 @@ let stateCursor = 0; const states: any[] = [];
 let context: MushroomWeatherProfileId = 'generic', closes = 0, requests = 0, focus = 0;
 let loading = false, error: string | undefined, data = fixture;
 const ui = compile('src/components/SevenDayConditionsView.tsx', id => {
+  if (id === './useSelectedStrip') return selectedStripStub;
   if (id === 'react') return { useRef: (n: any) => ({ current: n }), useState: (initial: any) => { const slot = stateCursor++; states[slot] ??= initial; return [states[slot], (n: any) => states[slot] = n]; } };
   if (id === 'react/jsx-runtime') return { jsx, jsxs: jsx, Fragment: 'Fragment' };
   if (id === 'react-native') return { ...Object.fromEntries(['Modal','View','Text','Pressable','ScrollView','ActivityIndicator'].map(s => [s,s])), StyleSheet: { create: (s: any) => s }, AccessibilityInfo: { setAccessibilityFocus: (n: any) => focus = n }, findNodeHandle: () => 1 };

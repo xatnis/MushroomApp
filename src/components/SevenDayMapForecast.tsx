@@ -13,6 +13,9 @@ import { slDateTime } from '../domain/format';
 import { colors, radii, spacing } from '../theme';
 import { markPointTiming } from '../services/pointTiming';
 import { PointHabitatContext } from './PointHabitatContext';
+/* SHADOW_UX_BEGIN */
+import { useSelectedStrip } from './useSelectedStrip';
+/* SHADOW_UX_END */
 
 const ignoreSnapshot = () => {}; // Map detail must never synchronize the unrelated Razmere location.
 export function MapForecastEntry({ onPress, expanded = false, compact = false }: { onPress: () => void; expanded?: boolean; compact?: boolean }) {
@@ -54,6 +57,9 @@ export function SevenDayMapForecastPreview({ location, database, profileId, init
   const mapDayLabel = mapDay === 'tomorrow' ? 'Jutri' : 'Danes';
   const showDates = compactForecastHasDateStrip(maxHeight, fontScale);
   const displayName = location.source === 'map-point' ? 'Izbrana točka' : location.name;
+  /* SHADOW_UX_BEGIN */
+  const dateStrip = useSelectedStrip(selected?.targetLocalDate, `${location.latitude}:${location.longitude}:${showDates}:${week.snapshot?.baseLocalDate ?? ''}`);
+  /* SHADOW_UX_END */
   return <View style={[styles.panel, { maxHeight }]}>
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.heading}><View style={styles.grow}>
@@ -70,10 +76,10 @@ export function SevenDayMapForecastPreview({ location, database, profileId, init
         <Text style={[styles.secondary, styles.grow]}>Preračunavam sedemdnevne razmere ... Pridobivam vremenske podatke.</Text></View> : null}
       {week.error ? <Text style={styles.secondary} accessibilityLiveRegion="polite">{week.error}</Text> : null}
       {week.snapshot?.stale ? <Text style={styles.secondary}>Starejša predpomnjena napoved</Text> : null}
-      {week.results && showDates ? <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.days} nestedScrollEnabled>
+      {week.results && showDates ? <ScrollView key={dateStrip.stripKey} horizontal {...dateStrip.scrollProps} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.days} nestedScrollEnabled>
         {week.results.map((day, index) => {
           const date = new Intl.DateTimeFormat('sl-SI', { timeZone: WEATHER_TIMEZONE, weekday: 'short', day: 'numeric', month: 'numeric' }).format(new Date(day.targetLocalDate + 'T12:00:00Z'));
-          return <Pressable key={day.targetLocalDate} accessibilityRole="button" accessibilityState={{ selected: selectedDay === index }}
+          return <Pressable key={day.targetLocalDate} onLayout={dateStrip.itemLayout(day.targetLocalDate)} accessibilityRole="button" accessibilityState={{ selected: selectedDay === index }}
             accessibilityLabel={`${date}, ${day.score == null ? 'ocena ni na voljo' : `${day.score} od 100, ${day.label}`}${day.status === 'stale' ? ', starejši podatki' : ''}`}
             accessibilityHint="Posodobi datum, oceno in primerjavo spodaj. Ne spremeni dneva regionalnega zemljevida."
             onPress={() => onSelectDate(index, day.targetLocalDate)} style={[styles.day, selectedDay === index && styles.selected]}>

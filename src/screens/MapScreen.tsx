@@ -162,7 +162,7 @@ export function MapScreen() {
   const shadow = useKoroskaShadow({ available: isFocused && mode === 'map' && mapReady && !currentMapForecast && !cameraTarget,
     initialProfile: heatmapProfileId, database: db, fillPaint: HEATMAP_FILL_PAINT, borderPaint: HEATMAP_BORDER_PAINT, selectedPaint: HEATMAP_SELECTED_PAINT,
     onConsumeTap: () => { suppressMapPressUntil.current = Date.now() + 300; },
-    onShowRegion: () => camera.current?.easeTo({ center: [14.85, 46.47], zoom: 10.3, duration: 500, padding: { top: 0, bottom: 0, left: 0, right: 0 } }) });
+    onShowRegion: request => camera.current?.fitBounds(request.bounds, { padding: request.padding, duration: 500, easing: 'ease' }) });
   /* KOROSKA_SHADOW_END */
   const [heatmapBundle, setHeatmapBundle] = useState<HeatmapPilotBundle>();
   const [heatmapLoading, setHeatmapLoading] = useState(false);

@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
+import { selectedStripStub } from './shadowUxSourceGuards';
 import * as data from '../src/experimental/koroskaShadowData';
 import { withoutKoroskaShadow } from './koroskaShadowSourceGuards';
 import { selectPilot, buildPrototype, digest, cellResult } from './research/koroskaRegionalPrototype';
@@ -65,7 +66,9 @@ function harness(enabled: boolean) {
     useEffect: (f: () => void, deps: any[]) => { const i = cursor++; if (!slots[i] || !same(slots[i], deps)) { slots[i] = deps; effects.push(f); } },
   };
   mod.require = (id: string) => id === 'react/jsx-runtime' ? { jsx, jsxs: jsx } : id === 'react' ? hooks
-    : id === 'react-native' ? { ...Object.fromEntries(['View','Text','ScrollView','Pressable','ActivityIndicator'].map(t => [t,t])), StyleSheet: { create: (s: any) => s, absoluteFill: {} }, useWindowDimensions: () => ({ width: 360, height: 800, fontScale }) }
+    : id === '../components/useSelectedStrip' ? selectedStripStub
+    : id === 'react-native-safe-area-context' ? { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' }
+    : id === 'react-native' ? { ...Object.fromEntries(['Modal','View','Text','ScrollView','Pressable','ActivityIndicator'].map(t => [t,t])), StyleSheet: { create: (s: any) => s, absoluteFill: {} }, useWindowDimensions: () => ({ width: 360, height: 800, fontScale }) }
     : id === '@maplibre/maplibre-react-native' ? { GeoJSONSource: 'GeoJSONSource', Layer: 'Layer' }
     : id === '../components/SevenDayConditionsView' ? { SevenDayConditionsModal: 'PointModal' }
     : id === './koroskaShadowData' ? { ...data, KOROSKA_SHADOW_ENABLED: enabled, shadowGeometry: (a: any) => { geometryBuilds++; return data.shadowGeometry(a); } }
@@ -98,11 +101,13 @@ async function main() {
   const disabled = harness(false); const off = disabled.render(); strictEqual(off.entry, null); strictEqual(off.layer, null); strictEqual(off.overlay, null); strictEqual(disabled.counts().loads, 0);
   const h = harness(true); let ui = h.render(); strictEqual(ui.active, false); strictEqual(h.counts().loads, 0); ui.entry.props.onPress(); ui = h.render();
   ok(ui.active); strictEqual(h.counts().loads, 1); strictEqual(h.counts().geometryBuilds, 1); strictEqual(h.counts().camera, 0);
-  ui.overlay.props.onLayout({ nativeEvent: { layout: { height: 500 } } }); ui = h.render();
+  ui.overlay.props.onLayout({ nativeEvent: { layout: { width: 360, height: 500 } } });
+  walk(ui.overlay).find(n => n.type === 'View' && n.props.onLayout && n !== ui.overlay).props.onLayout({ nativeEvent: { layout: { y: 8, height: 120 } } }); ui = h.render();
   ok(text(ui.overlay).includes('Raziskovalni posnetek — ni aktualna napoved'));
   const nativeData = ui.layer.props.data, id = candidate.id, clicked = [14.812345, 46.456789];
   ui.layer.props.onPress({ stopPropagation() {}, nativeEvent: { features: [{ properties: { id } }], lngLat: clicked } }); ui = h.render();
   for (const profile of artifact.profiles) {
+    h.press('Izberi raziskovalni datum in vrsto');
     const profileLabel = (require('../src/domain/mushroomWeather') as any).MUSHROOM_WEATHER_PROFILES[profile].label;
     h.press(profileLabel);
     for (let d = 0; d < 7; d++) {

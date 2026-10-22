@@ -12,6 +12,10 @@ import { useSevenDayConditions } from '../services/useSevenDayConditions';
 import { AppButton, Card, commonStyles } from './ui';
 import { colors, radii, spacing } from '../theme';
 import { PointHabitatContext } from './PointHabitatContext';
+/* SHADOW_UX_BEGIN */
+import { useSelectedStrip } from './useSelectedStrip';
+import { researchPointContext, type ResearchForecastOrigin } from './forecastSourceContext';
+/* SHADOW_UX_END */
 
 export interface SevenDayLocation { latitude: number; longitude: number; name: string; source?: 'conditions' | 'map-point' | 'hotspot' }
 const dateLabel = (date: string) => validWeatherDate(date) ? new Intl.DateTimeFormat('sl-SI', { timeZone: WEATHER_TIMEZONE, weekday: 'short', day: 'numeric', month: 'numeric' }).format(new Date(date + 'T12:00:00Z')) : date;
@@ -22,10 +26,13 @@ export function SevenDayConditionsEntry({ onPress, disabled }: { onPress: () => 
     <Text style={styles.action}>Napoved pogojev · 7 dni →</Text>
   </Pressable>;
 }
-export function SevenDayConditionsModal({ visible, location, profileId, onProfileChange, summary, database, onSnapshot, onClose, initialDay = 0, selectedDate, onSelectDate }: {
+export function SevenDayConditionsModal({ visible, location, profileId, onProfileChange, summary, database, onSnapshot, onClose, initialDay = 0, selectedDate, onSelectDate, researchOrigin }: {
   visible: boolean; location?: SevenDayLocation; profileId: MushroomWeatherProfileId; onProfileChange: (profile: MushroomWeatherProfileId) => void;
   summary?: MushroomWeatherSummary; database: SQLiteDatabase; onSnapshot: (summary: MushroomWeatherSummary) => void; onClose: () => void; initialDay?: number;
   selectedDate?: string; onSelectDate?: (index: number, date: string) => void;
+  /* SHADOW_UX_BEGIN */
+  researchOrigin?: ResearchForecastOrigin;
+  /* SHADOW_UX_END */
 }) {
   const heading = useRef<Text>(null);
   const valid = location && Number.isFinite(location.latitude) && Number.isFinite(location.longitude) && Math.abs(location.latitude) <= 90 && Math.abs(location.longitude) <= 180;
@@ -35,32 +42,42 @@ export function SevenDayConditionsModal({ visible, location, profileId, onProfil
       <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="Nazaj iz napovedi pogojev" onPress={onClose} style={styles.back}><Text style={styles.action}>←</Text></Pressable>
         <View style={styles.headerCopy}><Text ref={heading} accessibilityRole="header" style={commonStyles.heading}>Napoved pogojev · 7 dni</Text><Text style={commonStyles.body}>{location?.name || 'Lokacija ni določena'}</Text></View></View>
       {valid ? <SevenDayContent key={`${location.latitude}:${location.longitude}`} location={location} database={database} profileId={profileId}
-        onProfileChange={onProfileChange} summary={summary} onSnapshot={onSnapshot} initialDay={initialDay} selectedDate={selectedDate} onSelectDate={onSelectDate} /> : <Text style={commonStyles.body}>Za napoved najprej izberi lokacijo.</Text>}
+        onProfileChange={onProfileChange} summary={summary} onSnapshot={onSnapshot} initialDay={initialDay} selectedDate={selectedDate} onSelectDate={onSelectDate} researchOrigin={researchOrigin} /> : <Text style={commonStyles.body}>Za napoved najprej izberi lokacijo.</Text>}
     </SafeAreaView></SafeAreaProvider> : null}
   </Modal>;
 }
-export function SevenDayContent({ location, database, profileId, onProfileChange, summary, onSnapshot, initialDay = 0, selectedDate, onSelectDate }: {
+export function SevenDayContent({ location, database, profileId, onProfileChange, summary, onSnapshot, initialDay = 0, selectedDate, onSelectDate, researchOrigin }: {
   location: SevenDayLocation; database: SQLiteDatabase; profileId: MushroomWeatherProfileId; onProfileChange: (profile: MushroomWeatherProfileId) => void;
   summary?: MushroomWeatherSummary; onSnapshot: (summary: MushroomWeatherSummary) => void; initialDay?: number;
   selectedDate?: string; onSelectDate?: (index: number, date: string) => void;
+  /* SHADOW_UX_BEGIN */
+  researchOrigin?: ResearchForecastOrigin;
+  /* SHADOW_UX_END */
 }) {
   const [selectedIndex, setSelectedIndex] = useState(Number.isInteger(initialDay) && initialDay >= 0 && initialDay <= 6 ? initialDay : 0);
   const week = useSevenDayConditions(database, location, profileId, summary, onSnapshot);
   const selected = week.results?.find(day => day.targetLocalDate === selectedDate) ?? week.results?.[selectedIndex], profile = MUSHROOM_WEATHER_PROFILES[profileId];
   const factors = selected?.componentsVerified ? advancedFactors(selected.canonical) : [];
+  /* SHADOW_UX_BEGIN */
+  const profileStrip = useSelectedStrip(profileId, `${location.latitude}:${location.longitude}`);
+  const dateStrip = useSelectedStrip(selected?.targetLocalDate, `${location.latitude}:${location.longitude}:${week.snapshot?.baseLocalDate ?? ''}`);
+  /* SHADOW_UX_END */
   return <ScrollView contentContainerStyle={styles.body} contentInsetAdjustmentBehavior="never" automaticallyAdjustContentInsets={false}>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-      {Object.values(MUSHROOM_WEATHER_PROFILES).map(item => <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={item.label} accessibilityState={{ selected: profileId === item.id }}
+    <ScrollView key={profileStrip.stripKey} horizontal {...profileStrip.scrollProps} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+      {Object.values(MUSHROOM_WEATHER_PROFILES).map(item => <Pressable key={item.id} onLayout={profileStrip.itemLayout(item.id)} accessibilityRole="button" accessibilityLabel={item.label} accessibilityState={{ selected: profileId === item.id }}
         onPress={() => onProfileChange(item.id)} style={[styles.chip, profileId === item.id && styles.active]}><Text style={[styles.action, profileId === item.id && styles.activeText]}>{item.label}</Text></Pressable>)}
     </ScrollView>
+    {/* SHADOW_UX_BEGIN */}
+    {researchPointContext(researchOrigin, week.results?.map(day => day.targetLocalDate), selected?.targetLocalDate).map(copy => <Text key={copy} style={commonStyles.body}>{copy}</Text>)}
+    {/* SHADOW_UX_END */}
     {!week.results ? <PointHabitatContext latitude={location.latitude} longitude={location.longitude} profileId={profileId} /> : null}
     {week.loading ? <View accessibilityLiveRegion="polite" style={styles.pending}><ActivityIndicator color={colors.primary} /><Text style={commonStyles.body}>Preračunavam sedemdnevne razmere ...</Text></View>
       : week.error ? <><Text accessibilityLiveRegion="polite" style={commonStyles.body}>{week.error}</Text><AppButton title="Poskusi znova" onPress={week.retry} /></> : null}
     {week.results ? <>
       {week.snapshot?.stale ? <Text style={commonStyles.body}>Starejša predpomnjena napoved · {week.snapshot.forecastRetrievedAt ? slDateTime(week.snapshot.forecastRetrievedAt) : 'čas ni na voljo'}</Text> : null}
       {week.results.some(day => day.status === 'error') ? <><Text accessibilityLiveRegion="polite" style={commonStyles.body}>Del vremenskih podatkov ni dosegljiv. Ocene z manjkajočimi vhodi niso na voljo.</Text><AppButton title="Poskusi znova" onPress={week.retry} /></> : null}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-        {week.results.map((day, index) => <Pressable key={day.targetLocalDate} accessibilityRole="button"
+      <ScrollView key={dateStrip.stripKey} horizontal {...dateStrip.scrollProps} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+        {week.results.map((day, index) => <Pressable key={day.targetLocalDate} onLayout={dateStrip.itemLayout(day.targetLocalDate)} accessibilityRole="button"
           accessibilityLabel={`${dateLabel(day.targetLocalDate)}, ${day.score == null ? 'ocena ni na voljo' : `${day.score} od 100, ${day.label}`}${day.status === 'stale' ? ', starejši podatki' : ''}`}
           accessibilityState={{ selected: selected === day }} onPress={() => { setSelectedIndex(index); onSelectDate?.(index, day.targetLocalDate); }} style={[styles.day, selected === day && styles.active]}>
           <Text style={[styles.dayLabel, selected === day && styles.activeText]}>{index === 0 ? 'Danes' : index === 1 ? 'Jutri' : new Intl.DateTimeFormat('sl-SI', { weekday: 'short', timeZone: WEATHER_TIMEZONE }).format(new Date(day.targetLocalDate + 'T12:00:00Z'))}</Text>
