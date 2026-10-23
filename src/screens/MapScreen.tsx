@@ -160,6 +160,7 @@ export function MapScreen() {
   const heatmapProfileId = mapRenderContext.current.targetProfile, heatmapTargetDay = mapRenderContext.current.dayMode;
   /* KOROSKA_SHADOW_BEGIN */
   const shadow = useKoroskaShadow({ available: isFocused && mode === 'map' && mapReady && !currentMapForecast && !cameraTarget,
+    pogojiAvailable: heatmapEnabled,
     initialProfile: heatmapProfileId, database: db, fillPaint: HEATMAP_FILL_PAINT, borderPaint: HEATMAP_BORDER_PAINT, selectedPaint: HEATMAP_SELECTED_PAINT,
     onConsumeTap: () => { suppressMapPressUntil.current = Date.now() + 300; },
     onShowRegion: request => camera.current?.fitBounds(request.bounds, { padding: request.padding, duration: 500, easing: 'ease' }) });
@@ -636,7 +637,10 @@ export function MapScreen() {
           <Ionicons name={mapSearchVisible && !currentMapForecast ? 'close' : 'search'} size={22} color={colors.primary} />
         </Pressable> : null}</View>
     </View>
-    <View style={[styles.controls, shadow.active && { display: 'none' }]}>
+    <View style={[styles.controls, shadow.active && !shadow.unified && { display: 'none' }]}>
+      {/* KOROSKA_SHADOW_BEGIN */}
+      {shadow.unified ? shadow.pogojiControls : <>
+      {/* KOROSKA_SHADOW_END */}
       {mapSearchVisible && !currentMapForecast ? <Field label="Poišči" placeholder="Poišči kraj, rastišče ali vrsto" value={query} onChangeText={setQuery} autoCorrect={false} returnKeyType="search" autoFocus={mode === 'map'} /> : null}
       {mode === 'map' ? <View style={styles.mapModeRow}><View style={styles.mapModeSwitch} accessibilityRole="tablist">
         <Pressable
@@ -672,7 +676,7 @@ export function MapScreen() {
         </Pressable>
       </View><MapForecastEntry onPress={openMapForecast} expanded={Boolean(currentMapForecast)} /></View> : null}
       {/* KOROSKA_SHADOW_BEGIN */}
-      {shadow.entry}
+      {heatmapEnabled ? shadow.pogojiEntry : shadow.entry}
       {/* KOROSKA_SHADOW_END */}
       {searchOpen && !currentMapForecast ? <View style={styles.searchPanel}>
         <ScrollView style={styles.searchScroll} contentContainerStyle={styles.searchContent} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
@@ -691,6 +695,9 @@ export function MapScreen() {
       </View> : null}
       {friendHotspots.length ? <View style={commonStyles.wrap}><Chip label="Moja rastišča" selected={ownerFilter === 'mine'} onPress={() => setOwnerFilter('mine')} /><Chip label="Rastišča prijateljev" selected={ownerFilter === 'friends'} onPress={() => setOwnerFilter('friends')} /></View> : null}
       {locationMessage ? <Notice tone="warning">{locationMessage}</Notice> : null}
+      {/* KOROSKA_SHADOW_BEGIN */}
+      </>}
+      {/* KOROSKA_SHADOW_END */}
     </View>
     <View style={styles.views}><View
       pointerEvents={mode === 'map' ? 'auto' : 'none'} accessibilityElementsHidden={mode !== 'map'} importantForAccessibility={mode === 'map' ? 'auto' : 'no-hide-descendants'}

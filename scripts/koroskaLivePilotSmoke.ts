@@ -12,6 +12,7 @@ import { shiftLocalDate } from '../src/services/weather';
 import * as scorer from '../src/domain/mushroomWeather';
 import { regionalPreviewResult, liveRegionalPaint, shadowWeatherGroups } from '../src/experimental/koroskaLivePresentation';
 import type { LiveRegionalSnapshot } from '../src/experimental/koroskaLive';
+import { withoutKoroskaShadow } from './koroskaShadowSourceGuards';
 
 const artifact = data.validateShadowArtifact(JSON.parse(readFileSync('src/data/koroskaShadow/snapshot.json', 'utf8')));
 const service = (enabled = true) => compileLive('src/experimental/koroskaLive.ts', id => id === './koroskaShadowData' ? { ...data, KOROSKA_SHADOW_ENABLED: enabled } : undefined) as typeof import('../src/experimental/koroskaLive');
@@ -166,9 +167,12 @@ async function run() {
     now = resolveLjubljanaClock('2026-10-24T00:00')[0]; releaseReceipt();
     await rejects(lateCommit, /datum/); strictEqual(commitService.peekLiveRegional(commitDb), undefined, 'midnight during async cache commit cannot publish an old window');
     strictEqual(s.utf8Bytes('m³/m³ °C 🌲'), Buffer.byteLength('m³/m³ °C 🌲'));
+    strictEqual(withoutKoroskaShadow(readFileSync('src/screens/MapScreen.tsx', 'utf8')),
+      withoutKoroskaShadow(execFileSync('git', ['show', 'af26a61:src/screens/MapScreen.tsx'], { encoding: 'utf8' })),
+      'production Map remainder unchanged; unified opt-in handlers executed in unifiedPogojiSmoke');
     for (const file of ['src/services/weather.ts','src/services/pointConditions.ts','src/services/sevenDayHourlyWeather.ts','src/domain/sevenDayConditions.ts',
       'src/domain/soilSampling.ts','src/domain/weatherIntervals.ts','src/domain/mushroomWeather.ts','src/domain/heatmap/regional.ts','src/domain/heatmap/pilot.ts',
-      'src/screens/MapScreen.tsx','src/experimental/koroskaShadowData.ts','src/data/koroskaShadow/snapshot.json'])
+      'src/experimental/koroskaShadowData.ts','src/data/koroskaShadow/snapshot.json'])
       strictEqual(readFileSync(file, 'utf8').replace(/\r\n/g, '\n'), execFileSync('git', ['show', `af26a61:${file}`], { encoding: 'utf8' }).replace(/\r\n/g, '\n'), file + ' unchanged');
     console.log(JSON.stringify({ environment: 'Windows/Node OFFLINE synthetic provider; not Android or live API', coldHttp: 2, warmHttp: 0, restartWarmHttp: 0,
       dateProfileHttp: 0, parityVectors: 308, adapterMetrics: cold.snapshot.metrics, elapsedMs: elapsed, processCpu,

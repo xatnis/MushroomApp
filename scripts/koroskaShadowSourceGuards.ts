@@ -5,6 +5,7 @@ export function withoutKoroskaShadow(text: string) {
     .replaceAll(', shadow.active]', ']')
     .replace('(!heatmapEnabled && !currentMapForecast && !shadow.active)', '(!heatmapEnabled && !currentMapForecast)')
     .replace("<View style={[styles.controls, shadow.active && { display: 'none' }]}>", '<View style={styles.controls}>')
+    .replace("<View style={[styles.controls, shadow.active && !shadow.unified && { display: 'none' }]}>", '<View style={styles.controls}>')
     .replaceAll('!shadow.active && visual.', 'visual.')
     .replace('visible={(!heatmapEnabled || showMyHotspots) && !shadow.active}', 'visible={!heatmapEnabled || showMyHotspots}')
     .replaceAll('currentMapForecast || shadow.active', 'currentMapForecast')

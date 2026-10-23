@@ -15,7 +15,7 @@ export function shadowGeometryBounds(artifact: ShadowArtifact): ShadowRegionRequ
 /** Frames are relative to the actual map overlay, already inside app safe areas/tab bar. */
 export function shadowRegionRequest(bounds: ShadowRegionRequest['bounds'], viewport: { width: number; height: number }, top?: ShadowFrame, bottom?: ShadowFrame, margin = 8): ShadowRegionRequest | undefined {
   if (!top || ![viewport.width, viewport.height, top.y, top.height, margin, ...(bottom ? [bottom.y, bottom.height] : [])].every(Number.isFinite)
-    || viewport.width <= 0 || viewport.height <= 0 || top.height <= 0 || margin < 0 || !bounds.every(Number.isFinite)) return;
+    || viewport.width <= 0 || viewport.height <= 0 || top.height < 0 || margin < 0 || !bounds.every(Number.isFinite)) return;
   const padding = { top: Math.ceil(top.y + top.height + margin), bottom: Math.ceil(bottom ? viewport.height - bottom.y + margin : margin * 3), left: margin * 2, right: margin * 2 };
   if (viewport.height - padding.top - padding.bottom < 48 || viewport.width - padding.left - padding.right < 48) return;
   return { bounds, padding };
