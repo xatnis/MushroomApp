@@ -1,0 +1,18 @@
+{
+  "schema": "koroska-live-pilot-offline-metrics-v1",
+  "evidence": "synthetic-provider-fixtures-not-live-weather-not-Android",
+  "fixtureBaseLocalDate": "2026-10-23",
+  "cells": 696,
+  "publicWeatherCoordinates": 11,
+  "weatherProfileDateEvaluations": 308,
+  "realWeatherHttpRequests": 0,
+  "mockHttp": { "cold": 2, "warm": 0, "cachedRestart": 0, "dateProfileSwitch": 0, "entireNegativeTestMatrix": 50 },
+  "decodedSemanticJsonBytes": { "archive": 507904, "forecast": 235728 },
+  "timingMs": { "sourcePairIncludingCacheAndDecode": 9.4194, "canonicalAssembly": 142.9593, "evaluationsAndValidation": 134.9896,
+    "preparationExcludingSourcePair": 307.2086, "coldCall": 323.2321, "idGroups": 0.2237, "thousandPaintPreparations": 1.3218 },
+  "coldProcessCpuMs": { "user": 390, "system": 16 },
+  "memoryBytes": { "coldHeapDelta": 16010832, "coldRssDelta": 10100736, "wholeMatrixPeakProcessRss": 403288064 },
+  "serializationBytes": { "compactLiveSnapshot": 527564, "unchangedGeometrySource": 450073 },
+  "limitations": ["One Windows/Node pass, timings and GC vary", "Includes transpiler/research imports, not native PSS",
+    "Mock source timings are not real API latency", "JSON bytes are not compressed wire bytes or billing units", "No provider run identity or ecological accuracy established"]
+}

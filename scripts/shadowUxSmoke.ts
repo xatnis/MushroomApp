@@ -12,6 +12,7 @@ import { withoutShadowForecastUx } from './shadowUxSourceGuards';
 import { withoutKoroskaShadow } from './koroskaShadowSourceGuards';
 import { sevenDayFixture } from './sevenDayFixture';
 import { evaluateSevenDayConditions } from '../src/domain/sevenDayConditions';
+import { liveHookStub } from './koroskaLiveTestSupport';
 const jsx = (type: any, props: any, key?: string) => ({ type, props, key });
 const walk = (n: any): any[] => Array.isArray(n) ? n.flatMap(walk) : n?.props ? [n, ...walk(n.props.children)] : [];
 const text = (n: any): string => Array.isArray(n) ? n.map(text).join('') : n?.props ? text(n.props.children) : n == null || typeof n === 'boolean' ? '' : String(n);
@@ -65,6 +66,7 @@ strictEqual(shadowRegionRequest(bounds, { width: 320, height: 200 }, { y: 8, hei
 const h = host(), actualStrip = compile('src/components/useSelectedStrip.ts', h); let builds = 0, acquisitions = 0;
 const camera: any[] = [];
 const ui = compile('src/experimental/useKoroskaShadow.tsx', h, id => id === '../components/useSelectedStrip' ? actualStrip
+  : id === './useKoroskaLive' ? liveHookStub
   : id === '@maplibre/maplibre-react-native' ? { GeoJSONSource: 'GeoJSONSource', Layer: 'Layer' }
   : id === '../components/SevenDayConditionsView' ? { SevenDayConditionsModal: 'PointModal' }
   : id === './koroskaShadowData' ? { ...data, KOROSKA_SHADOW_ENABLED: true, shadowGeometry: (a: any) => { builds++; return data.shadowGeometry(a); } }

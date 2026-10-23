@@ -7,6 +7,7 @@ import { resolve } from 'node:path';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { selectedStripStub } from './shadowUxSourceGuards';
+import { liveHookStub } from './koroskaLiveTestSupport';
 import * as data from '../src/experimental/koroskaShadowData';
 import { withoutKoroskaShadow } from './koroskaShadowSourceGuards';
 import { selectPilot, buildPrototype, digest, cellResult } from './research/koroskaRegionalPrototype';
@@ -67,6 +68,7 @@ function harness(enabled: boolean) {
   };
   mod.require = (id: string) => id === 'react/jsx-runtime' ? { jsx, jsxs: jsx } : id === 'react' ? hooks
     : id === '../components/useSelectedStrip' ? selectedStripStub
+    : id === './useKoroskaLive' ? liveHookStub
     : id === 'react-native-safe-area-context' ? { SafeAreaProvider: 'SafeAreaProvider', SafeAreaView: 'SafeAreaView' }
     : id === 'react-native' ? { ...Object.fromEntries(['Modal','View','Text','ScrollView','Pressable','ActivityIndicator'].map(t => [t,t])), StyleSheet: { create: (s: any) => s, absoluteFill: {} }, useWindowDimensions: () => ({ width: 360, height: 800, fontScale }) }
     : id === '@maplibre/maplibre-react-native' ? { GeoJSONSource: 'GeoJSONSource', Layer: 'Layer' }

@@ -11,7 +11,10 @@ import { colors, radii, spacing } from '../theme';
 import { useSelectedStrip } from '../components/useSelectedStrip';
 import type { ResearchForecastOrigin } from '../components/forecastSourceContext';
 import { shadowGeometryBounds, shadowRegionRequest, type ShadowFrame, type ShadowRegionRequest } from './shadowLayout';
-import { KOROSKA_SHADOW_ENABLED, validateShadowArtifact, shadowGeometry, shadowPaint, shadowCellResult,
+import { useKoroskaLive } from './useKoroskaLive';
+import { liveRegionalPaint, regionalPreviewResult, shadowWeatherGroups } from './koroskaLivePresentation';
+import { shiftLocalDate } from '../services/weather';
+import { KOROSKA_SHADOW_ENABLED, validateShadowArtifact, shadowGeometry, shadowPaint,
   shadowDateLabel, shadowIsStale, pointForecastDate, type ShadowArtifact } from './koroskaShadowData';
 
 export interface ShadowViewport { center: [number, number]; zoom: number; bounds?: [number, number, number, number] }
@@ -28,12 +31,16 @@ export function useKoroskaShadow({ available, initialProfile, database, fillPain
   const [controls, setControls] = useState(false), [regionMessage, setRegionMessage] = useState<string>();
   const [pointOpen, setPointOpen] = useState(false), [pointDate, setPointDate] = useState<string>(), [pointProfile, setPointProfile] = useState(initialProfile);
   const [researchOrigin, setResearchOrigin] = useState<ResearchForecastOrigin>();
+  const [sourceMode, setSourceMode] = useState<'frozen' | 'live'>('frozen');
   const viewport = useRef<ShadowViewport | undefined>(undefined), state = useRef({ pointOpen, selection, more, controls });
   const frames = useRef<{ viewport: { width: number; height: number }; top?: ShadowFrame; bottom?: ShadowFrame }>({ viewport: { width: 0, height: 0 } });
   state.current = { pointOpen, selection, more, controls };
   const active = KOROSKA_SHADOW_ENABLED && available && requested;
+  const live = useKoroskaLive(database, artifact, active && sourceMode === 'live');
+  const windowDates = sourceMode === 'frozen' ? artifact?.dates ?? [] : live.snapshot?.dates ?? Array.from({ length: 7 }, (_, i) => shiftLocalDate(localDateFor(), i));
   const reset = useCallback(() => {
     setSelection(undefined); setMore(false); setControls(false); setPointOpen(false); setPointDate(undefined); setResearchOrigin(undefined); setRegionMessage(undefined);
+    setSourceMode('frozen');
     frames.current.top = undefined; frames.current.bottom = undefined;
   }, []);
   useEffect(() => { if (!available) { setRequested(false); reset(); } }, [available, reset]);
@@ -44,9 +51,11 @@ export function useKoroskaShadow({ available, initialProfile, database, fillPain
   }, [active, artifact, error]);
   const geometry = useMemo(() => artifact ? shadowGeometry(artifact) : undefined, [artifact]);
   const bounds = useMemo(() => artifact ? shadowGeometryBounds(artifact) : undefined, [artifact]);
+  const weatherGroups = useMemo(() => artifact ? shadowWeatherGroups(artifact) : [], [artifact]);
   const profileIndex = artifact?.profiles.indexOf(profile) ?? 0;
-  const paint = useMemo(() => shadowPaint(fillPaint, profileIndex, day), [fillPaint, profileIndex, day]);
-  const result = artifact && selection ? shadowCellResult(artifact, selection.id, profileIndex, day) : undefined;
+  const paint = useMemo(() => sourceMode === 'frozen' ? shadowPaint(fillPaint, profileIndex, day)
+    : liveRegionalPaint(fillPaint, weatherGroups, live.snapshot, profileIndex, day), [fillPaint, profileIndex, day, sourceMode, weatherGroups, live.snapshot]);
+  const result = artifact && selection ? regionalPreviewResult(artifact, sourceMode, live.snapshot, selection.id, profileIndex, day, windowDates, live.message) : undefined;
   const exit = useCallback(() => { setRequested(false); reset(); }, [reset]);
   const clearSelection = useCallback(() => { setSelection(undefined); setMore(false); frames.current.bottom = undefined; }, []);
   const back = useCallback(() => {
@@ -60,8 +69,13 @@ export function useKoroskaShadow({ available, initialProfile, database, fillPain
   const rememberViewport = useCallback((v: ShadowViewport) => { viewport.current = v; }, []);
   const consumeViewport = useCallback(() => { const v = viewport.current; viewport.current = undefined; return v; }, []);
   const enter = () => { if (KOROSKA_SHADOW_ENABLED && available) { reset(); setDay(0); setProfile(initialProfile); setRequested(true); } };
-  const dates = useSelectedStrip(artifact?.dates[day], `${artifact?.snapshotId ?? ''}:${controls}`);
+  const dates = useSelectedStrip(windowDates[day], `${sourceMode}:${windowDates[0] ?? ''}:${controls}`);
   const profiles = useSelectedStrip(profile, `${artifact?.snapshotId ?? ''}:${controls}`);
+  const chooseSource = (next: 'frozen' | 'live') => {
+    if (next === sourceMode || !artifact) return;
+    const nextDates = next === 'frozen' ? artifact.dates : live.knownDates ?? Array.from({ length: 7 }, (_, i) => shiftLocalDate(localDateFor(), i));
+    setDay(Math.max(0, nextDates.indexOf(windowDates[day]))); setSourceMode(next);
+  };
   const showRegion = () => {
     const f = frames.current, request = bounds && shadowRegionRequest(bounds, f.viewport, f.top, selection ? f.bottom : undefined, spacing.sm);
     if (request && (!selection || f.bottom)) { setRegionMessage(undefined); onShowRegion(request); }
@@ -71,9 +85,11 @@ export function useKoroskaShadow({ available, initialProfile, database, fillPain
     name: 'Izbrana točka · točkovna napoved', source: 'map-point' } : undefined;
   const openPoint = () => {
     if (!selection || !artifact || !result) return;
-    setResearchOrigin({ date: artifact.dates[day], cellId: selection.id, profileId: profile, habitat: result.habitat, snapshotId: artifact.snapshotId, contract: artifact.contract });
+    setResearchOrigin({ date: windowDates[day], cellId: selection.id, profileId: profile, habitat: result.habitat,
+      snapshotId: sourceMode === 'frozen' ? artifact.snapshotId : live.snapshot?.snapshotId ?? 'regional-live-not-published', contract: artifact.contract,
+      ...(sourceMode === 'live' ? { mode: 'live' as const, retrievedAt: live.snapshot?.retrievedAt } : {}) });
     setControls(false); setMore(false);
-    setPointDate(pointForecastDate(artifact.dates[day], localDateFor())); setPointProfile(profile); setPointOpen(true);
+    setPointDate(pointForecastDate(windowDates[day], localDateFor())); setPointProfile(profile); setPointOpen(true);
   };
   const button = (label: string, onPress: () => void, selected = false, accessibilityLabel = label, expanded?: boolean) => <Pressable key={label} accessibilityRole="button" accessibilityLabel={accessibilityLabel}
     accessibilityState={expanded === undefined ? { selected } : { expanded }} onPress={onPress} style={[styles.button, selected && styles.active]}><Text style={[styles.buttonText, selected && styles.activeText]}>{label}</Text></Pressable>;
@@ -91,29 +107,39 @@ export function useKoroskaShadow({ available, initialProfile, database, fillPain
     <Layer id="koroska-shadow-border" type="line" afterId="koroska-shadow-fill" paint={borderPaint} />
     <Layer id="koroska-shadow-selection" type="line" afterId="koroska-shadow-border" paint={selectedPaint} filter={['==', ['get', 'id'], selection?.id ?? '']} />
   </GeoJSONSource> : null;
-  const summary = artifact ? `${shadowDateLabel(artifact.dates[day])} · ${MUSHROOM_WEATHER_PROFILES[profile].label}` : 'Nalagam posnetek';
+  const summary = artifact ? `${shadowDateLabel(windowDates[day])} · ${MUSHROOM_WEATHER_PROFILES[profile].label}` : 'Nalagam posnetek';
+  const sourceLabel = sourceMode === 'frozen' ? 'Raziskovalni posnetek — ni aktualna napoved' : 'Sveža napoved — razvojni pilot';
   const overlay = active ? <View pointerEvents="box-none" style={StyleSheet.absoluteFill}
     onLayout={event => { frames.current.viewport = event.nativeEvent.layout; }}>
     <View style={[styles.top, styles.topContent]} onLayout={event => { frames.current.top = event.nativeEvent.layout; }}>
       <Text accessibilityRole="header" style={styles.heading}>RAZVOJNI PREDOGLED · Koroška</Text>
-      <Text style={styles.warning}>Raziskovalni posnetek — ni aktualna napoved</Text>
+      <Text style={styles.warning}>{sourceLabel}</Text>
       <View style={styles.toolbar}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Izberi raziskovalni datum in vrsto" accessibilityState={{ expanded: controls }} onPress={() => { setMore(false); setControls(true); }} style={[styles.button, styles.grow]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={sourceMode === 'frozen' ? 'Izberi raziskovalni datum in vrsto' : 'Izberi datum, vrsto in vir napovedi'} accessibilityState={{ expanded: controls }} onPress={() => { setMore(false); setControls(true); }} style={[styles.button, styles.grow]}>
           <Text accessibilityLiveRegion="polite" style={styles.buttonText}>{summary} ▾</Text></Pressable>
         {button('Območje', showRegion, false, 'Prikaži Koroško')}{button('Izhod', exit, false, 'Izhod iz razvojnega predogleda')}
       </View>
       {error ? <Text accessibilityRole="alert" style={styles.warning}>{error}</Text> : !artifact ? <ActivityIndicator color={colors.primary} /> : null}
+      {sourceMode === 'live' ? <Text accessibilityLiveRegion="polite" style={styles.copy}>{live.message}{live.snapshot ? ` · pridobljeno ${new Intl.DateTimeFormat('sl-SI', { timeZone: 'Europe/Ljubljana', dateStyle: 'short', timeStyle: 'short' }).format(new Date(live.snapshot.retrievedAt))}` : ''}</Text> : null}
       {regionMessage ? <Text accessibilityLiveRegion="polite" style={styles.copy}>{regionMessage}</Text> : null}
     </View>
     {result && artifact ? <View style={[styles.bottom, styles.topContent]} onLayout={event => { frames.current.bottom = event.nativeEvent.layout; }}>
       <Text accessibilityRole="header" accessibilityLiveRegion="polite" style={styles.score}>Regionalna ocena: {result.score == null ? 'Ocena ni na voljo' : `${result.score}/100 · ${result.label}`}</Text>
-      <Text style={styles.copy}>{result.habitat === 'unknown' ? 'Raziskovalni habitat: ni potrjen' : result.habitat === 'outside-model' ? 'Raziskovalni habitat: zunaj modela' : result.vector.score == null ? result.vector.missing.join(' · ') || 'Manjkajo veljavni vremenski vhodi' : 'Raziskovalni habitat: potencialno primeren'}</Text>
+      <Text style={styles.copy}>{result.habitat === 'unknown' ? 'Raziskovalni habitat: ni potrjen' : result.habitat === 'outside-model' ? 'Raziskovalni habitat: zunaj modela' : result.vector.score == null ? result.vector.missing[0] || 'Manjkajo veljavni vremenski vhodi' : 'Raziskovalni habitat: potencialno primeren'}</Text>
       <View style={styles.toolbar}>{button('Točkovna napoved', openPoint, false, 'Odpri sedemdnevno napoved za kliknjene koordinate')}{button('Viri', () => { setControls(false); setMore(true); }, false, 'Viri in omejitve regionalnega posnetka', more)}{button('×', clearSelection, false, 'Zapri izbrano regionalno celico')}</View>
     </View> : null}
     {controls && artifact ? sheet('Izberi datum in vrsto', () => setControls(false), <>
-      <Text style={styles.copy}>{summary}</Text><Text style={styles.warning}>Raziskovalni posnetek — ni aktualna napoved</Text>
+      <Text style={styles.copy}>{summary}</Text><Text style={styles.warning}>{sourceLabel}</Text>
+      {button('Raziskovalni posnetek', () => chooseSource('frozen'), sourceMode === 'frozen')}
+      {button('Sveža napoved — razvojni pilot', () => chooseSource('live'), sourceMode === 'live')}
+      {sourceMode === 'live' ? <>
+        {button('Pridobi svežo napoved', () => { void live.refresh(); })}
+        <Text accessibilityLiveRegion="polite" style={styles.copy}>{live.message}</Text>
+        {live.error ? <Text accessibilityRole="alert" style={styles.copy}>{live.error}</Text> : null}
+        {live.loading ? <ActivityIndicator color={colors.primary} /> : null}
+      </> : null}
       <ScrollView key={`dates:${dates.stripKey}`} horizontal {...dates.scrollProps} contentContainerStyle={styles.strip}>
-        {artifact.dates.map((date, i) => <View key={date} onLayout={dates.itemLayout(date)}>{button(shadowDateLabel(date), () => setDay(i), day === i)}</View>)}
+        {windowDates.map((date, i) => <View key={date} onLayout={dates.itemLayout(date)}>{button(shadowDateLabel(date), () => setDay(i), day === i)}</View>)}
       </ScrollView>
       <ScrollView key={`profiles:${profiles.stripKey}`} horizontal {...profiles.scrollProps} contentContainerStyle={styles.strip}>
         {artifact.profiles.map(id => <View key={id} onLayout={profiles.itemLayout(id)}>{button(MUSHROOM_WEATHER_PROFILES[id].label, () => setProfile(id), profile === id)}</View>)}
@@ -121,8 +147,22 @@ export function useKoroskaShadow({ available, initialProfile, database, fillPain
     </>) : null}
     {more && result && artifact ? sheet('Viri raziskovalne celice', () => setMore(false), <>
       <Text style={styles.heading}>{summary} · {result.cell.id}</Text>
+      <Text style={styles.warning}>{sourceLabel}</Text>
+      {sourceMode === 'frozen' ? <>
       <Text selectable style={styles.copy}>{artifact.contract} · {artifact.captureId}</Text><Text selectable style={styles.copy}>Posnetek: {artifact.snapshotId}</Text>
       <Text style={styles.copy}>Vzorec: {result.weather.id} · pridobljeno {artifact.capturedAt}{shadowIsStale(artifact) ? ' · potekla veljavnost' : ' · zamrznjen raziskovalni zajem'}; modelski zagon ni preverjen.</Text>
+      </> : <>
+        <Text style={styles.copy}>{live.message}</Text>
+        {live.error ? <Text accessibilityRole="alert" style={styles.copy}>{live.error}</Text> : null}
+        <Text selectable style={styles.copy}>{artifact.contract} · posnetek: {live.snapshot?.snapshotId ?? 'ni objavljen'}</Text>
+        {live.snapshot ? <Text style={styles.copy}>Pridobljeno: {live.snapshot.retrievedAt} · sestavljeno: {live.snapshot.assembledAt} · iztek: {new Date(live.snapshot.expiresAt).toISOString()}. Konfiguracija scorerjev: {live.snapshot.scorerConfigurationId}.</Text> : null}
+        <Text style={styles.copy}>Vreme: skupni regionalni vzorec {result.weather.id}; ne meritev pri kliknjeni točki. Habitat: nespremenjena raziskovalna celica {artifact.captureId}. Čas modelnega zagona ni preverjen; čas pridobitve ni čas izdaje.</Text>
+        {live.snapshot?.sources.map(source => {
+          const row = source.returned[result.cell.weatherIndex];
+          return <Text key={source.endpoint} selectable style={styles.copy}>{source.endpoint} · {source.retrievedAt} · {source.sha256}. Zahtevano {row.requested.join(', ')}, mreža ponudnika {row.latitude}, {row.longitude}, višina {row.elevation ?? 'ni podatka'} m. Enote: {JSON.stringify(row.units)}.</Text>;
+        })}
+        {live.snapshot?.missing.map(reason => <Text key={reason} style={styles.copy}>{reason}</Text>)}
+      </>}
       <Text style={styles.copy}>Zamrznjen habitat raziskovalne celice ni ista prostorska presoja kot habitat iz produkcijskega regionalnega indeksa v točkovni napovedi. Celice, meje, profil ali podatkovni kontekst se lahko razlikujejo; nobena presoja ne potrjuje rastja na točni koordinati.</Text>
       <Text style={styles.copy}>Točkovna napoved uporablja kliknjene koordinate in svoj aktualni vremenski posnetek. Raziskovalni datum zunaj aktualnega okna se ne prenese kot današnji datum.</Text>
       <Text style={styles.copy}>1 km habitat; skupni vremenski vzorec, ne meritev v gozdu. Ocena pomeni modelno primernost pogojev, ne prisotnosti gob. Majhna sprememba blizu praga lahko spremeni barvno kategorijo.</Text>
